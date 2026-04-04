@@ -21,10 +21,16 @@ Worktrees live at `../{{worktree_dir}}/<issue-num>/` relative to the repo root.
 # From the main repo, ensure main is up to date
 git checkout main && git pull
 
-# Create worktree + branch + full setup
-mise run worktree:setup <num> feature/#<num>.<summary>
+# Create worktree with a new branch
+git worktree add ../{{worktree_dir}}/<num> -b feature/#<num>.<summary> main
 
 # All work happens inside the worktree
+cd ../{{worktree_dir}}/<num>
+```
+
+If the project has a `mise run worktree:setup` task, prefer that — it handles branch creation, environment setup, and dependency installation in one step:
+```bash
+mise run worktree:setup <num> feature/#<num>.<summary>
 cd ../{{worktree_dir}}/<num>
 ```
 
@@ -41,11 +47,11 @@ Epics use `feature/` prefix — same as standalone issues. Sub-tasks nest under 
 
 ```bash
 # Epic: create worktree from main
-mise run worktree:setup <epic-num> feature/#<epic-num>.<summary>
+git worktree add ../{{worktree_dir}}/<epic-num> -b feature/#<epic-num>.<summary> main
 cd ../{{worktree_dir}}/<epic-num>
 
 # Sub-issue: branch off the epic branch
-mise run worktree:setup <sub-num> feature/#<epic-num>/#<sub-num>.<summary> feature/#<epic-num>.<summary>
+git worktree add ../{{worktree_dir}}/<sub-num> -b feature/#<epic-num>/#<sub-num>.<summary> feature/#<epic-num>.<summary>
 cd ../{{worktree_dir}}/<sub-num>
 ```
 
@@ -68,13 +74,18 @@ Do everything — edit, build, test, commit, push — from inside the worktree d
 
 ### Things you must NEVER do in a worktree
 
-- **Never run `docker compose` from a worktree directory.** The worktree has its own `docker-compose.yml` copy which will create a separate container and port-conflict with the shared database. Always use the main repo's container.
+- **Never run `docker compose` from a worktree directory.** The worktree may have its own `docker-compose.yml` copy which will create a separate container and port-conflict with the shared database.
 - **Never run destructive SQL** (`DROP SCHEMA`, `DROP TABLE`, etc.) against the shared database. Other agents depend on it.
 - **Never run `git add -A` or `git add .`** — this can stage unintended changes. Always add specific files by name.
 
 ## Cleanup
 
-Use `mise run worktree:cleanup <num>` to remove a worktree and prune stale git refs.
+Remove the worktree when done:
+```bash
+git worktree remove ../{{worktree_dir}}/<num>
+```
+
+If the project has `mise run worktree:cleanup`, prefer that — it may also clean up databases and other resources.
 
 ## Rules
 
