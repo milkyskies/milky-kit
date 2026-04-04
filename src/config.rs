@@ -114,12 +114,18 @@ impl KitConfig {
             modules.push(u.clone());
         }
 
-        // Auto-inferred: Rust → Cargo workspace, JS/frontend → pnpm workspace
+        // Auto-inferred
         if has_rust {
             modules.push("monorepo".to_string());
         }
         if has_js {
             modules.push("pnpm".to_string());
+        }
+        // React currently requires TypeScript
+        if self.stack.frontend == Some("react".to_string())
+            && !modules.contains(&"ts".to_string())
+        {
+            modules.push("ts".to_string());
         }
         if self.stack.tauri {
             modules.push("tauri".to_string());
