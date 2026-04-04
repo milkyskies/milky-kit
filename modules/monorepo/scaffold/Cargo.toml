@@ -1,0 +1,13 @@
+[workspace]
+resolver = "2"
+members = [
+    "apps/api",
+    "apps/db",
+    "packages/*",
+]
+
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+opt-level = 1

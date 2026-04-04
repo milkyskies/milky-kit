@@ -15,6 +15,7 @@ struct SyncAction {
 
 pub fn run(kit_home: &Path, dry_run: bool) -> Result<()> {
     let config = config::load_kit_config()?;
+    let module_names = config.module_names();
     let mut managed: Vec<String> = Vec::new();
     let mut actions: Vec<SyncAction> = Vec::new();
 
@@ -24,7 +25,7 @@ pub fn run(kit_home: &Path, dry_run: bool) -> Result<()> {
     }
 
     // Process modules
-    for module_name in &config.modules.include {
+    for module_name in &module_names {
         let module_dir = kit_home.join("modules").join(module_name);
         if !module_dir.exists() {
             eprintln!("  ! module '{}' not found, skipping", module_name);
@@ -50,10 +51,7 @@ pub fn run(kit_home: &Path, dry_run: bool) -> Result<()> {
             }
             let content = fs::read_to_string(&src)?;
             let content = template::render(&content, &config.project);
-            let ext = src
-                .extension()
-                .and_then(|e| e.to_str())
-                .unwrap_or("");
+            let ext = src.extension().and_then(|e| e.to_str()).unwrap_or("");
             let content = template::add_managed_header(&content, ext);
 
             actions.push(SyncAction {
@@ -199,7 +197,6 @@ fn sync_directory(
         let relative = entry.path().strip_prefix(src_dir)?;
         let dest = format!("{}/{}", dest_prefix, relative.display());
 
-        // Template text files, copy binary files as-is
         let ext = entry
             .path()
             .extension()

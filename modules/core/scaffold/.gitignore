@@ -1,0 +1,9 @@
+/target
+node_modules
+.env
+*.swp
+*.swo
+.DS_Store
+.idea
+.vscode
+*.log

@@ -6,22 +6,36 @@ use std::path::{Path, PathBuf};
 #[derive(Deserialize)]
 pub struct KitConfig {
     pub project: ProjectVars,
-    pub modules: ModuleSelection,
+    #[serde(default)]
+    pub stack: StackConfig,
     #[serde(default)]
     pub skills: SkillSelection,
+    /// Legacy flat module list (backwards compatible)
+    pub modules: Option<LegacyModuleSelection>,
 }
 
 #[derive(Deserialize)]
 pub struct ProjectVars {
     pub name: String,
     pub worktree_dir: String,
-    /// Additional custom variables for templates
     #[serde(flatten)]
     pub extra: HashMap<String, String>,
 }
 
+#[derive(Deserialize, Default)]
+pub struct StackConfig {
+    #[serde(default)]
+    pub languages: Vec<String>,
+    pub backend: Option<String>,
+    pub orm: Option<String>,
+    pub frontend: Option<String>,
+    pub ui: Option<String>,
+    #[serde(default)]
+    pub tools: Vec<String>,
+}
+
 #[derive(Deserialize)]
-pub struct ModuleSelection {
+pub struct LegacyModuleSelection {
     pub include: Vec<String>,
 }
 
@@ -41,6 +55,81 @@ pub struct ModuleManifest {
 pub struct FileMapping {
     pub src: String,
     pub dest: String,
+}
+
+impl KitConfig {
+    /// Collect all module names from the config (core is always included).
+    pub fn module_names(&self) -> Vec<String> {
+        let mut modules = vec!["core".to_string()];
+
+        // Legacy format: [modules] include = [...]
+        if let Some(ref m) = self.modules {
+            for name in &m.include {
+                if name != "core" && !modules.contains(name) {
+                    modules.push(name.clone());
+                }
+            }
+            return modules;
+        }
+
+        // New format: [stack]
+        for lang in &self.stack.languages {
+            if !modules.contains(lang) {
+                modules.push(lang.clone());
+            }
+        }
+        if let Some(ref b) = self.stack.backend {
+            modules.push(b.clone());
+        }
+        if let Some(ref o) = self.stack.orm {
+            modules.push(o.clone());
+        }
+        if let Some(ref f) = self.stack.frontend {
+            modules.push(f.clone());
+        }
+        if let Some(ref u) = self.stack.ui {
+            modules.push(u.clone());
+        }
+        for tool in &self.stack.tools {
+            if !modules.contains(tool) {
+                modules.push(tool.clone());
+            }
+        }
+
+        modules
+    }
+
+    /// Validate that the stack configuration is coherent.
+    pub fn validate(&self) -> Result<()> {
+        if self.modules.is_some() {
+            return Ok(()); // Skip validation for legacy format
+        }
+
+        let langs = &self.stack.languages;
+
+        if let Some(ref backend) = self.stack.backend {
+            match backend.as_str() {
+                "axum" if !langs.contains(&"rust".to_string()) => {
+                    bail!("axum requires 'rust' in languages");
+                }
+                "hono" if !langs.contains(&"floe".to_string()) && !langs.contains(&"ts".to_string()) => {
+                    bail!("hono requires 'floe' or 'ts' in languages");
+                }
+                _ => {}
+            }
+        }
+
+        if let Some(ref orm) = self.stack.orm {
+            match orm.as_str() {
+                "seaorm" | "sqlx" if !langs.contains(&"rust".to_string()) => {
+                    bail!("{} requires 'rust' in languages", orm);
+                }
+                _ => {}
+            }
+        }
+
+        Ok(())
+    }
 }
 
 pub fn resolve_kit_home(explicit: Option<String>) -> Result<PathBuf> {
@@ -81,6 +170,7 @@ pub fn load_kit_config() -> Result<KitConfig> {
         .context("Could not read .claude/milky-kit.toml — run 'milky-kit init' first")?;
     let config: KitConfig =
         toml::from_str(&content).context("Failed to parse .claude/milky-kit.toml")?;
+    config.validate()?;
     Ok(config)
 }
 
@@ -106,19 +196,13 @@ pub fn init_kit_toml() -> Result<()> {
 name = "my-project"
 worktree_dir = "my-project-worktrees"
 
-[modules]
-include = [
-    "core",
-    # "rust",
-    # "react",
-    # "seaorm",
-    # "sqlx",
-    # "shadcn",
-    # "heroui",
-    # "monorepo",
-    # "pnpm",
-    # "tauri",
-]
+[stack]
+languages = ["rust"]
+# backend = "axum"
+# orm = "seaorm"
+# frontend = "react"
+# ui = "shadcn"         # or "heroui"
+# tools = ["pnpm", "monorepo"]
 
 [skills]
 include = [
@@ -128,12 +212,6 @@ include = [
     "retrospective",
     "update-rule",
     "land",
-    # "setup-api-client",
-    # "tanstack-query-patterns",
-    # "heroui-react",
-    # "add-endpoint",
-    # "database-seaorm",
-    # "database-sqlx",
 ]
 "#;
 

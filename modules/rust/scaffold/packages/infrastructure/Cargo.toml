@@ -1,0 +1,11 @@
+[package]
+name = "infrastructure"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+domain = { path = "../domain" }
+sea-orm = { version = "1", features = ["runtime-tokio-rustls", "sqlx-postgres"] }
+tokio = { version = "1", features = ["full"] }
+anyhow = "1"
+thiserror = "2"

@@ -1,0 +1,179 @@
+[tools]
+rust = "latest"
+node = "22"
+
+[tasks.dev]
+description = "Full stack in tmux (API + client)"
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+SESSION="{{project_name}}"
+if tmux has-session -t "$SESSION" 2>/dev/null; then
+  echo "Session '$SESSION' already running. Attaching..."
+  exec tmux attach -t "$SESSION"
+fi
+tmux new-session -d -s "$SESSION" -n api
+tmux send-keys -t "$SESSION:api" "mise run dev:api" Enter
+tmux new-window -t "$SESSION" -n client
+tmux send-keys -t "$SESSION:client" "mise run dev:client" Enter
+tmux select-window -t "$SESSION:api"
+exec tmux attach -t "$SESSION"
+"""
+
+[tasks."dev:api"]
+description = "Run the API server"
+run = "cargo run -p api"
+
+[tasks."dev:client"]
+description = "Run the client dev server"
+run = "cd apps/client && pnpm dev"
+
+[tasks.check]
+description = "Lint + test everything"
+depends = ["check:rust", "check:frontend"]
+
+[tasks."check:rust"]
+description = "Format check, clippy, and tests"
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+cargo fmt --check
+cargo clippy -- -D warnings
+RUSTFLAGS="-D warnings" cargo nextest run
+"""
+
+[tasks."check:frontend"]
+description = "Lint and typecheck the frontend"
+run = "cd apps/client && pnpm lint && pnpm typecheck"
+
+[tasks.fmt]
+description = "Format everything"
+depends = ["fmt:rust", "fmt:frontend"]
+
+[tasks."fmt:rust"]
+description = "Format Rust code"
+run = "cargo fmt"
+
+[tasks."fmt:frontend"]
+description = "Format and lint-fix the frontend"
+run = "cd apps/client && pnpm lint:fix"
+
+[tasks."api:generate"]
+description = "Regenerate the OpenAPI spec and TypeScript client"
+run = "cd apps/client && pnpm api:generate"
+
+[tasks."db:up"]
+description = "Start the PostgreSQL container"
+run = "docker compose up -d"
+
+[tasks."db:migrate"]
+description = "Run database migrations"
+run = "cargo run -p db -- migrate"
+
+[tasks."db:status"]
+description = "Show migration status"
+run = "cargo run -p db -- status"
+
+[tasks."db:seed"]
+description = "Seed the database"
+run = 'echo "No seed script yet"'
+
+[tasks."db:reset"]
+description = "Reset the database (destroy + recreate + migrate + seed)"
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+docker compose down -v
+docker compose up -d
+echo "Waiting for PostgreSQL to be ready..."
+sleep 2
+mise run db:migrate
+mise run db:seed
+"""
+
+[tasks."db:setup"]
+description = "Start database, migrate, and seed"
+depends = ["db:up"]
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+echo "Waiting for PostgreSQL to be ready..."
+sleep 2
+mise run db:migrate
+mise run db:seed
+"""
+
+[tasks."worktree:setup"]
+description = "Create a worktree for an issue: worktree:setup <num> <branch> [base]"
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+NUM="${1:?Usage: worktree:setup <num> <branch> [base]}"
+BRANCH="${2:?Usage: worktree:setup <num> <branch> [base]}"
+BASE="${3:-main}"
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+WT_DIR="$REPO_ROOT/../{{worktree_dir}}/$NUM"
+
+if [ -d "$WT_DIR" ]; then
+  echo "ERROR: Worktree $WT_DIR already exists"
+  exit 1
+fi
+
+echo "Creating worktree at $WT_DIR from $BASE..."
+git worktree add "$WT_DIR" -b "$BRANCH" "$BASE"
+
+# Copy environment
+if [ -f "$REPO_ROOT/.env" ]; then
+  cp -f "$REPO_ROOT/.env" "$WT_DIR/.env"
+fi
+
+# Create per-worktree database
+DB_NAME="{{project_name}}_wt_$NUM"
+echo "Creating database $DB_NAME..."
+createdb "$DB_NAME" 2>/dev/null || echo "Database $DB_NAME already exists"
+
+# Update DATABASE_URL in worktree .env
+if [ -f "$WT_DIR/.env" ]; then
+  sed -i '' "s|DATABASE_URL=.*|DATABASE_URL=postgres://{{project_name}}:{{project_name}}@localhost:5432/$DB_NAME|" "$WT_DIR/.env"
+fi
+
+# Install frontend dependencies if applicable
+if [ -f "$WT_DIR/apps/client/package.json" ]; then
+  echo "Installing frontend dependencies..."
+  cd "$WT_DIR/apps/client" && pnpm install
+fi
+
+# Run migrations
+echo "Running migrations..."
+cd "$WT_DIR" && mise run db:migrate
+
+echo "Worktree ready at $WT_DIR"
+"""
+
+[tasks."worktree:cleanup"]
+description = "Remove a worktree and its database: worktree:cleanup <num>"
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+NUM="${1:?Usage: worktree:cleanup <num>}"
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+WT_DIR="$REPO_ROOT/../{{worktree_dir}}/$NUM"
+
+# Remove worktree
+if [ -d "$WT_DIR" ]; then
+  echo "Removing worktree at $WT_DIR..."
+  git worktree remove "$WT_DIR" --force
+else
+  echo "Worktree $WT_DIR does not exist"
+fi
+
+# Drop per-worktree database
+DB_NAME="{{project_name}}_wt_$NUM"
+echo "Dropping database $DB_NAME..."
+dropdb "$DB_NAME" 2>/dev/null || echo "Database $DB_NAME does not exist"
+
+# Prune stale worktree refs
+git worktree prune
+
+echo "Cleanup complete for worktree $NUM"
+"""

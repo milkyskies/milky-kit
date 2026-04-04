@@ -3,6 +3,7 @@ use clap::{Parser, Subcommand};
 
 mod config;
 mod manifest;
+mod scaffold;
 mod sync;
 mod template;
 
@@ -32,6 +33,8 @@ enum Commands {
     Diff,
     /// Create a starter .claude/milky-kit.toml
     Init,
+    /// Scaffold a new project from module templates
+    Scaffold,
 }
 
 fn main() -> Result<()> {
@@ -47,5 +50,9 @@ fn main() -> Result<()> {
             sync::run(&kit_home, true)
         }
         Commands::Init => config::init_kit_toml(),
+        Commands::Scaffold => {
+            let kit_home = config::resolve_kit_home(cli.kit_home)?;
+            scaffold::run(&kit_home)
+        }
     }
 }
