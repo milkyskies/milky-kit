@@ -23,8 +23,38 @@
 ## Models
 
 - Never import `*Dto` directly in components
-- Create a model at `src/models/` with a `.fromApi()` converter
+- Create a model at `src/models/` using `effect/Data.case` + `effect/Option`
 - Components import from `@/models/`, never from `@/services/api/_generated/schemas`
+- **Date fields**: Convert API strings to `Date` in `fromApi()` — never store dates as strings
+- **Nullable fields**: Use `Option.fromNullable()` from `effect` — never use `| null`
+
+```typescript
+import { Data, Option } from "effect";
+import type { PostResponse } from "../services/api/_generated/schemas";
+
+export interface Post {
+  readonly id: string;
+  readonly title: string;
+  readonly body: string;
+  readonly parentId: Option.Option<string>;
+  readonly createdAt: Date;
+  readonly updatedAt: Date;
+}
+
+export const Post = {
+  make: Data.case<Post>(),
+
+  fromApi: (dto: PostResponse) =>
+    Post.make({
+      id: dto.id,
+      title: dto.title,
+      body: dto.body,
+      parentId: Option.fromNullable(dto.parent_id),
+      createdAt: new Date(dto.created_at),
+      updatedAt: new Date(dto.updated_at),
+    }),
+};
+```
 
 ## Naming
 

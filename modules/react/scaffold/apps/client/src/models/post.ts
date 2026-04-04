@@ -5,8 +5,8 @@ export interface Post {
 	readonly id: string;
 	readonly title: string;
 	readonly body: string;
-	readonly createdAt: string;
-	readonly updatedAt: string;
+	readonly createdAt: Date;
+	readonly updatedAt: Date;
 }
 
 export const Post = {
@@ -17,7 +17,7 @@ export const Post = {
 			id: dto.id,
 			title: dto.title,
 			body: dto.body,
-			createdAt: dto.created_at,
-			updatedAt: dto.updated_at,
+			createdAt: new Date(dto.created_at),
+			updatedAt: new Date(dto.updated_at),
 		}),
 };
