@@ -13,18 +13,16 @@ rm -f file
 rm -rf directory
 ```
 
-## Task Tracking with glb
+## Setup
 
-Use `glb` (ghlobes) for issue tracking via GitHub Issues + Projects.
+After scaffolding, run these once to finish setup:
 
-| Command | What it does |
-|---|---|
-| `glb ready` | Show issues ready to work |
-| `glb list` | List all open issues |
-| `glb show <num>` | Show issue details |
-| `glb update <num> --claim` | Claim an issue |
-| `glb close <num>` | Close an issue |
-| `glb create --title "..." --priority P2 --status Todo --points 3` | Create an issue |
+```bash
+# Create GitHub repo + set up task tracking
+gh repo create {{project_name}} --source . --push
+glb init                        # Creates .ghlobes.toml + adds agent instructions
+cargo install ghlobes           # If not already installed
+```
 
 ## Key mise Commands
 
@@ -36,6 +34,7 @@ mise run check                  # Lint + test everything
 mise run fmt                    # Format everything
 mise run db:migrate             # Run database migrations
 mise run db:reset               # Reset database
+mise run api:generate           # Regenerate OpenAPI client
 mise run worktree:setup <n> <branch>   # Create worktree for issue
 mise run worktree:cleanup <n>          # Remove worktree
 ```

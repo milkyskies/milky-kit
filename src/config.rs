@@ -185,37 +185,176 @@ pub fn load_module_manifest(module_dir: &Path) -> Result<ModuleManifest> {
 }
 
 pub fn init_kit_toml() -> Result<()> {
+    use dialoguer::{Input, MultiSelect, Select};
+
     let path = Path::new(".claude/milky-kit.toml");
     if path.exists() {
         bail!(".claude/milky-kit.toml already exists");
     }
 
+    println!("Setting up milky-kit for this project.\n");
+
+    // Project name
+    let default_name = std::env::current_dir()
+        .ok()
+        .and_then(|p| p.file_name().map(|n| n.to_string_lossy().to_string()))
+        .unwrap_or_else(|| "my-project".to_string());
+
+    let name: String = Input::new()
+        .with_prompt("Project name")
+        .default(default_name.clone())
+        .interact_text()?;
+
+    let worktree_dir = format!("{}-worktrees", name);
+
+    // Backend language
+    let lang_options = &["rust", "none (no backend)"];
+    let lang_idx = Select::new()
+        .with_prompt("Backend language")
+        .items(lang_options)
+        .default(0)
+        .interact()?;
+
+    let language = if lang_idx == 0 {
+        Some("rust".to_string())
+    } else {
+        None
+    };
+
+    // Backend framework (if language selected)
+    let backend = if language.is_some() {
+        let fw_options = &["axum", "none"];
+        let fw_idx = Select::new()
+            .with_prompt("Backend framework")
+            .items(fw_options)
+            .default(0)
+            .interact()?;
+        if fw_idx == 0 {
+            Some("axum".to_string())
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    // ORM (if backend selected)
+    let orm = if backend.is_some() {
+        let orm_options = &["seaorm", "sqlx", "none"];
+        let orm_idx = Select::new()
+            .with_prompt("ORM")
+            .items(orm_options)
+            .default(0)
+            .interact()?;
+        match orm_idx {
+            0 => Some("seaorm".to_string()),
+            1 => Some("sqlx".to_string()),
+            _ => None,
+        }
+    } else {
+        None
+    };
+
+    // Frontend
+    let fe_options = &["react", "none"];
+    let fe_idx = Select::new()
+        .with_prompt("Frontend framework")
+        .items(fe_options)
+        .default(0)
+        .interact()?;
+
+    let frontend = if fe_idx == 0 {
+        Some("react".to_string())
+    } else {
+        None
+    };
+
+    // UI library (if frontend selected)
+    let ui = if frontend.is_some() {
+        let ui_options = &["shadcn", "heroui", "none"];
+        let ui_idx = Select::new()
+            .with_prompt("UI library")
+            .items(ui_options)
+            .default(0)
+            .interact()?;
+        match ui_idx {
+            0 => Some("shadcn".to_string()),
+            1 => Some("heroui".to_string()),
+            _ => None,
+        }
+    } else {
+        None
+    };
+
+    // Tools
+    let tool_options = &["pnpm", "monorepo", "tauri"];
+    let tool_defaults = if frontend.is_some() {
+        vec![true, true, false]
+    } else {
+        vec![false, false, false]
+    };
+    let tool_idxs = MultiSelect::new()
+        .with_prompt("Tools (space to toggle, enter to confirm)")
+        .items(tool_options)
+        .defaults(&tool_defaults)
+        .interact()?;
+
+    let tools: Vec<String> = tool_idxs
+        .iter()
+        .map(|&i| tool_options[i].to_string())
+        .collect();
+
+    // Build skills list
+    let mut skills = vec![
+        "ship", "rulify", "alignify", "retrospective", "update-rule", "land",
+    ];
+    if frontend.is_some() {
+        skills.extend(["setup-api-client", "tanstack-query-patterns", "add-endpoint"]);
+    }
+    if let Some(ref o) = orm {
+        match o.as_str() {
+            "seaorm" => skills.push("database-seaorm"),
+            "sqlx" => skills.push("database-sqlx"),
+            _ => {}
+        }
+    }
+
+    // Build TOML
+    let mut toml = format!(
+        "[project]\nname = \"{}\"\nworktree_dir = \"{}\"\n\n[stack]\n",
+        name, worktree_dir
+    );
+
+    if let Some(ref lang) = language {
+        toml.push_str(&format!("languages = [\"{}\"]\n", lang));
+    }
+    if let Some(ref b) = backend {
+        toml.push_str(&format!("backend = \"{}\"\n", b));
+    }
+    if let Some(ref o) = orm {
+        toml.push_str(&format!("orm = \"{}\"\n", o));
+    }
+    if let Some(ref f) = frontend {
+        toml.push_str(&format!("frontend = \"{}\"\n", f));
+    }
+    if let Some(ref u) = ui {
+        toml.push_str(&format!("ui = \"{}\"\n", u));
+    }
+    if !tools.is_empty() {
+        let tools_str: Vec<String> = tools.iter().map(|t| format!("\"{}\"", t)).collect();
+        toml.push_str(&format!("tools = [{}]\n", tools_str.join(", ")));
+    }
+
+    toml.push_str("\n[skills]\ninclude = [\n");
+    for skill in &skills {
+        toml.push_str(&format!("    \"{}\",\n", skill));
+    }
+    toml.push_str("]\n");
+
     std::fs::create_dir_all(".claude")?;
+    std::fs::write(path, &toml)?;
 
-    let template = r#"[project]
-name = "my-project"
-worktree_dir = "my-project-worktrees"
-
-[stack]
-languages = ["rust"]
-# backend = "axum"
-# orm = "seaorm"
-# frontend = "react"
-# ui = "shadcn"         # or "heroui"
-# tools = ["pnpm", "monorepo"]
-
-[skills]
-include = [
-    "ship",
-    "rulify",
-    "alignify",
-    "retrospective",
-    "update-rule",
-    "land",
-]
-"#;
-
-    std::fs::write(path, template)?;
-    println!("Created .claude/milky-kit.toml — edit it to configure your project.");
+    println!("\nCreated .claude/milky-kit.toml");
+    println!("Run 'milky-kit scaffold' to generate the project structure.");
     Ok(())
 }
