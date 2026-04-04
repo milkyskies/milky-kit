@@ -25,7 +25,6 @@
 - Never import `*Dto` directly in components
 - Create a model at `src/models/` using `effect/Data.case` + `effect/Option`
 - Components import from `@/models/`, never from `@/services/api/_generated/schemas`
-- **Date fields**: Convert API strings to `Date` in `fromApi()`
 - **Nullable fields**: Use `Option.fromNullable()` from `effect`
 
 ```typescript
