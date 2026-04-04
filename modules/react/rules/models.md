@@ -1,7 +1,6 @@
 ---
 paths:
-  - "src/models/**"
-  - "apps/client/src/models/**"
+  - "**/models/**"
 ---
 
 # Models
