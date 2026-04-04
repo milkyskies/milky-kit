@@ -1,6 +1,6 @@
 ---
 paths:
-  - "**/models/**"
+  - "**/models/**/*.ts"
 ---
 
 # Models

@@ -1,3 +1,8 @@
+---
+paths:
+  - ".claude/**"
+---
+
 # `.claude` Directory Development Guide
 
 ## References

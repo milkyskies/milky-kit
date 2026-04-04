@@ -1,3 +1,8 @@
+---
+paths:
+  - "**/presentation/**/*.rs"
+---
+
 # Axum Patterns
 
 ## Handler conventions
