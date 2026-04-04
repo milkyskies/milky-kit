@@ -18,8 +18,8 @@ cd ~/.milky-kit && cargo install --path .
 
 ```bash
 cd my-project
-milky-kit init              # creates .claude/kit.toml
-# Edit kit.toml — pick your modules and skills
+milky-kit init              # creates .claude/milky-kit.toml
+# Edit milky-kit.toml — pick your modules and skills
 milky-kit sync              # copies rules + skills into .claude/
 ```
 
@@ -27,7 +27,7 @@ milky-kit sync              # copies rules + skills into .claude/
 
 ```bash
 cd my-project
-# Create .claude/kit.toml (see scaffold/.claude/kit.toml for example)
+# Create .claude/milky-kit.toml (see scaffold/.claude/milky-kit.toml for example)
 milky-kit sync
 ```
 
@@ -46,14 +46,14 @@ cd ~/Code/Projects/agent-os && milky-kit sync
 
 | Command | What it does |
 |---|---|
-| `milky-kit sync` | Copy modules + skills into `.claude/` based on `kit.toml` |
+| `milky-kit sync` | Copy modules + skills into `.claude/` based on `milky-kit.toml` |
 | `milky-kit sync --dry-run` | Show what would change without writing |
 | `milky-kit diff` | Same as `sync --dry-run` |
-| `milky-kit init` | Create a starter `.claude/kit.toml` |
+| `milky-kit init` | Create a starter `.claude/milky-kit.toml` |
 
 ## Configuration
 
-Each project has `.claude/kit.toml`:
+Each project has `.claude/milky-kit.toml`:
 
 ```toml
 [project]
@@ -116,7 +116,7 @@ Files in `.claude/rules/` that weren't created by milky-kit are never touched. A
 
 ## How it works
 
-1. Reads `.claude/kit.toml` for module and skill selections
+1. Reads `.claude/milky-kit.toml` for module and skill selections
 2. Copies `modules/<name>/rules/*.md` into `.claude/rules/`
 3. Copies `modules/<name>/files/*` to destinations specified in `module.toml`
 4. Copies selected skills into `.claude/skills/`

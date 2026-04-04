@@ -30,7 +30,7 @@ enum Commands {
     },
     /// Show what would change on next sync
     Diff,
-    /// Create a starter .claude/kit.toml
+    /// Create a starter .claude/milky-kit.toml
     Init,
 }
 
