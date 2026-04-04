@@ -19,6 +19,7 @@
 		"@tanstack/react-router": "^1.95.0",
 		"axios": "^1.7.9",
 		"clsx": "^2.1.1",
+		"effect": "^3.12.0",
 		"react": "^19.0.0",
 		"react-dom": "^19.0.0",
 		"tailwind-merge": "^2.6.0"
