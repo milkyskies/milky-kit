@@ -1,0 +1,7 @@
+[[files]]
+src = "mise-tasks/check/rust"
+dest = ".mise/tasks/check/rust"
+
+[[files]]
+src = "mise-tasks/fmt/rust"
+dest = ".mise/tasks/fmt/rust"

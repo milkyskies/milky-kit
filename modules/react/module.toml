@@ -1,0 +1,11 @@
+[[files]]
+src = "mise-tasks/check/frontend"
+dest = ".mise/tasks/check/frontend"
+
+[[files]]
+src = "mise-tasks/fmt/frontend"
+dest = ".mise/tasks/fmt/frontend"
+
+[[files]]
+src = "mise-tasks/api/generate"
+dest = ".mise/tasks/api/generate"

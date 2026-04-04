@@ -1,0 +1,7 @@
+[[files]]
+src = "mise-tasks/db/migrate"
+dest = ".mise/tasks/db/migrate"
+
+[[files]]
+src = "mise-tasks/db/status"
+dest = ".mise/tasks/db/status"

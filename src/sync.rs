@@ -127,6 +127,16 @@ pub fn run(kit_home: &Path, dry_run: bool) -> Result<()> {
             fs::create_dir_all(parent)?;
         }
         fs::write(&action.dest, &action.content)?;
+
+        // Make scripts executable (files with shebang lines)
+        if action.content.starts_with("#!") {
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                let perms = std::fs::Permissions::from_mode(0o755);
+                fs::set_permissions(&action.dest, perms)?;
+            }
+        }
     }
 
     // Clean up files that were managed before but are no longer

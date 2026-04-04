@@ -1,0 +1,9 @@
+#!/bin/bash
+# mise description="Drop, recreate, migrate, seed database"
+set -euo pipefail
+
+docker compose down -v
+docker compose up -d
+sleep 2
+mise run db:migrate
+mise run db:seed 2>/dev/null || true

@@ -1,0 +1,5 @@
+#!/bin/bash
+# mise description="Run database migrations"
+set -euo pipefail
+
+cargo run -p db -- migrate

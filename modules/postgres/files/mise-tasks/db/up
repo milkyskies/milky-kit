@@ -1,0 +1,5 @@
+#!/bin/bash
+# mise description="Start PostgreSQL container"
+set -euo pipefail
+
+docker compose up -d
