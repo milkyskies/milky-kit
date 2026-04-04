@@ -219,11 +219,11 @@ pub fn resolve_kit_home(explicit: Option<String>) -> Result<PathBuf> {
 }
 
 pub fn load_kit_config() -> Result<KitConfig> {
-    let path = Path::new(".claude/milky-kit.toml");
+    let path = Path::new("milky-kit.toml");
     let content = std::fs::read_to_string(path)
-        .context("Could not read .claude/milky-kit.toml — run 'milky-kit init' first")?;
+        .context("Could not read milky-kit.toml — run 'milky-kit init' first")?;
     let config: KitConfig =
-        toml::from_str(&content).context("Failed to parse .claude/milky-kit.toml")?;
+        toml::from_str(&content).context("Failed to parse milky-kit.toml")?;
     config.validate()?;
     Ok(config)
 }
@@ -241,9 +241,9 @@ pub fn load_module_manifest(module_dir: &Path) -> Result<ModuleManifest> {
 pub fn init_kit_toml() -> Result<()> {
     use dialoguer::{Input, Select};
 
-    let path = Path::new(".claude/milky-kit.toml");
+    let path = Path::new("milky-kit.toml");
     if path.exists() {
-        bail!(".claude/milky-kit.toml already exists");
+        bail!("milky-kit.toml already exists");
     }
 
     println!("Setting up milky-kit for this project.\n");
@@ -426,10 +426,9 @@ pub fn init_kit_toml() -> Result<()> {
     }
     toml.push_str("]\n");
 
-    std::fs::create_dir_all(".claude")?;
     std::fs::write(path, &toml)?;
 
-    println!("\nCreated .claude/milky-kit.toml");
+    println!("\nCreated milky-kit.toml");
     println!("Run 'milky-kit scaffold' to generate the project structure.");
     Ok(())
 }

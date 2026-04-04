@@ -31,7 +31,7 @@ enum Commands {
     },
     /// Show what would change on next sync
     Diff,
-    /// Create a starter .claude/milky-kit.toml
+    /// Create a starter milky-kit.toml
     Init,
     /// Scaffold a new project from module templates
     Scaffold,

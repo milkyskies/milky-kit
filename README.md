@@ -36,14 +36,14 @@ milky-kit sync          # sync rules + skills into .claude/
 
 | Command | What it does |
 |---|---|
-| `milky-kit init` | Interactive setup — asks about your stack, creates `.claude/milky-kit.toml` |
+| `milky-kit init` | Interactive setup — asks about your stack, creates `milky-kit.toml` |
 | `milky-kit scaffold` | Generate full project structure from module templates (working CRUD, mise tasks, configs) |
 | `milky-kit sync` | Sync rules + skills into `.claude/` from your config |
 | `milky-kit diff` | Dry run — show what sync would change |
 
 ## Configuration
 
-`milky-kit init` creates `.claude/milky-kit.toml` interactively. Example output:
+`milky-kit init` creates `milky-kit.toml` interactively. Example output:
 
 ```toml
 # Full-stack project
@@ -176,7 +176,7 @@ Module files can use `{{project_name}}` and `{{worktree_dir}}` which get replace
 ## How it works
 
 **Sync** (runs every time):
-1. Reads `.claude/milky-kit.toml`
+1. Reads `milky-kit.toml`
 2. Copies `modules/<name>/rules/*.md` into `.claude/rules/` with managed header
 3. Copies selected skills into `.claude/skills/`
 4. Replaces `{{variables}}`, tracks managed files in `.claude/.managed`
