@@ -50,7 +50,7 @@ pub fn run(kit_home: &Path, dry_run: bool) -> Result<()> {
                 continue;
             }
             let content = fs::read_to_string(&src)?;
-            let content = template::render(&content, &config.project);
+            let content = template::render(&content, &config.template_vars());
             let ext = src.extension().and_then(|e| e.to_str()).unwrap_or("");
             let content = template::add_managed_header(&content, ext);
 
@@ -167,7 +167,7 @@ fn sync_rules(
         }
         let filename = entry.file_name().to_string_lossy().to_string();
         let content = fs::read_to_string(&path)?;
-        let content = template::render(&content, &config.project);
+        let content = template::render(&content, &config.template_vars());
         let content = template::add_managed_header(&content, "md");
         let dest = format!(".claude/rules/{}", filename);
 
@@ -210,7 +210,7 @@ fn sync_directory(
 
         let content = if is_text {
             let raw = fs::read_to_string(entry.path())?;
-            template::render(&raw, &config.project)
+            template::render(&raw, &config.template_vars())
         } else {
             fs::read_to_string(entry.path()).unwrap_or_default()
         };

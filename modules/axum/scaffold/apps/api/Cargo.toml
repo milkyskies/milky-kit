@@ -18,7 +18,7 @@ serde_json = "1"
 dotenvy = "0.15"
 tracing = "0.1"
 tracing-subscriber = "0.3"
-sea-orm = { version = "1", features = ["runtime-tokio-rustls", "sqlx-postgres"] }
+sea-orm = { version = "1", features = ["runtime-tokio-rustls", "{{db_driver}}"] }
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1", features = ["v4"] }
 anyhow = "1"

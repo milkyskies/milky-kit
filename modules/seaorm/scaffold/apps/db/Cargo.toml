@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-sea-orm-migration = { version = "1", features = ["runtime-tokio-rustls", "sqlx-postgres"] }
+sea-orm-migration = { version = "1", features = ["runtime-tokio-rustls", "{{db_driver}}"] }
 tokio = { version = "1", features = ["full"] }
 dotenvy = "0.15"
 tracing = "0.1"
@@ -12,4 +12,4 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 clap = { version = "4", features = ["derive"] }
 anyhow = "1"
 async-trait = "0.1"
-sea-orm = { version = "1", features = ["sqlx-postgres", "runtime-tokio-rustls"] }
+sea-orm = { version = "1", features = ["{{db_driver}}", "runtime-tokio-rustls"] }

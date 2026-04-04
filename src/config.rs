@@ -27,6 +27,7 @@ pub struct StackConfig {
     #[serde(default)]
     pub languages: Vec<String>,
     pub backend: Option<String>,
+    pub database: Option<String>,
     pub orm: Option<String>,
     pub frontend: Option<String>,
     pub ui: Option<String>,
@@ -89,6 +90,11 @@ impl KitConfig {
         if let Some(ref b) = self.stack.backend {
             modules.push(b.clone());
         }
+        if let Some(ref db) = self.stack.database {
+            if !modules.contains(db) {
+                modules.push(db.clone());
+            }
+        }
         if let Some(ref o) = self.stack.orm {
             modules.push(o.clone());
         }
@@ -118,6 +124,33 @@ impl KitConfig {
         }
 
         modules
+    }
+
+    /// Get template variables: project vars + stack-derived vars.
+    pub fn template_vars(&self) -> ProjectVars {
+        let mut extra = self.project.extra.clone();
+
+        // Derive db_driver from database choice (for ORM Cargo.toml features)
+        match self.stack.database.as_deref() {
+            Some("postgres") => {
+                extra.insert("db_driver".into(), "sqlx-postgres".into());
+                extra.insert("db_url_example".into(), format!(
+                    "postgres://{}:{}@localhost:5432/{}",
+                    self.project.name, self.project.name, self.project.name
+                ));
+            }
+            Some("sqlite") => {
+                extra.insert("db_driver".into(), "sqlx-sqlite".into());
+                extra.insert("db_url_example".into(), "sqlite://data.db".into());
+            }
+            _ => {}
+        }
+
+        ProjectVars {
+            name: self.project.name.clone(),
+            worktree_dir: self.project.worktree_dir.clone(),
+            extra,
+        }
     }
 
     /// Validate that the stack configuration is coherent.
@@ -265,25 +298,29 @@ pub fn init_kit_toml() -> Result<()> {
         None
     };
 
-    // ORM (if backend selected)
-    let orm = if backend.is_some() {
-        let orm_options = &[
-            "seaorm  — entity-based ORM, Rust migrations, no DB needed to compile",
-            "sqlx    — compile-time checked SQL, .sql migrations, offline metadata",
-            "none    — no database",
+    // Database (if backend selected)
+    let (database, orm) = if backend.is_some() {
+        let db_options = &[
+            "postgres + seaorm  — PostgreSQL, entity ORM, Docker container",
+            "postgres + sqlx    — PostgreSQL, compile-time SQL, Docker container",
+            "sqlite + seaorm    — SQLite, file-based, no Docker (Cloudflare D1 compatible)",
+            "sqlite + sqlx      — SQLite, compile-time SQL, no Docker (D1 compatible)",
+            "none               — no database",
         ];
-        let orm_idx = Select::new()
-            .with_prompt("ORM")
-            .items(orm_options)
+        let db_idx = Select::new()
+            .with_prompt("Database")
+            .items(db_options)
             .default(0)
             .interact()?;
-        match orm_idx {
-            0 => Some("seaorm".to_string()),
-            1 => Some("sqlx".to_string()),
-            _ => None,
+        match db_idx {
+            0 => (Some("postgres".to_string()), Some("seaorm".to_string())),
+            1 => (Some("postgres".to_string()), Some("sqlx".to_string())),
+            2 => (Some("sqlite".to_string()), Some("seaorm".to_string())),
+            3 => (Some("sqlite".to_string()), Some("sqlx".to_string())),
+            _ => (None, None),
         }
     } else {
-        None
+        (None, None)
     };
 
     // Frontend
@@ -366,6 +403,9 @@ pub fn init_kit_toml() -> Result<()> {
     }
     if let Some(ref b) = backend {
         toml.push_str(&format!("backend = \"{}\"\n", b));
+    }
+    if let Some(ref db) = database {
+        toml.push_str(&format!("database = \"{}\"\n", db));
     }
     if let Some(ref o) = orm {
         toml.push_str(&format!("orm = \"{}\"\n", o));
