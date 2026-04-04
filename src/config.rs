@@ -31,6 +31,9 @@ pub struct StackConfig {
     pub frontend: Option<String>,
     pub ui: Option<String>,
     #[serde(default)]
+    pub tauri: bool,
+    /// Legacy — inferred automatically now, but still accepted for backwards compat
+    #[serde(default)]
     pub tools: Vec<String>,
 }
 
@@ -73,6 +76,11 @@ impl KitConfig {
         }
 
         // New format: [stack]
+        let has_rust = self.stack.languages.contains(&"rust".to_string());
+        let has_js = self.stack.frontend.is_some()
+            || self.stack.languages.contains(&"ts".to_string())
+            || self.stack.languages.contains(&"floe".to_string());
+
         for lang in &self.stack.languages {
             if !modules.contains(lang) {
                 modules.push(lang.clone());
@@ -90,6 +98,19 @@ impl KitConfig {
         if let Some(ref u) = self.stack.ui {
             modules.push(u.clone());
         }
+
+        // Auto-inferred: Rust → Cargo workspace, JS/frontend → pnpm workspace
+        if has_rust {
+            modules.push("monorepo".to_string());
+        }
+        if has_js {
+            modules.push("pnpm".to_string());
+        }
+        if self.stack.tauri {
+            modules.push("tauri".to_string());
+        }
+
+        // Legacy tools field (backwards compat)
         for tool in &self.stack.tools {
             if !modules.contains(tool) {
                 modules.push(tool.clone());
@@ -185,7 +206,7 @@ pub fn load_module_manifest(module_dir: &Path) -> Result<ModuleManifest> {
 }
 
 pub fn init_kit_toml() -> Result<()> {
-    use dialoguer::{Input, MultiSelect, Select};
+    use dialoguer::{Input, Select};
 
     let path = Path::new(".claude/milky-kit.toml");
     if path.exists() {
@@ -303,28 +324,21 @@ pub fn init_kit_toml() -> Result<()> {
         None
     };
 
-    // Tools
-    let tool_options = &[
-        "pnpm      — JavaScript package manager + workspace",
-        "monorepo  — Cargo workspace with apps/ + packages/",
-        "tauri     — desktop + mobile app (Tauri v2)",
-    ];
-    let tool_defaults = if frontend.is_some() {
-        vec![true, true, false]
+    // Tauri (optional, only if frontend selected)
+    let tauri = if frontend.is_some() {
+        let tauri_options = &[
+            "no      — web only",
+            "yes     — wrap frontend in Tauri (desktop + mobile)",
+        ];
+        let tauri_idx = Select::new()
+            .with_prompt("Desktop/mobile app with Tauri?")
+            .items(tauri_options)
+            .default(0)
+            .interact()?;
+        tauri_idx == 1
     } else {
-        vec![false, language.is_some(), false]
+        false
     };
-    let tool_idxs = MultiSelect::new()
-        .with_prompt("Tools (space to toggle, enter to confirm)")
-        .items(tool_options)
-        .defaults(&tool_defaults)
-        .interact()?;
-
-    let tool_values = &["pnpm", "monorepo", "tauri"];
-    let tools: Vec<String> = tool_idxs
-        .iter()
-        .map(|&i| tool_values[i].to_string())
-        .collect();
 
     // Build skills list
     let mut skills = vec![
@@ -362,9 +376,8 @@ pub fn init_kit_toml() -> Result<()> {
     if let Some(ref u) = ui {
         toml.push_str(&format!("ui = \"{}\"\n", u));
     }
-    if !tools.is_empty() {
-        let tools_str: Vec<String> = tools.iter().map(|t| format!("\"{}\"", t)).collect();
-        toml.push_str(&format!("tools = [{}]\n", tools_str.join(", ")));
+    if tauri {
+        toml.push_str("tauri = true\n");
     }
 
     toml.push_str("\n[skills]\ninclude = [\n");
