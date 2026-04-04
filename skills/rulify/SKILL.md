@@ -15,42 +15,100 @@ $ARGUMENTS
 
 ## Processing Flow
 
-### Step 1: Collect changed files and applicable rules
+### Step 1: Collect changed files
 
-1. **Get changed files**: Retrieve using the appropriate method based on the argument:
-   - **If a PR number is specified** (e.g., `#123`, `123`): Get via `gh pr diff {PR_number} --name-only`
-   - **Otherwise (default)**: Get all diffs from the branch's origin + uncommitted changes
+1. **Get changed files and the diff**:
+   - **If a PR number is specified** (e.g., `#123`, `123`):
+     - Files: `gh pr diff {PR_number} --name-only`
+     - Diff: `gh pr diff {PR_number}`
+   - **Otherwise (default)**:
      - `git fetch origin`
      - `git merge-base HEAD origin/main` (try origin/master if origin/main doesn't exist)
-     - `git diff --name-only {base_commit}...HEAD` + unstaged + staged + untracked
-     - Deduplicate and merge all results
-2. **List rule files**: List all `.claude/rules/*.md` files.
-3. **Check CLAUDE.md**: If `CLAUDE.md` exists at the project root, read it as an additional rule source.
+     - Files: `git diff --name-only {base}...HEAD` + unstaged + staged + untracked (deduplicated)
+     - Diff: `git diff {base}...HEAD` + `git diff` (unstaged) + `git diff --cached` (staged)
+     - For untracked files, read their contents
+2. **Store the combined diff** — this will be passed to agents inline so they don't need to read files themselves.
 
 If there are no changed files, report "No changed files found" and stop.
 
-### Step 2: Launch agents in parallel for each rule
+### Step 2: Filter rules by scope
 
-Launch an Agent for each collected rule file. **Independent rules must be launched in parallel.**
+1. **List rule files**: List all `.claude/rules/*.md` files.
+2. **Read each rule file's frontmatter** — check for a `paths:` field.
+3. **Filter**: For each rule, check if any changed file matches the rule's `paths:` glob patterns.
+   - Rules **without** a `paths:` field apply to all files — always include.
+   - Rules **with** a `paths:` field are skipped if no changed file matches any of their patterns.
+4. **Check CLAUDE.md**: If `CLAUDE.md` exists, read it — its content will be appended as context to all agents.
+
+Report how many rules were filtered out (e.g., "Skipped 3/8 rules (no matching files)").
+
+### Step 3: Launch agents for applicable rules
+
+Launch an Agent for each applicable rule. **All agents must be launched in parallel in a single message.**
 
 Each agent's prompt must include:
-- The rule file name and contents
-- The list of changed files
-- Instructions to read each changed file and inspect for violations
-- Output format: `✅ No violations` or `❌ Violations found` with file, violation, severity (🔴 Clear / 🟡 Gray area), and fix
+
+```
+Inspect the following diff for violations against this rule. Do NOT use any tools to read files — all content is provided below.
+
+## Rule
+Rule name: {rule_file_name}
+
+{Full rule file contents}
+
+## Changed files
+{List of changed file paths}
+
+## Diff
+```diff
+{The combined diff from step 1}
+```
+
+## Additional context from CLAUDE.md (if applicable)
+{Relevant sections from CLAUDE.md, or omit if none}
+
+## Instructions
+
+1. Read the rule carefully
+2. Scan the diff for violations — focus only on added/modified lines (lines starting with +)
+3. If the rule has a `paths` scope, skip files outside that scope
+4. Report results in the format below
+
+## Output format
+
+### If no violations
+✅ {rule_name}: No violations
+
+### If violations found
+❌ {rule_name}: Violations found
+
+For each violation:
+- **File**: target_file_path:line_number
+- **Violation**: What violates the rule
+- **Severity**: 🔴 Clear violation / 🟡 Gray area
+- **Fix**: Specific fix description
+
+## Constraints
+
+- Do NOT flag anything not explicitly stated in the rule
+- Do NOT report "nice to have" improvements
+- Do NOT flag unchanged code (context lines starting with space)
+- Only report items that clearly violate the rule
+- Do NOT use any tools — all content is provided inline
+```
 
 Agent settings:
 - `subagent_type`: "general-purpose"
-- `model`: "sonnet" (for speed)
-- All rule inspection agents must be **launched in parallel in a single message**
+- `model`: "haiku"
+- All agents launched **in parallel in a single message**
 
-### Step 3: Aggregate and display results
+### Step 4: Aggregate and display results
 
 ```
 ## Rulify Results
 
 ### Summary
-- Rules inspected: N
+- Rules checked: N (M skipped — no matching files)
 - ✅ No violations: N
 - ❌ Violations found: N
 
@@ -58,16 +116,16 @@ Agent settings:
 (Display results from rules with violations here)
 ```
 
-### Step 4: Auto-fix
+### Step 5: Auto-fix
 
 If 🔴 clear violations exist:
 1. Review the fix details
-2. Apply fixes using the Edit tool
+2. Apply fixes to each file using the Edit tool
 3. Run formatters/tests/builds as needed
 
 🟡 Gray area violations are reported only — no fixes applied.
 
-### Step 5: Report fix results
+### Step 6: Report fix results
 
 ```
 ## Rulify Complete
@@ -84,8 +142,11 @@ All rules passed! No violations found.
 
 ## Important Rules
 
-1. **Parallel execution**: Rule inspection agents must always be launched in parallel.
-2. **Strict scoping**: Only inspect changed files.
-3. **Avoid false positives**: Do not flag anything not explicitly stated in the rules.
-4. **Auto-fix safety**: Only auto-fix 🔴 clear violations.
-5. **Separation from formatters**: Leave formatting issues to formatters.
+1. **Pass diff inline**: The orchestrator reads files once and passes the diff to agents. Agents do NOT read files themselves.
+2. **Pre-filter by paths scope**: Skip rules that can't apply to the changed files. Don't waste tokens on irrelevant rules.
+3. **Use haiku for agents**: Agents only analyze provided content — no tools needed, haiku is sufficient.
+4. **Parallel execution**: All applicable rule agents must be launched in parallel.
+5. **Strict scoping**: Only inspect changed lines (+ lines in the diff).
+6. **Avoid false positives**: Do not flag anything not explicitly stated in the rules.
+7. **Auto-fix safety**: Only auto-fix 🔴 clear violations. 🟡 items are reported only.
+8. **Separation from formatters**: Leave formatting issues to formatters.
