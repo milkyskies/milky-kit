@@ -1,99 +1,120 @@
 # milky-kit
 
-Manage shared Claude Code rules, skills, and configs across projects.
+Manage shared Claude Code rules, skills, and configs across projects. Scaffold new projects with a working CRUD example from your preferred stack.
 
 ## Install
 
 ```bash
-# Clone to home directory
 git clone git@github.com:milkyskies/milky-kit.git ~/.milky-kit
-
-# Install the CLI
 cd ~/.milky-kit && cargo install --path .
+```
+
+## Quick start — new project
+
+```bash
+mkdir my-app && cd my-app
+
+milky-kit init          # interactive — picks your stack
+milky-kit scaffold      # creates full project with working CRUD example
+
+# One-time setup
+gh repo create my-app --source . --push
+glb init                # task tracking via GitHub Issues + Projects
+mise run db:setup       # start Postgres + run migrations
+mise run dev            # full stack running
+```
+
+## Quick start — existing project
+
+```bash
+cd my-project
+milky-kit init          # configure your stack
+milky-kit sync          # sync rules + skills into .claude/
 ```
 
 ## Commands
 
 | Command | What it does |
 |---|---|
-| `milky-kit sync` | Copy modules + skills into `.claude/` based on `milky-kit.toml` |
-| `milky-kit sync --dry-run` | Show what would change without writing |
-| `milky-kit diff` | Same as `sync --dry-run` |
-| `milky-kit init` | Create a starter `.claude/milky-kit.toml` |
-
-## Setup
-
-### New project
-
-```bash
-cd my-project
-milky-kit init              # creates .claude/milky-kit.toml
-# Edit milky-kit.toml — uncomment the modules and skills you want
-milky-kit sync              # copies rules + skills into .claude/
-```
-
-### Existing project
-
-```bash
-cd my-project
-# Create .claude/milky-kit.toml (see scaffold/.claude/milky-kit.toml for example)
-milky-kit sync
-```
+| `milky-kit init` | Interactive setup — asks about your stack, creates `.claude/milky-kit.toml` |
+| `milky-kit scaffold` | Generate full project structure from module templates (working CRUD, mise tasks, configs) |
+| `milky-kit sync` | Sync rules + skills into `.claude/` from your config |
+| `milky-kit diff` | Dry run — show what sync would change |
 
 ## Configuration
 
-Each project has `.claude/milky-kit.toml`:
+`milky-kit init` creates `.claude/milky-kit.toml` interactively. Example output:
 
 ```toml
+# Full-stack project
 [project]
-name = "my-project"
-worktree_dir = "my-project-worktrees"
+name = "my-app"
+worktree_dir = "my-app-worktrees"
 
-[modules]
-include = [
-    "core",        # always — workflow, worktrees, testing, general practices
-    "rust",        # Rust style + clean architecture
-    "react",       # React frontend patterns
-    "seaorm",      # SeaORM database conventions
-    # "sqlx",      # sqlx database conventions (pick one ORM)
-    "shadcn",      # shadcn/ui components
-    # "heroui",    # HeroUI v3 components (pick one UI library)
-    "monorepo",    # monorepo workspace conventions
-    "pnpm",        # pnpm package manager
-    "tauri",       # Tauri desktop/mobile app
-]
+[stack]
+languages = ["rust"]
+backend = "axum"
+orm = "seaorm"
+frontend = "react"
+ui = "shadcn"
+tools = ["pnpm", "monorepo"]
 
 [skills]
 include = [
-    "ship",                    # quality gates + PR pipeline
-    "rulify",                  # rule compliance check
-    "alignify",                # pattern consistency check
-    "retrospective",           # session review
-    "update-rule",             # create/update rules
-    "land",                    # post-merge cleanup
-    "setup-api-client",        # React + TanStack Query scaffolding
-    "tanstack-query-patterns", # TanStack Query reference
-    # "heroui-react",          # HeroUI docs + scripts
-    # "add-endpoint",          # end-to-end endpoint skill
-    # "database-seaorm",       # SeaORM database operations
-    # "database-sqlx",         # sqlx database operations
+    "ship",
+    "rulify",
+    "alignify",
+    "retrospective",
+    "update-rule",
+    "land",
+    "setup-api-client",
+    "tanstack-query-patterns",
+    "add-endpoint",
+    "database-seaorm",
 ]
 ```
 
+```toml
+# Rust-only project (no API, no frontend)
+[project]
+name = "my-tool"
+worktree_dir = "my-tool-worktrees"
+
+[stack]
+languages = ["rust"]
+
+[skills]
+include = ["ship", "rulify", "alignify", "retrospective", "land"]
+```
+
+All `[stack]` fields are optional except `languages`.
+
+## What scaffold creates
+
+For a full-stack project (rust + axum + seaorm + react + shadcn + pnpm + monorepo):
+
+- **66 files** with a working posts CRUD example across every layer
+- **mise.toml** with 16 tasks: dev servers, quality gates, formatting, database, worktree management
+- **Cargo workspace** with domain/application/infrastructure packages + API server + migration runner
+- **React app** with TanStack Router, TanStack Query, Orval codegen, Biome, Vite
+- **Claude rules + skills** synced from your selected modules
+- **`.claude/rules/project-setup.md`** giving Claude instant context about your stack
+
 ## Modules
 
-| Module | What it covers |
-|---|---|
-| `core` | Workflow, worktrees, testing, config, general practices |
-| `rust` | Rust style, clean architecture |
-| `react` | Frontend structure, component patterns |
-| `seaorm` | SeaORM database conventions |
-| `sqlx` | sqlx database conventions |
-| `shadcn` | shadcn/ui components |
-| `heroui` | HeroUI v3 components |
-| `monorepo` | Workspace conventions |
-| `pnpm` | pnpm package manager |
-| `tauri` | Tauri desktop/mobile app |
+| Module | Rules | Scaffold |
+|---|---|---|
+| `core` | Workflow, worktrees, testing, config, general practices | mise.toml, docker-compose, .gitignore, CLAUDE.md, .env |
+| `rust` | Rust style, naming, error handling | domain/application/infrastructure packages, Post model |
+| `axum` | Handler patterns, route registration, middleware | API server with CRUD handlers, OpenAPI, DTOs |
+| `seaorm` | SeaORM database conventions | Migration runner, posts migration, entities, repositories |
+| `sqlx` | sqlx database conventions | Migration files, .sqlx offline metadata |
+| `react` | Frontend structure, component patterns | Vite + TanStack Router + Query + Orval, posts page |
+| `shadcn` | shadcn/ui components | Tailwind CSS setup |
+| `heroui` | HeroUI v3 components | Tailwind + HeroUI styles, theme variables |
+| `pnpm` | pnpm workspace conventions | Root package.json, pnpm-workspace.yaml |
+| `monorepo` | Workspace conventions | Cargo.toml workspace |
+| `tauri` | Mobile-first, Tauri app conventions | *(rules only)* |
 
 ## How-to
 
@@ -104,18 +125,16 @@ vim ~/.milky-kit/modules/rust/rules/rust-style.md
 cd ~/.milky-kit && git add -A && git commit -m "update rust style" && git push
 
 # Sync to each project
-cd ~/Code/Projects/argus && milky-kit sync
-cd ~/Code/Projects/floe && milky-kit sync
+cd ~/Code/Projects/my-app && milky-kit sync
 ```
 
 ### Add a new rule to an existing module
 
-Create the file in the module's `rules/` directory. It gets picked up automatically on next sync for any project that includes that module.
+Create the file in the module's `rules/` directory. Picked up automatically on next sync.
 
 ```bash
 vim ~/.milky-kit/modules/rust/rules/error-handling.md
-cd ~/Code/Projects/argus && milky-kit sync
-# .claude/rules/error-handling.md appears
+cd ~/Code/Projects/my-app && milky-kit sync
 ```
 
 ### Add a new module
@@ -125,34 +144,11 @@ mkdir -p ~/.milky-kit/modules/svelte/rules
 vim ~/.milky-kit/modules/svelte/rules/svelte-patterns.md
 ```
 
-Then add it to your project's `milky-kit.toml`:
-
-```toml
-[modules]
-include = ["core", "svelte"]
-```
-
-Run `milky-kit sync`.
-
-### Add a new skill
-
-```bash
-mkdir -p ~/.milky-kit/skills/my-skill
-vim ~/.milky-kit/skills/my-skill/SKILL.md
-```
-
-Then add it to your project's `milky-kit.toml`:
-
-```toml
-[skills]
-include = ["ship", "rulify", "my-skill"]
-```
-
-Run `milky-kit sync`.
+Add it to your project's `[stack]` and run `milky-kit sync`.
 
 ### Add a config file (biome.json, tsconfig, etc.)
 
-Put the file in the module's `files/` directory and create a `module.toml` to map it to its destination:
+Put the file in the module's `files/` directory with a `module.toml` mapping:
 
 ```bash
 mkdir -p ~/.milky-kit/modules/react/files
@@ -165,26 +161,30 @@ dest = "biome.json"
 EOF
 ```
 
-Run `milky-kit sync` — copies `biome.json` to the project root.
+### Add a project-specific rule
 
-### Remove a module or skill
+Create files directly in `.claude/rules/`. milky-kit only touches files it created (marked with `<!-- managed by milky-kit -->`).
 
-Remove it from `milky-kit.toml` and run `milky-kit sync`. Any managed files from that module get deleted automatically.
+### Remove a module
 
-### Add a project-specific rule (not shared)
-
-Just create the file directly in `.claude/rules/`. milky-kit only touches files it created (they have `<!-- managed by milky-kit -->` at the top). Your files are never overwritten.
+Remove it from `milky-kit.toml` and run `milky-kit sync`. Managed files from that module get deleted automatically.
 
 ## Template variables
 
-Rules can use `{{project_name}}` and `{{worktree_dir}}` — they get replaced during sync with values from `milky-kit.toml`. Custom variables work too: add any key under `[project]` and use `{{key_name}}` in module files.
+Module files can use `{{project_name}}` and `{{worktree_dir}}` which get replaced during sync and scaffold. Custom variables work too — add any key under `[project]`.
 
 ## How it works
 
-1. Reads `.claude/milky-kit.toml` for module and skill selections
-2. Copies `modules/<name>/rules/*.md` into `.claude/rules/`
-3. Copies `modules/<name>/files/*` to destinations specified in `module.toml`
-4. Copies selected skills into `.claude/skills/`
-5. Replaces `{{variables}}` in all copied files
-6. Tracks managed files in `.claude/.managed` — only overwrites its own files
-7. Cleans up files that were previously managed but removed from config
+**Sync** (runs every time):
+1. Reads `.claude/milky-kit.toml`
+2. Copies `modules/<name>/rules/*.md` into `.claude/rules/` with managed header
+3. Copies selected skills into `.claude/skills/`
+4. Replaces `{{variables}}`, tracks managed files in `.claude/.managed`
+5. Cleans up files removed from config
+
+**Scaffold** (runs once for new projects):
+1. For each module, copies `modules/<name>/scaffold/**` into the project root
+2. Replaces `{{variables}}` in all files
+3. Never overwrites existing files
+4. Generates `.claude/rules/project-setup.md` with stack context for Claude
+5. Runs sync automatically at the end
