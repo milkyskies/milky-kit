@@ -12,7 +12,7 @@ pub struct Manifest {
 }
 
 pub fn load() -> Manifest {
-    let path = Path::new(".claude/.managed");
+    let path = Path::new("milky-kit.lock");
     if let Ok(content) = std::fs::read_to_string(path) {
         toml::from_str(&content).unwrap_or_default()
     } else {
@@ -32,7 +32,7 @@ pub fn save(manifest: &Manifest, kit_home: &Path) -> Result<()> {
     };
 
     let content = toml::to_string_pretty(&manifest)?;
-    std::fs::write(".claude/.managed", content)?;
+    std::fs::write("milky-kit.lock", content)?;
     Ok(())
 }
 
