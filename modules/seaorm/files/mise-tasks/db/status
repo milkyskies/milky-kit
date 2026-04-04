@@ -1,5 +1,5 @@
 #!/bin/bash
-# mise description="Show migration status"
+#MISE description="Show migration status"
 set -euo pipefail
 
 cargo run -p db -- status

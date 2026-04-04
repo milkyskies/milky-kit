@@ -1,5 +1,5 @@
 #!/bin/bash
-# mise description="Regenerate OpenAPI spec + TypeScript client"
+#MISE description="Regenerate OpenAPI spec + TypeScript client"
 set -euo pipefail
 
 cd apps/client && pnpm api:generate

@@ -1,5 +1,5 @@
 #!/bin/bash
-# mise description="Format frontend code"
+#MISE description="Format frontend code"
 set -euo pipefail
 
 cd apps/client && pnpm lint:fix

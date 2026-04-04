@@ -1,5 +1,5 @@
 #!/bin/bash
-# mise description="Lint and typecheck frontend"
+#MISE description="Lint and typecheck frontend"
 set -euo pipefail
 
 cd apps/client

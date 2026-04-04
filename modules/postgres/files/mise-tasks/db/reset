@@ -1,5 +1,5 @@
 #!/bin/bash
-# mise description="Drop, recreate, migrate, seed database"
+#MISE description="Drop, recreate, migrate, seed database"
 set -euo pipefail
 
 docker compose down -v
