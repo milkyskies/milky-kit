@@ -10,8 +10,17 @@ pub struct KitConfig {
     pub stack: StackConfig,
     #[serde(default)]
     pub skills: SkillSelection,
+    #[serde(default)]
+    pub sync: SyncConfig,
     /// Legacy flat module list (backwards compatible)
     pub modules: Option<LegacyModuleSelection>,
+}
+
+#[derive(Deserialize, Default)]
+pub struct SyncConfig {
+    /// Files to skip during sync (project manages them manually)
+    #[serde(default)]
+    pub exclude: Vec<String>,
 }
 
 #[derive(Deserialize)]

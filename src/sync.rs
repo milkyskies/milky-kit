@@ -13,9 +13,14 @@ struct SyncAction {
     source: String,
 }
 
+fn is_excluded(dest: &str, excludes: &[String]) -> bool {
+    excludes.iter().any(|e| dest == e || dest.ends_with(e))
+}
+
 pub fn run(kit_home: &Path, dry_run: bool) -> Result<()> {
     let config = config::load_kit_config()?;
     let module_names = config.module_names();
+    let excludes = &config.sync.exclude;
     let mut managed: Vec<String> = Vec::new();
     let mut actions: Vec<SyncAction> = Vec::new();
 
@@ -35,7 +40,7 @@ pub fn run(kit_home: &Path, dry_run: bool) -> Result<()> {
         // Sync rules/*.md -> .claude/rules/
         let rules_dir = module_dir.join("rules");
         if rules_dir.exists() {
-            sync_rules(&rules_dir, module_name, &config, &mut actions, &mut managed)?;
+            sync_rules(&rules_dir, module_name, &config, excludes, &mut actions, &mut managed)?;
         }
 
         // Sync files/* -> destinations per module.toml
@@ -54,6 +59,9 @@ pub fn run(kit_home: &Path, dry_run: bool) -> Result<()> {
             let ext = src.extension().and_then(|e| e.to_str()).unwrap_or("");
             let content = template::add_managed_header(&content, ext);
 
+            if is_excluded(&mapping.dest, excludes) {
+                continue;
+            }
             actions.push(SyncAction {
                 dest: mapping.dest.clone(),
                 content,
@@ -76,6 +84,7 @@ pub fn run(kit_home: &Path, dry_run: bool) -> Result<()> {
             &dest_prefix,
             skill_name,
             &config,
+            excludes,
             &mut actions,
             &mut managed,
         )?;
@@ -166,6 +175,7 @@ fn sync_rules(
     rules_dir: &Path,
     module_name: &str,
     config: &config::KitConfig,
+    excludes: &[String],
     actions: &mut Vec<SyncAction>,
     managed: &mut Vec<String>,
 ) -> Result<()> {
@@ -176,10 +186,13 @@ fn sync_rules(
             continue;
         }
         let filename = entry.file_name().to_string_lossy().to_string();
+        let dest = format!(".claude/rules/{}", filename);
+        if is_excluded(&dest, excludes) {
+            continue;
+        }
         let content = fs::read_to_string(&path)?;
         let content = template::render(&content, &config.template_vars());
         let content = template::add_managed_header(&content, "md");
-        let dest = format!(".claude/rules/{}", filename);
 
         actions.push(SyncAction {
             dest: dest.clone(),
@@ -196,6 +209,7 @@ fn sync_directory(
     dest_prefix: &str,
     source_label: &str,
     config: &config::KitConfig,
+    excludes: &[String],
     actions: &mut Vec<SyncAction>,
     managed: &mut Vec<String>,
 ) -> Result<()> {
@@ -206,6 +220,9 @@ fn sync_directory(
         }
         let relative = entry.path().strip_prefix(src_dir)?;
         let dest = format!("{}/{}", dest_prefix, relative.display());
+        if is_excluded(&dest, excludes) {
+            continue;
+        }
 
         let ext = entry
             .path()
