@@ -153,7 +153,7 @@ pub fn run(kit_home: &Path, dry_run: bool) -> Result<()> {
         }
     }
 
-    manifest::save(&Manifest { managed })?;
+    manifest::save(&Manifest { managed, ..Default::default() }, kit_home)?;
 
     println!(
         "\nSync complete: {} created, {} updated, {} removed, {} unchanged.",
