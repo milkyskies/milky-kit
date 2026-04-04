@@ -12,12 +12,18 @@ DB_NAME="{{project_name}}_wt_$NUM"
 git worktree add "$WT_DIR" -b "$BRANCH" "$BASE"
 cd "$WT_DIR"
 
-# Per-worktree database (skip if no docker-compose / no DB)
+# Per-worktree database (skip if no DB configured)
 createdb "$DB_NAME" 2>/dev/null || true
 
-# Copy and patch env if it exists
-if [ -f .env.example ]; then
+# Copy env from main repo (has real keys), fall back to .env.example
+if [ -f "$REPO_ROOT/.env" ]; then
+  cp -f "$REPO_ROOT/.env" "$WT_DIR/.env"
+elif [ -f .env.example ]; then
   cp -f .env.example .env
+fi
+
+# Patch DATABASE_URL for per-worktree database
+if [ -f "$WT_DIR/.env" ]; then
   sed -i '' "s|DATABASE_URL=.*|DATABASE_URL=postgres://{{project_name}}:{{project_name}}@localhost:5432/$DB_NAME|" "$WT_DIR/.env"
 fi
 
