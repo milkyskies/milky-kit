@@ -208,7 +208,10 @@ pub fn init_kit_toml() -> Result<()> {
     let worktree_dir = format!("{}-worktrees", name);
 
     // Backend language
-    let lang_options = &["rust", "none (no backend)"];
+    let lang_options = &[
+        "rust    — Cargo workspace, clean architecture",
+        "none    — no backend",
+    ];
     let lang_idx = Select::new()
         .with_prompt("Backend language")
         .items(lang_options)
@@ -223,7 +226,10 @@ pub fn init_kit_toml() -> Result<()> {
 
     // Backend framework (if language selected)
     let backend = if language.is_some() {
-        let fw_options = &["axum", "none"];
+        let fw_options = &[
+            "axum    — HTTP server, tower middleware, utoipa OpenAPI",
+            "none    — library/CLI only, no HTTP server",
+        ];
         let fw_idx = Select::new()
             .with_prompt("Backend framework")
             .items(fw_options)
@@ -240,7 +246,11 @@ pub fn init_kit_toml() -> Result<()> {
 
     // ORM (if backend selected)
     let orm = if backend.is_some() {
-        let orm_options = &["seaorm", "sqlx", "none"];
+        let orm_options = &[
+            "seaorm  — entity-based ORM, Rust migrations, no DB needed to compile",
+            "sqlx    — compile-time checked SQL, .sql migrations, offline metadata",
+            "none    — no database",
+        ];
         let orm_idx = Select::new()
             .with_prompt("ORM")
             .items(orm_options)
@@ -256,7 +266,10 @@ pub fn init_kit_toml() -> Result<()> {
     };
 
     // Frontend
-    let fe_options = &["react", "none"];
+    let fe_options = &[
+        "react   — TanStack Router + TanStack Query + Orval + Vite + Biome",
+        "none    — no frontend",
+    ];
     let fe_idx = Select::new()
         .with_prompt("Frontend framework")
         .items(fe_options)
@@ -271,7 +284,11 @@ pub fn init_kit_toml() -> Result<()> {
 
     // UI library (if frontend selected)
     let ui = if frontend.is_some() {
-        let ui_options = &["shadcn", "heroui", "none"];
+        let ui_options = &[
+            "shadcn  — shadcn/ui + Tailwind CSS",
+            "heroui  — HeroUI v3 + Tailwind CSS v4 + React Aria",
+            "none    — just Tailwind, no component library",
+        ];
         let ui_idx = Select::new()
             .with_prompt("UI library")
             .items(ui_options)
@@ -287,11 +304,15 @@ pub fn init_kit_toml() -> Result<()> {
     };
 
     // Tools
-    let tool_options = &["pnpm", "monorepo", "tauri"];
+    let tool_options = &[
+        "pnpm      — JavaScript package manager + workspace",
+        "monorepo  — Cargo workspace with apps/ + packages/",
+        "tauri     — desktop + mobile app (Tauri v2)",
+    ];
     let tool_defaults = if frontend.is_some() {
         vec![true, true, false]
     } else {
-        vec![false, false, false]
+        vec![false, language.is_some(), false]
     };
     let tool_idxs = MultiSelect::new()
         .with_prompt("Tools (space to toggle, enter to confirm)")
@@ -299,9 +320,10 @@ pub fn init_kit_toml() -> Result<()> {
         .defaults(&tool_defaults)
         .interact()?;
 
+    let tool_values = &["pnpm", "monorepo", "tauri"];
     let tools: Vec<String> = tool_idxs
         .iter()
-        .map(|&i| tool_options[i].to_string())
+        .map(|&i| tool_values[i].to_string())
         .collect();
 
     // Build skills list
