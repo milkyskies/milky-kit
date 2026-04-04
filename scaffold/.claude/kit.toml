@@ -1,0 +1,33 @@
+[project]
+name = "my-project"
+worktree_dir = "my-project-worktrees"
+
+[modules]
+include = [
+    "core",
+    # "rust",
+    # "react",
+    # "seaorm",
+    # "sqlx",
+    # "shadcn",
+    # "heroui",
+    # "monorepo",
+    # "pnpm",
+    # "tauri",
+]
+
+[skills]
+include = [
+    "ship",
+    "rulify",
+    "alignify",
+    "retrospective",
+    "update-rule",
+    "land",
+    # "setup-api-client",
+    # "tanstack-query-patterns",
+    # "heroui-react",
+    # "add-endpoint",
+    # "database-seaorm",
+    # "database-sqlx",
+]

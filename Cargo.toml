@@ -1,0 +1,13 @@
+[package]
+name = "milky-kit"
+version = "0.1.0"
+edition = "2021"
+description = "Manage shared Claude Code rules, skills, and configs across projects"
+
+[dependencies]
+clap = { version = "4", features = ["derive", "env"] }
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+anyhow = "1"
+dirs = "6"
+walkdir = "2"
