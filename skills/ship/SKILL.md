@@ -124,7 +124,7 @@ Tell the user:
 
 1. **PR URL** — always link the PR.
 2. **Local testing instructions**:
-   - How to run the dev server
+   - The exact mise command with worktree number: `mise run dev <worktree-num>`
    - URL(s) to open
    - What to do to trigger the feature
    - What to look for to confirm it works
