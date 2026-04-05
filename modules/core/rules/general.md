@@ -8,3 +8,4 @@
 - **If something is hard**, don't skip it. Search the internet. If still stuck, leave a stub and a TODO comment.
 - **No bandaid fixes.** Always do the correct, elegant, and scalable fix. If a quick hack would fix the symptom but leave the root cause or create tech debt, stop and think about the proper solution first. Ask the user if unsure. A correct fix now saves three fix-the-fix PRs later.
 - **No backwards compatibility.** When changing or removing code, delete it completely. No deprecated wrappers, re-exports, shims, or `// removed` comments. If it's unused, it's gone.
+- **Never force push.** No `git push --force` or `git push -f`. Use `--force-with-lease` if you must after a rebase.
