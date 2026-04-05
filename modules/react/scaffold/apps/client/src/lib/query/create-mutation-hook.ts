@@ -1,23 +1,27 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import type { MutationConfig, MutationOptions } from "./types";
 
-interface MutationConfig<TData, TVariables> {
-	mutationFn: (variables: TVariables) => Promise<TData>;
-	invalidateKeys?: (variables: TVariables) => unknown[][];
-}
-
-export function createMutationHook<TData = void, TVariables = void>(
-	config: MutationConfig<TData, TVariables>,
-) {
-	return () => {
+export function createMutationHook<
+	TData = void,
+	TVariables = void,
+	TContext = unknown,
+>(config: MutationConfig<TData, TVariables>) {
+	return (options?: MutationOptions<TData, Error, TVariables, TContext>) => {
 		const queryClient = useQueryClient();
-		return useMutation({
+
+		return useMutation<TData, Error, TVariables, TContext>({
+			...options,
 			mutationFn: config.mutationFn,
-			onSettled: (_data, _error, variables) => {
-				if (config.invalidateKeys && variables) {
-					for (const key of config.invalidateKeys(variables)) {
+
+			onSettled: (data, error, variables, context, mutationContext) => {
+				if (config.invalidateKeys) {
+					const keys = config.invalidateKeys(variables);
+					for (const key of keys) {
 						queryClient.invalidateQueries({ queryKey: key });
 					}
 				}
+
+				options?.onSettled?.(data, error, variables, context, mutationContext);
 			},
 		});
 	};
