@@ -1,4 +1,8 @@
 [[files]]
+src = "mise-tasks/dev/client"
+dest = ".mise/tasks/dev/client"
+
+[[files]]
 src = "mise-tasks/check/frontend"
 dest = ".mise/tasks/check/frontend"
 

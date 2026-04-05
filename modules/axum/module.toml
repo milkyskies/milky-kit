@@ -1,0 +1,3 @@
+[[files]]
+src = "mise-tasks/dev/api"
+dest = ".mise/tasks/dev/api"

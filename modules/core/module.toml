@@ -1,12 +1,4 @@
 [[files]]
-src = "mise-tasks/dev/api"
-dest = ".mise/tasks/dev/api"
-
-[[files]]
-src = "mise-tasks/dev/client"
-dest = ".mise/tasks/dev/client"
-
-[[files]]
 src = "mise-tasks/worktree/setup"
 dest = ".mise/tasks/worktree/setup"
 
