@@ -6,8 +6,10 @@ paths:
 # Models
 
 - Create models at `src/models/` using `effect/Data.case` + `effect/Option`
-- Import from `@/models/`, not from `@/services/api/_generated/schemas`
+- Consumers import from `@/models/`, not from `@/services/api/_generated/schemas`
 - **Nullable fields**: Use `Option.fromNullable()` from `effect`
+- **Dates**: Parse ISO strings to `Date` at the model boundary — consumers should never see raw ISO strings. For `Option<Date>`: `Option.map(Option.fromNullable(dto.field), (s) => new Date(s))`. Wall-clock times (HH:MM) and RRULE strings stay as strings — they're not timestamps.
+- **Enums**: Import typed enum types from `_generated/schemas/` — never type enum fields as `string`. E.g. `readonly stakes: Option.Option<Stakes>` not `Option.Option<string>`.
 
 ```typescript
 import { Data, Option } from "effect";
