@@ -18,6 +18,9 @@
 - Always `useSuspenseQuery` — never `useQuery` with `isLoading` checks
 - Wrap in `<Suspense>` boundaries
 - Never use `enabled` option — use conditional rendering instead
+- Use `useTransition` for non-urgent state updates that trigger Suspense (e.g. tab switches, filter changes)
+- Use `useDeferredValue` for deferring expensive re-renders (e.g. search input filtering a large list)
+- Never fall back to `useQuery` + `isLoading` to avoid Suspense — use `useTransition`/`useDeferredValue` instead
 - Use `/setup-api-client` skill to scaffold the query layer for new resources
 
 ## Naming
