@@ -394,7 +394,7 @@ pub fn init_kit_toml() -> Result<()> {
 
     // Build skills list
     let mut skills = vec![
-        "ship", "rulify", "alignify", "retrospective", "update-rule", "land",
+        "ship", "rulify", "retrospective", "update-rule", "land",
     ];
     if frontend.is_some() {
         skills.extend(["setup-api-client", "tanstack-query-patterns", "add-endpoint"]);

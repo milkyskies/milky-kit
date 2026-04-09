@@ -93,7 +93,6 @@ ui = "shadcn"
 include = [
     "ship",
     "rulify",
-    "alignify",
     "retrospective",
     "update-rule",
     "land",
@@ -114,7 +113,7 @@ worktree_dir = "my-tool-worktrees"
 languages = ["rust"]
 
 [skills]
-include = ["ship", "rulify", "alignify", "retrospective", "land"]
+include = ["ship", "rulify", "retrospective", "land"]
 ```
 
 `pnpm` and `monorepo` (Cargo workspace) are auto-inferred from your stack - no need to specify them.
