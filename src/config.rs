@@ -145,6 +145,14 @@ impl KitConfig {
     pub fn template_vars(&self) -> ProjectVars {
         let mut extra = self.project.extra.clone();
 
+        // Absolute path of the project root (cwd at sync time) for
+        // cargo target-dir and other machine-specific paths.
+        if let Ok(cwd) = std::env::current_dir() {
+            if let Some(s) = cwd.to_str() {
+                extra.insert("project_root".into(), s.to_string());
+            }
+        }
+
         // Derive db_driver from database choice (for ORM Cargo.toml features)
         match self.stack.database.as_deref() {
             Some("postgres") => {

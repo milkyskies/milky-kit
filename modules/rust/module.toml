@@ -9,3 +9,7 @@ dest = ".mise/tasks/fmt/rust"
 [[files]]
 src = "mise-tasks/clean"
 dest = ".mise/tasks/clean"
+
+[[files]]
+src = "cargo/config.toml"
+dest = ".cargo/config.toml"
