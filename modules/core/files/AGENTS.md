@@ -4,14 +4,10 @@ Claude Code reads `CLAUDE.md` and `.claude/rules/*.md` natively. This file exist
 
 ## External file loading
 
-When you see a file reference like `@.claude/rules/general.md`, use your Read tool to load it. Lazy only — load based on what the current task actually needs, not preemptively. Loaded content is mandatory instruction.
+When you see a file reference like `@.claude/rules/general.md`, use your Read tool to load it. Lazy — load based on what the current task actually needs, not preemptively. Loaded content is mandatory instruction.
 
-## Always read
+Always-loaded rules are declared in `opencode.json` (`instructions` field). The rules below are topical — load them when relevant.
 
-@CLAUDE.md
-@.claude/rules/general.md
-@.claude/rules/workflow.md
+## Rules library
 
-## Load when relevant
-
-Additional topical rules live in `.claude/rules/*.md`. Read the ones that apply to the current task (e.g. `rust-style.md` when writing Rust, `testing.md` when writing tests, `worktrees.md` when working in worktrees).
+{{rule_refs}}

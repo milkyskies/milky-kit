@@ -40,7 +40,7 @@ pub fn run(kit_home: &Path, dry_run: bool) -> Result<()> {
         // Sync rules/*.md -> .claude/rules/
         let rules_dir = module_dir.join("rules");
         if rules_dir.exists() {
-            sync_rules(&rules_dir, module_name, &config, excludes, &mut actions, &mut managed)?;
+            sync_rules(&rules_dir, module_name, &config, kit_home, excludes, &mut actions, &mut managed)?;
         }
 
         // Sync files/* -> destinations per module.toml
@@ -55,7 +55,7 @@ pub fn run(kit_home: &Path, dry_run: bool) -> Result<()> {
                 continue;
             }
             let content = fs::read_to_string(&src)?;
-            let content = template::render(&content, &config.template_vars());
+            let content = template::render(&content, &config.template_vars(kit_home));
             let ext = src.extension().and_then(|e| e.to_str()).unwrap_or("");
             let content = template::add_managed_header(&content, ext);
 
@@ -84,6 +84,7 @@ pub fn run(kit_home: &Path, dry_run: bool) -> Result<()> {
             &dest_prefix,
             skill_name,
             &config,
+            kit_home,
             excludes,
             &mut actions,
             &mut managed,
@@ -175,6 +176,7 @@ fn sync_rules(
     rules_dir: &Path,
     module_name: &str,
     config: &config::KitConfig,
+    kit_home: &Path,
     excludes: &[String],
     actions: &mut Vec<SyncAction>,
     managed: &mut Vec<String>,
@@ -191,7 +193,7 @@ fn sync_rules(
             continue;
         }
         let content = fs::read_to_string(&path)?;
-        let content = template::render(&content, &config.template_vars());
+        let content = template::render(&content, &config.template_vars(kit_home));
         let content = template::add_managed_header(&content, "md");
 
         actions.push(SyncAction {
@@ -209,6 +211,7 @@ fn sync_directory(
     dest_prefix: &str,
     source_label: &str,
     config: &config::KitConfig,
+    kit_home: &Path,
     excludes: &[String],
     actions: &mut Vec<SyncAction>,
     managed: &mut Vec<String>,
@@ -237,7 +240,7 @@ fn sync_directory(
 
         let content = if is_text {
             let raw = fs::read_to_string(entry.path())?;
-            template::render(&raw, &config.template_vars())
+            template::render(&raw, &config.template_vars(kit_home))
         } else {
             fs::read_to_string(entry.path()).unwrap_or_default()
         };

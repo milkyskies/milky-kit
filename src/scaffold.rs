@@ -52,7 +52,7 @@ pub fn run(kit_home: &Path) -> Result<()> {
 
             let content = if is_text {
                 let raw = fs::read_to_string(entry.path())?;
-                template::render(&raw, &config.template_vars())
+                template::render(&raw, &config.template_vars(kit_home))
             } else {
                 fs::read_to_string(entry.path()).unwrap_or_default()
             };

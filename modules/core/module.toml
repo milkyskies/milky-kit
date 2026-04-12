@@ -9,3 +9,7 @@ dest = ".mise/tasks/worktree/cleanup"
 [[files]]
 src = "AGENTS.md"
 dest = "AGENTS.md"
+
+[[files]]
+src = "opencode.json"
+dest = "opencode.json"

@@ -142,7 +142,7 @@ impl KitConfig {
     }
 
     /// Get template variables: project vars + stack-derived vars.
-    pub fn template_vars(&self) -> ProjectVars {
+    pub fn template_vars(&self, kit_home: &Path) -> ProjectVars {
         let mut extra = self.project.extra.clone();
 
         // Absolute path of the project root (cwd at sync time) for
@@ -152,6 +152,46 @@ impl KitConfig {
                 extra.insert("project_root".into(), s.to_string());
             }
         }
+
+        // Collect @-references for every rule file for AGENTS.md's lazy-load
+        // list. Scans (1) each included module's rules/ directory, filtered
+        // by excludes, and (2) the project's local .claude/rules/ directory
+        // to include project-specific unmanaged rules. Skips general.md and
+        // workflow.md since they're always-loaded via opencode.json.
+        let mut rule_names: std::collections::BTreeSet<String> = Default::default();
+        for module in &self.module_names() {
+            let rules_dir = kit_home.join("modules").join(module).join("rules");
+            if let Ok(entries) = std::fs::read_dir(&rules_dir) {
+                for entry in entries.flatten() {
+                    if let Some(name) = entry.path().file_name().and_then(|n| n.to_str()) {
+                        if !name.ends_with(".md") {
+                            continue;
+                        }
+                        let dest = format!(".claude/rules/{}", name);
+                        if self.sync.exclude.iter().any(|e| dest == *e || dest.ends_with(e.as_str())) {
+                            continue;
+                        }
+                        rule_names.insert(name.to_string());
+                    }
+                }
+            }
+        }
+        // Also scan the project's local .claude/rules/ for unmanaged rules.
+        if let Ok(entries) = std::fs::read_dir(".claude/rules") {
+            for entry in entries.flatten() {
+                if let Some(name) = entry.path().file_name().and_then(|n| n.to_str()) {
+                    if name.ends_with(".md") {
+                        rule_names.insert(name.to_string());
+                    }
+                }
+            }
+        }
+        let rule_refs: Vec<String> = rule_names
+            .into_iter()
+            .filter(|n| n != "general.md" && n != "workflow.md")
+            .map(|n| format!("- @.claude/rules/{}", n))
+            .collect();
+        extra.insert("rule_refs".into(), rule_refs.join("\n"));
 
         // Derive db_driver from database choice (for ORM Cargo.toml features)
         match self.stack.database.as_deref() {
