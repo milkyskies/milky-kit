@@ -5,3 +5,7 @@ dest = ".mise/tasks/worktree/setup"
 [[files]]
 src = "mise-tasks/worktree/cleanup"
 dest = ".mise/tasks/worktree/cleanup"
+
+[[files]]
+src = "AGENTS.md"
+dest = "AGENTS.md"
