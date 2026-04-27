@@ -5,3 +5,7 @@ dest = ".mise/tasks/dev/api"
 [variants.db]
 options = ["d1", "neon"]
 default = "d1"
+
+[variants.api_style]
+options = ["rpc", "openapi"]
+default = "rpc"

@@ -1,10 +1,19 @@
+import type { api } from "@/services/api/client";
 import { Data } from "effect";
-import type { PostResponse } from "../services/api/_generated/schemas";
+import type { InferResponseType } from "hono/client";
+
+type GetPostResponse = InferResponseType<
+	(typeof api.api.posts)[":id"]["$get"],
+	200
+>;
+
+export type PostApi = GetPostResponse;
 
 export interface Post {
 	readonly id: string;
 	readonly title: string;
 	readonly body: string;
+	readonly publishedAt: Date | null;
 	readonly createdAt: Date;
 	readonly updatedAt: Date;
 }
@@ -12,12 +21,13 @@ export interface Post {
 export const Post = {
 	make: Data.case<Post>(),
 
-	fromApi: (dto: PostResponse) =>
+	fromApi: (dto: PostApi): Post =>
 		Post.make({
 			id: dto.id,
 			title: dto.title,
 			body: dto.body,
-			createdAt: new Date(dto.created_at),
-			updatedAt: new Date(dto.updated_at),
+			publishedAt: dto.publishedAt ? new Date(dto.publishedAt) : null,
+			createdAt: new Date(dto.createdAt),
+			updatedAt: new Date(dto.updatedAt),
 		}),
 };

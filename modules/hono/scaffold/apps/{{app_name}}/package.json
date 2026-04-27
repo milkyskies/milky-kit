@@ -1,0 +1,35 @@
+{
+	"name": "@{{project_name}}/{{app_name}}",
+	"private": true,
+	"type": "module",
+	"exports": {
+		".": "./src/app.ts",
+		"./client": "./src/client.ts"
+	},
+	"scripts": {
+		"dev": "wrangler dev",
+		"deploy": "wrangler deploy --minify",
+		"cf-typegen": "wrangler types --env-interface CloudflareBindings",
+		"db:generate": "drizzle-kit generate",
+		"lint": "biome check .",
+		"lint:fix": "biome check --write .",
+		"typecheck": "tsc --noEmit",
+		"check": "pnpm lint && pnpm typecheck"
+	},
+	"dependencies": {
+		"date-fns": "^4.1.0",
+		"drizzle-orm": "^0.45.2",
+		"effect": "^3.20.0",
+		"hono": "^4.12.10",
+		"nanoid": "^5.1.7"
+	},
+	"devDependencies": {
+		"@{{project_name}}/biome-config": "workspace:*",
+		"@{{project_name}}/tsconfig": "workspace:*",
+		"@biomejs/biome": "^1.9.4",
+		"@cloudflare/workers-types": "^4.20260404.1",
+		"drizzle-kit": "^0.31.10",
+		"typescript": "^5.7.0",
+		"wrangler": "^4.4.0"
+	}
+}

@@ -112,11 +112,19 @@ impl KitConfig {
             return modules;
         }
 
-        // New format: [stack]
-        let has_rust = self.stack.languages.contains(&"rust".to_string());
+        // New format: [stack] + [[apps]]
+        let has_rust = self.stack.languages.contains(&"rust".to_string())
+            || self
+                .apps
+                .iter()
+                .any(|a| matches!(a.template.as_str(), "axum"));
         let has_js = self.stack.frontend.is_some()
             || self.stack.languages.contains(&"ts".to_string())
-            || self.stack.languages.contains(&"floe".to_string());
+            || self.stack.languages.contains(&"floe".to_string())
+            || self
+                .apps
+                .iter()
+                .any(|a| matches!(a.template.as_str(), "react" | "hono"));
 
         for lang in &self.stack.languages {
             if !modules.contains(lang) {
@@ -141,13 +149,24 @@ impl KitConfig {
             modules.push(u.clone());
         }
 
+        // Pull in templates referenced by [[apps]] (without duplicating).
+        for app in &self.apps {
+            if !modules.contains(&app.template) {
+                modules.push(app.template.clone());
+            }
+        }
+
         // Auto-inferred
-        if has_rust {
+        if has_rust && !modules.contains(&"monorepo".to_string()) {
             modules.push("monorepo".to_string());
         }
         if has_js {
-            modules.push("pnpm".to_string());
-            modules.push("ts-shared".to_string());
+            if !modules.contains(&"pnpm".to_string()) {
+                modules.push("pnpm".to_string());
+            }
+            if !modules.contains(&"ts-shared".to_string()) {
+                modules.push("ts-shared".to_string());
+            }
         }
         // React currently requires TypeScript
         if self.stack.frontend == Some("react".to_string()) && !modules.contains(&"ts".to_string())

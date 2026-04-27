@@ -1,7 +1,7 @@
 import type { Option } from "effect";
 import { nanoid } from "nanoid";
-import type { PostRepository } from "../../domain/repositories/post-repository";
 import type { Post } from "../../domain/models/post";
+import type { PostRepository } from "../../domain/repositories/post-repository";
 
 export type CreatePostInput = {
 	title: string;

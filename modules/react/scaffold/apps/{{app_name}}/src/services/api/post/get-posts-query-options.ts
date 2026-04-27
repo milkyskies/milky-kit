@@ -1,14 +1,17 @@
-import { Post, type PostApi } from "@/models/post";
 import { createQueryOptions } from "@/lib/query";
-import axios from "axios";
+import { Post } from "@/models/post";
+import { api } from "@/services/api/client";
 import { postKeys } from "./post-keys";
 
-const getPostsQueryOptionsFactory = createQueryOptions<void, Post[]>({
+const getPostsQueryOptionsFactory = createQueryOptions<undefined, Post[]>({
 	keyFn: () => postKeys.list(),
 	queryFn: async () => {
-		const response = await axios.get<PostApi[]>("/api/posts");
-		return response.data.map(Post.fromApi);
+		const res = await api.api.posts.$get();
+		if (!res.ok) throw new Error(`Failed to fetch posts: ${res.status}`);
+		const data = await res.json();
+		return data.posts.map(Post.fromApi);
 	},
 });
 
-export const getPostsQueryOptions = () => getPostsQueryOptionsFactory(undefined as void);
+export const getPostsQueryOptions = () =>
+	getPostsQueryOptionsFactory(undefined);

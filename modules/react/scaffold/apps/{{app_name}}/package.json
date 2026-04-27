@@ -9,17 +9,15 @@
 		"lint:fix": "biome check --write .",
 		"typecheck": "tsc --noEmit",
 		"check": "pnpm lint && pnpm typecheck",
-		"api:spec": "cargo run -p api -- openapi > openapi.json",
-		"api:codegen": "rm -rf src/services/api/_generated && orval",
-		"api:generate": "pnpm api:spec && pnpm api:codegen",
 		"routes:generate": "tsr generate"
 	},
 	"dependencies": {
+		"@{{project_name}}/api": "workspace:*",
 		"@tanstack/react-query": "^5.62.0",
 		"@tanstack/react-router": "^1.95.0",
-		"axios": "^1.7.9",
 		"clsx": "^2.1.1",
 		"effect": "^3.12.0",
+		"hono": "^4.12.10",
 		"react": "^19.0.0",
 		"react-dom": "^19.0.0",
 		"tailwind-merge": "^2.6.0"
@@ -29,11 +27,11 @@
 		"@{{project_name}}/tsconfig": "workspace:*",
 		"@biomejs/biome": "^1.9.4",
 		"@tailwindcss/vite": "^4.0.0",
+		"@tanstack/router-cli": "^1.95.0",
 		"@tanstack/router-plugin": "^1.95.0",
 		"@types/react": "^19.0.0",
 		"@types/react-dom": "^19.0.0",
 		"@vitejs/plugin-react": "^4.3.4",
-		"orval": "^7.3.0",
 		"tailwindcss": "^4.0.0",
 		"typescript": "^5.7.0",
 		"vite": "^6.0.0"

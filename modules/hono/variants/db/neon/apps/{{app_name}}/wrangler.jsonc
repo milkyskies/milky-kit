@@ -1,12 +1,12 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "{{project_name}}-{{app_name}}",
-  "main": "src/app.ts",
-  "compatibility_date": "2026-04-01",
-  "observability": {
-    "enabled": true,
-    "head_sampling_rate": 1
-  }
-  // DATABASE_URL is set via `wrangler secret put DATABASE_URL` for production
-  // and via .dev.vars for local dev. Get the URL from your Neon project console.
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "{{project_name}}-{{app_name}}",
+	"main": "src/app.ts",
+	"compatibility_date": "2026-04-01",
+	"observability": {
+		"enabled": true,
+		"head_sampling_rate": 1
+	}
+	// DATABASE_URL is set via `wrangler secret put DATABASE_URL` for production
+	// and via .dev.vars for local dev. Get the URL from your Neon project console.
 }

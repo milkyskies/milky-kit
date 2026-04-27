@@ -1,17 +1,19 @@
-import { Option } from "effect";
 import { neon } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-http";
 import { desc, eq } from "drizzle-orm";
-import { postsTable } from "./schema";
+import { drizzle } from "drizzle-orm/neon-http";
+import { Option } from "effect";
 import { Post } from "../../domain/models/post";
 import type {
 	NewPost,
 	PostPatch,
 	PostRepository,
 } from "../../domain/repositories/post-repository";
+import { postsTable } from "./schema";
 
-export const makeNeonPostRepository = (databaseUrl: string): PostRepository => {
-	const sql = neon(databaseUrl);
+export type Bindings = { DATABASE_URL: string };
+
+export const makePostRepository = (env: Bindings): PostRepository => {
+	const sql = neon(env.DATABASE_URL);
 	const db = drizzle(sql);
 
 	return {

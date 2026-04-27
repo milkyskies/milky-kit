@@ -78,7 +78,10 @@ function PostsList() {
 	return (
 		<ul className="space-y-4">
 			{posts.map((post) => (
-				<li key={post.id} className="border rounded p-4 flex justify-between items-start">
+				<li
+					key={post.id}
+					className="border rounded p-4 flex justify-between items-start"
+				>
 					<div>
 						<h2 className="font-semibold">{post.title}</h2>
 						{post.body && <p className="text-gray-600 mt-1">{post.body}</p>}

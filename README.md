@@ -244,6 +244,20 @@ Stack-derived variables are set automatically:
 - `{{db_driver}}` - `sqlx-postgres` or `sqlx-sqlite` (from database choice)
 - `{{db_url_example}}` - connection string for .env
 
+## Testing scaffold output
+
+The scaffold engine has an end-to-end integration test that runs `milky-kit scaffold` against a set of fixtures and validates the output by running `pnpm install`, `pnpm typecheck`, `pnpm lint`, and (for Rust projects) `cargo check`. Without it, broken templates can land silently because plain `cargo build`/`clippy` only exercise the engine, not the projects it produces.
+
+Run locally:
+
+```bash
+bash scripts/test-scaffold.sh                  # all fixtures
+bash scripts/test-scaffold.sh ts-fullstack     # one fixture
+KEEP_SCAFFOLD=1 bash scripts/test-scaffold.sh  # leave temp dirs for debugging
+```
+
+Fixtures live in `scripts/scaffold-fixtures/<name>/milky-kit.toml`. Add one when you add a new module, variant, or stack combination worth keeping green. CI runs the same script via `.github/workflows/scaffold-test.yml` on every push and PR.
+
 ## Version tracking
 
 `milky-kit.lock` records what was synced:

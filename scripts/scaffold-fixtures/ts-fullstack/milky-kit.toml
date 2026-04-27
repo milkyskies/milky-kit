@@ -1,0 +1,20 @@
+[project]
+name = "ts-fullstack"
+worktree_dir = "ts-fullstack-worktrees"
+
+[[apps]]
+name = "client"
+template = "react"
+
+[[apps]]
+name = "api"
+template = "hono"
+variants = { db = "neon", api_style = "rpc" }
+
+[skills]
+include = [
+    "ship",
+    "rulify",
+    "retrospective",
+    "land",
+]

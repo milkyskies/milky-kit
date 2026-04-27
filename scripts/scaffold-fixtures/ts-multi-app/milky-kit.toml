@@ -1,0 +1,25 @@
+[project]
+name = "ts-multi-app"
+worktree_dir = "ts-multi-app-worktrees"
+
+[[apps]]
+name = "client"
+template = "react"
+variants = { mobile = "capacitor" }
+
+[[apps]]
+name = "admin"
+template = "react"
+
+[[apps]]
+name = "api"
+template = "hono"
+variants = { db = "d1" }
+
+[skills]
+include = [
+    "ship",
+    "rulify",
+    "retrospective",
+    "land",
+]

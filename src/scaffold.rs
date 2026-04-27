@@ -172,7 +172,13 @@ fn copy_tree(
             let overlay_json: serde_json::Value = serde_json::from_str(&raw_content)
                 .with_context(|| format!("Parsing variant JSON from {}", entry.path().display()))?;
             let merged = template::merge_json(base_json, overlay_json);
-            serde_json::to_string_pretty(&merged)? + "\n"
+            // Use tab indent to match the conventional formatting in this kit.
+            let mut buf = Vec::new();
+            let formatter = serde_json::ser::PrettyFormatter::with_indent(b"\t");
+            let mut ser = serde_json::Serializer::with_formatter(&mut buf, formatter);
+            use serde::Serialize;
+            merged.serialize(&mut ser)?;
+            String::from_utf8(buf)? + "\n"
         } else {
             if let Some(module) = variant_of_module {
                 if base_existed {

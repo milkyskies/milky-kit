@@ -1,0 +1,17 @@
+[project]
+name = "legacy-stack"
+worktree_dir = "legacy-stack-worktrees"
+
+[stack]
+languages = ["ts"]
+frontend = "react"
+backend = "hono"
+database = "postgres"
+
+[skills]
+include = [
+    "ship",
+    "rulify",
+    "retrospective",
+    "land",
+]

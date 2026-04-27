@@ -1,16 +1,19 @@
-import { Option } from "effect";
-import { drizzle } from "drizzle-orm/d1";
+import type { D1Database } from "@cloudflare/workers-types";
 import { desc, eq } from "drizzle-orm";
-import { postsTable } from "./schema";
+import { drizzle } from "drizzle-orm/d1";
+import { Option } from "effect";
 import { Post } from "../../domain/models/post";
 import type {
 	NewPost,
 	PostPatch,
 	PostRepository,
 } from "../../domain/repositories/post-repository";
+import { postsTable } from "./schema";
 
-export const makeD1PostRepository = (d1: D1Database): PostRepository => {
-	const db = drizzle(d1);
+export type Bindings = { DB: D1Database };
+
+export const makePostRepository = (env: Bindings): PostRepository => {
+	const db = drizzle(env.DB);
 
 	return {
 		findAll: async () => {
