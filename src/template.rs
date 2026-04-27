@@ -32,3 +32,33 @@ pub fn add_managed_header(content: &str, extension: &str) -> String {
 pub fn is_managed(content: &str) -> bool {
     content.contains("managed by milky-kit")
 }
+
+/// Whether a file extension is treated as templatable text.
+/// Empty string means "no extension" — also treated as text (e.g. `.gitignore`-less files).
+pub fn is_text_ext(ext: &str) -> bool {
+    matches!(
+        ext,
+        "rs" | "toml"
+            | "json"
+            | "jsonc"
+            | "yaml"
+            | "yml"
+            | "ts"
+            | "tsx"
+            | "js"
+            | "mjs"
+            | "md"
+            | "sh"
+            | "bash"
+            | "txt"
+            | "css"
+            | "html"
+            | "sql"
+            | "lock"
+            | "gitignore"
+            | "gitkeep"
+            | "env"
+            | "example"
+            | ""
+    )
+}

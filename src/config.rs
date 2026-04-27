@@ -12,6 +12,9 @@ pub struct KitConfig {
     pub skills: SkillSelection,
     #[serde(default)]
     pub sync: SyncConfig,
+    /// Per-module variant choices: variants.<module>.<axis> = "<choice>"
+    #[serde(default)]
+    pub variants: HashMap<String, HashMap<String, String>>,
     /// Legacy flat module list (backwards compatible)
     pub modules: Option<LegacyModuleSelection>,
 }
@@ -62,12 +65,21 @@ pub struct SkillSelection {
 pub struct ModuleManifest {
     #[serde(default)]
     pub files: Vec<FileMapping>,
+    /// Variant axes declared by this module: variants.<axis>.options + .default
+    #[serde(default)]
+    pub variants: HashMap<String, VariantAxis>,
 }
 
 #[derive(Deserialize)]
 pub struct FileMapping {
     pub src: String,
     pub dest: String,
+}
+
+#[derive(Deserialize)]
+pub struct VariantAxis {
+    pub options: Vec<String>,
+    pub default: String,
 }
 
 impl KitConfig {
@@ -122,8 +134,7 @@ impl KitConfig {
             modules.push("pnpm".to_string());
         }
         // React currently requires TypeScript
-        if self.stack.frontend == Some("react".to_string())
-            && !modules.contains(&"ts".to_string())
+        if self.stack.frontend == Some("react".to_string()) && !modules.contains(&"ts".to_string())
         {
             modules.push("ts".to_string());
         }
@@ -168,7 +179,12 @@ impl KitConfig {
                             continue;
                         }
                         let dest = format!(".claude/rules/{}", name);
-                        if self.sync.exclude.iter().any(|e| dest == *e || dest.ends_with(e.as_str())) {
+                        if self
+                            .sync
+                            .exclude
+                            .iter()
+                            .any(|e| dest == *e || dest.ends_with(e.as_str()))
+                        {
                             continue;
                         }
                         rule_names.insert(name.to_string());
@@ -197,10 +213,13 @@ impl KitConfig {
         match self.stack.database.as_deref() {
             Some("postgres") => {
                 extra.insert("db_driver".into(), "sqlx-postgres".into());
-                extra.insert("db_url_example".into(), format!(
-                    "postgres://{}:{}@localhost:5432/{}",
-                    self.project.name, self.project.name, self.project.name
-                ));
+                extra.insert(
+                    "db_url_example".into(),
+                    format!(
+                        "postgres://{}:{}@localhost:5432/{}",
+                        self.project.name, self.project.name, self.project.name
+                    ),
+                );
             }
             Some("sqlite") => {
                 extra.insert("db_driver".into(), "sqlx-sqlite".into());
@@ -216,6 +235,32 @@ impl KitConfig {
         }
     }
 
+    /// Resolve the chosen variant for a module/axis. Falls back to the axis default.
+    /// Validates that the chosen value is in the axis's declared options.
+    pub fn chosen_variant<'a>(
+        &'a self,
+        module: &str,
+        axis: &str,
+        axis_def: &'a VariantAxis,
+    ) -> Result<&'a str> {
+        let chosen = self
+            .variants
+            .get(module)
+            .and_then(|m| m.get(axis))
+            .map(|s| s.as_str())
+            .unwrap_or(axis_def.default.as_str());
+        if !axis_def.options.iter().any(|o| o == chosen) {
+            bail!(
+                "Invalid variant '{}' for {}.{} — options: {:?}",
+                chosen,
+                module,
+                axis,
+                axis_def.options
+            );
+        }
+        Ok(chosen)
+    }
+
     /// Validate that the stack configuration is coherent.
     pub fn validate(&self) -> Result<()> {
         if self.modules.is_some() {
@@ -229,7 +274,10 @@ impl KitConfig {
                 "axum" if !langs.contains(&"rust".to_string()) => {
                     bail!("axum requires 'rust' in languages");
                 }
-                "hono" if !langs.contains(&"floe".to_string()) && !langs.contains(&"ts".to_string()) => {
+                "hono"
+                    if !langs.contains(&"floe".to_string())
+                        && !langs.contains(&"ts".to_string()) =>
+                {
                     bail!("hono requires 'floe' or 'ts' in languages");
                 }
                 _ => {}
@@ -285,8 +333,7 @@ pub fn load_kit_config() -> Result<KitConfig> {
     let path = Path::new("milky-kit.toml");
     let content = std::fs::read_to_string(path)
         .context("Could not read milky-kit.toml — run 'milky-kit init' first")?;
-    let config: KitConfig =
-        toml::from_str(&content).context("Failed to parse milky-kit.toml")?;
+    let config: KitConfig = toml::from_str(&content).context("Failed to parse milky-kit.toml")?;
     config.validate()?;
     Ok(config)
 }
@@ -441,11 +488,13 @@ pub fn init_kit_toml() -> Result<()> {
     };
 
     // Build skills list
-    let mut skills = vec![
-        "ship", "rulify", "retrospective", "update-rule", "land",
-    ];
+    let mut skills = vec!["ship", "rulify", "retrospective", "update-rule", "land"];
     if frontend.is_some() {
-        skills.extend(["setup-api-client", "tanstack-query-patterns", "add-endpoint"]);
+        skills.extend([
+            "setup-api-client",
+            "tanstack-query-patterns",
+            "add-endpoint",
+        ]);
     }
     if let Some(ref o) = orm {
         match o.as_str() {

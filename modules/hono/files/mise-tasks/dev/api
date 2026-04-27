@@ -1,0 +1,5 @@
+#!/bin/bash
+#MISE description="Start API server"
+set -euo pipefail
+
+cd apps/api && pnpm dev

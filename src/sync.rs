@@ -40,7 +40,15 @@ pub fn run(kit_home: &Path, dry_run: bool) -> Result<()> {
         // Sync rules/*.md -> .claude/rules/
         let rules_dir = module_dir.join("rules");
         if rules_dir.exists() {
-            sync_rules(&rules_dir, module_name, &config, kit_home, excludes, &mut actions, &mut managed)?;
+            sync_rules(
+                &rules_dir,
+                module_name,
+                &config,
+                kit_home,
+                excludes,
+                &mut actions,
+                &mut managed,
+            )?;
         }
 
         // Sync files/* -> destinations per module.toml
@@ -163,7 +171,13 @@ pub fn run(kit_home: &Path, dry_run: bool) -> Result<()> {
         }
     }
 
-    manifest::save(&Manifest { managed, ..Default::default() }, kit_home)?;
+    manifest::save(
+        &Manifest {
+            managed,
+            ..Default::default()
+        },
+        kit_home,
+    )?;
 
     println!(
         "\nSync complete: {} created, {} updated, {} removed, {} unchanged.",
@@ -206,6 +220,7 @@ fn sync_rules(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn sync_directory(
     src_dir: &Path,
     dest_prefix: &str,
@@ -232,11 +247,7 @@ fn sync_directory(
             .extension()
             .and_then(|e| e.to_str())
             .unwrap_or("");
-        let is_text = matches!(
-            ext,
-            "md" | "toml" | "json" | "yaml" | "yml" | "ts" | "js" | "mjs" | "sh" | "bash"
-                | "txt" | "css" | "html"
-        );
+        let is_text = template::is_text_ext(ext);
 
         let content = if is_text {
             let raw = fs::read_to_string(entry.path())?;

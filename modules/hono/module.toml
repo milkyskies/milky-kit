@@ -1,0 +1,7 @@
+[[files]]
+src = "mise-tasks/dev/api"
+dest = ".mise/tasks/dev/api"
+
+[variants.db]
+options = ["d1", "neon"]
+default = "d1"
