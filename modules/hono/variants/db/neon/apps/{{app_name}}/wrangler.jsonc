@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "{{project_name}}-api",
+  "name": "{{project_name}}-{{app_name}}",
   "main": "src/app.ts",
   "compatibility_date": "2026-04-01",
   "observability": {

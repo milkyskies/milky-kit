@@ -12,11 +12,26 @@ pub struct KitConfig {
     pub skills: SkillSelection,
     #[serde(default)]
     pub sync: SyncConfig,
-    /// Per-module variant choices: variants.<module>.<axis> = "<choice>"
+    /// Per-module variant choices: variants.<module>.<axis> = "<choice>".
+    /// Used when no [[apps]] are declared — variants attach to the module that
+    /// the legacy stack inference produces.
     #[serde(default)]
     pub variants: HashMap<String, HashMap<String, String>>,
+    /// Apps declared explicitly: each becomes a directory under `apps/<name>/`
+    /// rendered from the named template. When empty, apps are synthesized from
+    /// `[stack]` for backwards compat.
+    #[serde(default)]
+    pub apps: Vec<AppSpec>,
     /// Legacy flat module list (backwards compatible)
     pub modules: Option<LegacyModuleSelection>,
+}
+
+#[derive(Deserialize, Clone)]
+pub struct AppSpec {
+    pub name: String,
+    pub template: String,
+    #[serde(default)]
+    pub variants: HashMap<String, String>,
 }
 
 #[derive(Deserialize, Default)]
@@ -26,7 +41,7 @@ pub struct SyncConfig {
     pub exclude: Vec<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct ProjectVars {
     pub name: String,
     pub worktree_dir: String,
@@ -235,30 +250,73 @@ impl KitConfig {
         }
     }
 
-    /// Resolve the chosen variant for a module/axis. Falls back to the axis default.
-    /// Validates that the chosen value is in the axis's declared options.
-    pub fn chosen_variant<'a>(
-        &'a self,
-        module: &str,
+    /// Resolve the variant for a given axis from a variants map (per-app or
+    /// per-module). Falls back to the axis default and validates against options.
+    pub fn resolve_variant<'a>(
+        chosen_for: &'a HashMap<String, String>,
+        owner: &str,
         axis: &str,
         axis_def: &'a VariantAxis,
     ) -> Result<&'a str> {
-        let chosen = self
-            .variants
-            .get(module)
-            .and_then(|m| m.get(axis))
+        let chosen = chosen_for
+            .get(axis)
             .map(|s| s.as_str())
             .unwrap_or(axis_def.default.as_str());
         if !axis_def.options.iter().any(|o| o == chosen) {
             bail!(
                 "Invalid variant '{}' for {}.{} — options: {:?}",
                 chosen,
-                module,
+                owner,
                 axis,
                 axis_def.options
             );
         }
         Ok(chosen)
+    }
+
+    /// Resolve apps: explicit [[apps]] if present, else synthesize from [stack]
+    /// + legacy [variants.<module>] for backwards compat.
+    pub fn resolved_apps(&self) -> Vec<AppSpec> {
+        if !self.apps.is_empty() {
+            return self.apps.clone();
+        }
+
+        let mut apps = Vec::new();
+
+        if let Some(ref backend) = self.stack.backend {
+            let mut variants = self.variants.get(backend).cloned().unwrap_or_default();
+            // Legacy: derive hono db variant from stack.database when not
+            // explicitly set via [variants.hono].
+            if backend == "hono" && !variants.contains_key("db") {
+                let derived = match self.stack.database.as_deref() {
+                    Some("postgres") => Some("neon"),
+                    Some("sqlite") => Some("d1"),
+                    _ => None,
+                };
+                if let Some(d) = derived {
+                    variants.insert("db".into(), d.into());
+                }
+            }
+            apps.push(AppSpec {
+                name: "api".into(),
+                template: backend.clone(),
+                variants,
+            });
+        }
+
+        if let Some(ref frontend) = self.stack.frontend {
+            let mut variants = self.variants.get(frontend).cloned().unwrap_or_default();
+            if self.stack.tauri && !variants.contains_key("mobile") {
+                variants.insert("mobile".into(), "tauri".into());
+            }
+            apps.push(AppSpec {
+                name: "client".into(),
+                template: frontend.clone(),
+                variants,
+            });
+        }
+
+        apps
     }
 
     /// Validate that the stack configuration is coherent.

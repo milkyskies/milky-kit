@@ -1,0 +1,48 @@
+{
+	"name": "@{{project_name}}/{{app_name}}",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "vite",
+		"build": "vite build && cap sync",
+		"lint": "biome check .",
+		"lint:fix": "biome check --write .",
+		"typecheck": "tsc --noEmit",
+		"check": "pnpm lint && pnpm typecheck",
+		"cap:sync": "cap sync",
+		"ios:open": "cap open ios",
+		"ios:run": "cap run ios",
+		"android:open": "cap open android",
+		"android:run": "cap run android",
+		"api:spec": "cargo run -p api -- openapi > openapi.json",
+		"api:codegen": "rm -rf src/services/api/_generated && orval",
+		"api:generate": "pnpm api:spec && pnpm api:codegen",
+		"routes:generate": "tsr generate"
+	},
+	"dependencies": {
+		"@capacitor/android": "^7.0.0",
+		"@capacitor/core": "^7.0.0",
+		"@capacitor/ios": "^7.0.0",
+		"@tanstack/react-query": "^5.62.0",
+		"@tanstack/react-router": "^1.95.0",
+		"axios": "^1.7.9",
+		"clsx": "^2.1.1",
+		"effect": "^3.12.0",
+		"react": "^19.0.0",
+		"react-dom": "^19.0.0",
+		"tailwind-merge": "^2.6.0"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^1.9.4",
+		"@capacitor/cli": "^7.0.0",
+		"@tailwindcss/vite": "^4.0.0",
+		"@tanstack/router-plugin": "^1.95.0",
+		"@types/react": "^19.0.0",
+		"@types/react-dom": "^19.0.0",
+		"@vitejs/plugin-react": "^4.3.4",
+		"orval": "^7.3.0",
+		"tailwindcss": "^4.0.0",
+		"typescript": "^5.7.0",
+		"vite": "^6.0.0"
+	}
+}

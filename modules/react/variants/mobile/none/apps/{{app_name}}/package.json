@@ -1,5 +1,5 @@
 {
-	"name": "@{{project_name}}/client",
+	"name": "@{{project_name}}/{{app_name}}",
 	"private": true,
 	"type": "module",
 	"scripts": {

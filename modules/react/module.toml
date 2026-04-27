@@ -13,3 +13,7 @@ dest = ".mise/tasks/fmt/frontend"
 [[files]]
 src = "mise-tasks/api/generate"
 dest = ".mise/tasks/api/generate"
+
+[variants.mobile]
+options = ["none", "tauri", "capacitor"]
+default = "none"

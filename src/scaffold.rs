@@ -1,5 +1,5 @@
 use anyhow::{bail, Result};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
 use walkdir::WalkDir;
@@ -10,57 +10,49 @@ use crate::template;
 pub fn run(kit_home: &Path) -> Result<()> {
     let config = config::load_kit_config()?;
     let module_names = config.module_names();
-    let vars = config.template_vars(kit_home);
+    let apps = config.resolved_apps();
+    let app_templates: HashSet<String> = apps.iter().map(|a| a.template.clone()).collect();
 
     println!("Scaffolding project '{}'...\n", config.project.name);
 
+    let base_vars = config.template_vars(kit_home);
     let mut created = 0;
     let mut skipped = 0;
     // Files written by this run, used to detect base/variant path collisions
-    // within the same module. User-edited pre-existing files are not in this
-    // set and remain skipped silently.
+    // within the same module/app. User-edited pre-existing files are not in
+    // this set and remain skipped silently.
     let mut written: HashSet<String> = HashSet::new();
 
+    // Render infrastructure modules (one-shot, no app context). App templates
+    // are skipped here and rendered per-app below.
     for module_name in &module_names {
-        let module_dir = kit_home.join("modules").join(module_name);
-
-        let scaffold_dir = module_dir.join("scaffold");
-        if scaffold_dir.exists() {
-            copy_tree(
-                &scaffold_dir,
-                module_name,
-                &vars,
-                &mut created,
-                &mut skipped,
-                &mut written,
-                None,
-            )?;
+        if app_templates.contains(module_name) {
+            continue;
         }
+        render_module(
+            kit_home,
+            module_name,
+            &HashMap::new(),
+            &base_vars,
+            &mut created,
+            &mut skipped,
+            &mut written,
+        )?;
+    }
 
-        let manifest = config::load_module_manifest(&module_dir)?;
-        for (axis, axis_def) in &manifest.variants {
-            let chosen = config.chosen_variant(module_name, axis, axis_def)?;
-            let variant_dir = module_dir.join("variants").join(axis).join(chosen);
-            if !variant_dir.exists() {
-                bail!(
-                    "Module '{}' declares variant {}={} but directory '{}' is missing",
-                    module_name,
-                    axis,
-                    chosen,
-                    variant_dir.display()
-                );
-            }
-            let label = format!("{}[{}={}]", module_name, axis, chosen);
-            copy_tree(
-                &variant_dir,
-                &label,
-                &vars,
-                &mut created,
-                &mut skipped,
-                &mut written,
-                Some(module_name.as_str()),
-            )?;
-        }
+    // Render app templates once per [[apps]] entry, with app_name in scope.
+    for app in &apps {
+        let mut vars = base_vars.clone();
+        vars.extra.insert("app_name".into(), app.name.clone());
+        render_module(
+            kit_home,
+            &app.template,
+            &app.variants,
+            &vars,
+            &mut created,
+            &mut skipped,
+            &mut written,
+        )?;
     }
 
     // Generate .claude/rules/project-setup.md
@@ -76,6 +68,58 @@ pub fn run(kit_home: &Path) -> Result<()> {
     println!("\nRunning sync for rules and skills...\n");
     crate::sync::run(kit_home, false)?;
 
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn render_module(
+    kit_home: &Path,
+    module_name: &str,
+    variants: &HashMap<String, String>,
+    vars: &ProjectVars,
+    created: &mut usize,
+    skipped: &mut usize,
+    written: &mut HashSet<String>,
+) -> Result<()> {
+    let module_dir = kit_home.join("modules").join(module_name);
+
+    let scaffold_dir = module_dir.join("scaffold");
+    if scaffold_dir.exists() {
+        copy_tree(
+            &scaffold_dir,
+            module_name,
+            vars,
+            created,
+            skipped,
+            written,
+            None,
+        )?;
+    }
+
+    let manifest = config::load_module_manifest(&module_dir)?;
+    for (axis, axis_def) in &manifest.variants {
+        let chosen = config::KitConfig::resolve_variant(variants, module_name, axis, axis_def)?;
+        let variant_dir = module_dir.join("variants").join(axis).join(chosen);
+        if !variant_dir.exists() {
+            bail!(
+                "Module '{}' declares variant {}={} but directory '{}' is missing",
+                module_name,
+                axis,
+                chosen,
+                variant_dir.display()
+            );
+        }
+        let label = format!("{}[{}={}]", module_name, axis, chosen);
+        copy_tree(
+            &variant_dir,
+            &label,
+            vars,
+            created,
+            skipped,
+            written,
+            Some(module_name),
+        )?;
+    }
     Ok(())
 }
 
@@ -98,7 +142,8 @@ fn copy_tree(
         }
 
         let relative = entry.path().strip_prefix(src_dir)?;
-        let dest = relative.to_string_lossy().to_string();
+        // Path itself is templated: `apps/{{app_name}}/...` -> `apps/client/...`
+        let dest = template::render(&relative.to_string_lossy(), vars);
 
         if let Some(module) = variant_of_module {
             if written.contains(&dest) {
