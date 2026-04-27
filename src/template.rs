@@ -33,6 +33,27 @@ pub fn is_managed(content: &str) -> bool {
     content.contains("managed by milky-kit")
 }
 
+/// Deep-merge two JSON values: overlay keys win on object conflicts; recurses
+/// into nested objects; arrays and primitives are replaced wholesale (no
+/// concat). Used to merge variant package.json into base package.json without
+/// duplicating the whole file in each variant.
+pub fn merge_json(base: serde_json::Value, overlay: serde_json::Value) -> serde_json::Value {
+    use serde_json::Value;
+    match (base, overlay) {
+        (Value::Object(mut b), Value::Object(o)) => {
+            for (k, v) in o {
+                let merged = match b.remove(&k) {
+                    Some(existing) => merge_json(existing, v),
+                    None => v,
+                };
+                b.insert(k, merged);
+            }
+            Value::Object(b)
+        }
+        (_, overlay) => overlay,
+    }
+}
+
 /// Whether a file extension is treated as templatable text.
 /// Empty string means "no extension" — also treated as text (e.g. `.gitignore`-less files).
 pub fn is_text_ext(ext: &str) -> bool {

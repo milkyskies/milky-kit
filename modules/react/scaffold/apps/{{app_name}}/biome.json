@@ -1,18 +1,4 @@
 {
 	"$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
-	"formatter": {
-		"indentStyle": "tab"
-	},
-	"linter": {
-		"enabled": true,
-		"rules": {
-			"recommended": true
-		}
-	},
-	"organizeImports": {
-		"enabled": true
-	},
-	"files": {
-		"ignore": ["routeTree.gen.ts", "_generated/", "*.css"]
-	}
+	"extends": ["@{{project_name}}/biome-config/biome.json"]
 }

@@ -25,6 +25,8 @@
 		"tailwind-merge": "^2.6.0"
 	},
 	"devDependencies": {
+		"@{{project_name}}/biome-config": "workspace:*",
+		"@{{project_name}}/tsconfig": "workspace:*",
 		"@biomejs/biome": "^1.9.4",
 		"@tailwindcss/vite": "^4.0.0",
 		"@tanstack/router-plugin": "^1.95.0",

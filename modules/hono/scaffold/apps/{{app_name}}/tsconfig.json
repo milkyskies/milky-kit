@@ -1,16 +1,11 @@
 {
-  "compilerOptions": {
-    "target": "ESNext",
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
-    "strict": true,
-    "skipLibCheck": true,
-    "noEmit": true,
-    "allowImportingTsExtensions": false,
-    "types": ["@cloudflare/workers-types"],
-    "lib": ["ESNext"],
-    "jsx": "react-jsx",
-    "jsxImportSource": "hono/jsx"
-  },
-  "include": ["src/**/*.ts", "worker-configuration.d.ts"]
+	"extends": "@{{project_name}}/tsconfig/base.json",
+	"compilerOptions": {
+		"lib": ["ESNext"],
+		"jsx": "react-jsx",
+		"jsxImportSource": "hono/jsx",
+		"types": ["@cloudflare/workers-types"],
+		"allowImportingTsExtensions": false
+	},
+	"include": ["src/**/*.ts", "worker-configuration.d.ts"]
 }

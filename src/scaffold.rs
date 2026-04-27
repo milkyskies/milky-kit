@@ -1,4 +1,4 @@
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
@@ -145,33 +145,50 @@ fn copy_tree(
         // Path itself is templated: `apps/{{app_name}}/...` -> `apps/client/...`
         let dest = template::render(&relative.to_string_lossy(), vars);
 
-        if let Some(module) = variant_of_module {
-            if written.contains(&dest) {
-                bail!(
-                    "Variant '{}' overlaps base scaffold path '{}' in module '{}' — variants must not write paths the base scaffold also writes",
-                    source_label,
-                    dest,
-                    module
-                );
-            }
-        }
-
-        if Path::new(&dest).exists() {
-            *skipped += 1;
-            continue;
-        }
-
         let ext = entry
             .path()
             .extension()
             .and_then(|e| e.to_str())
             .unwrap_or("");
 
-        let content = if template::is_text_ext(ext) {
+        let raw_content = if template::is_text_ext(ext) {
             let raw = fs::read_to_string(entry.path())?;
             template::render(&raw, vars)
         } else {
             fs::read_to_string(entry.path()).unwrap_or_default()
+        };
+
+        // Variant overlap handling. JSON files deep-merge with the base file
+        // (so a variant can add deps/scripts to package.json without owning
+        // the whole file). Other files: variant collision is a hard error
+        // because we have no merge strategy and silent override would be
+        // confusing.
+        let is_variant = variant_of_module.is_some();
+        let base_existed = written.contains(&dest);
+        let content = if is_variant && base_existed && ext == "json" {
+            let base_text = fs::read_to_string(&dest)?;
+            let base_json: serde_json::Value = serde_json::from_str(&base_text)
+                .with_context(|| format!("Parsing base JSON at {} for variant merge", dest))?;
+            let overlay_json: serde_json::Value = serde_json::from_str(&raw_content)
+                .with_context(|| format!("Parsing variant JSON from {}", entry.path().display()))?;
+            let merged = template::merge_json(base_json, overlay_json);
+            serde_json::to_string_pretty(&merged)? + "\n"
+        } else {
+            if let Some(module) = variant_of_module {
+                if base_existed {
+                    bail!(
+                        "Variant '{}' overlaps base scaffold path '{}' in module '{}' — non-JSON files cannot be merged; rename the variant file or move it to a unique path",
+                        source_label,
+                        dest,
+                        module
+                    );
+                }
+            }
+            if Path::new(&dest).exists() && !base_existed {
+                *skipped += 1;
+                continue;
+            }
+            raw_content
         };
 
         if let Some(parent) = Path::new(&dest).parent() {
@@ -181,7 +198,8 @@ fn copy_tree(
         }
         fs::write(&dest, content)?;
         written.insert(dest.clone());
-        println!("  + {} (from {})", dest, source_label);
+        let verb = if base_existed { "~" } else { "+" };
+        println!("  {} {} (from {})", verb, dest, source_label);
         *created += 1;
     }
     Ok(())

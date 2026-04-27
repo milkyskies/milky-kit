@@ -18,6 +18,7 @@
     "nanoid": "^5.1.7"
   },
   "devDependencies": {
+    "@{{project_name}}/tsconfig": "workspace:*",
     "@cloudflare/workers-types": "^4.20260404.1",
     "drizzle-kit": "^0.31.10",
     "typescript": "^5.7.0",

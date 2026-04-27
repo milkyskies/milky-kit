@@ -147,6 +147,7 @@ impl KitConfig {
         }
         if has_js {
             modules.push("pnpm".to_string());
+            modules.push("ts-shared".to_string());
         }
         // React currently requires TypeScript
         if self.stack.frontend == Some("react".to_string()) && !modules.contains(&"ts".to_string())
