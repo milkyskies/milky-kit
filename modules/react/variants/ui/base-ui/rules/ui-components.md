@@ -5,13 +5,29 @@
 - **Base UI** (`@base-ui/react`) — unstyled, accessible primitives from the team behind MUI
 - Headless: every part is a separate subcomponent (`Root`, `Trigger`, `Popup`, etc.) that you style yourself
 
-## Styling approach
+## Styling approach — Tailwind v4 + theme tokens
 
-- **Tailwind CSS v4** with project-defined CSS variables in `src/assets/styles.css`
-- Component styling is direct on each Base UI part — no shared theme provider
-- Reference variables via `bg-[var(--color-primary)]` etc. (Tailwind v4 understands custom properties)
-- Always use semantic tokens (`--color-primary`, `--color-muted-foreground`, etc.) — never raw color values in component classes
-- Light + dark mode handled by re-defining variables in `@media (prefers-color-scheme: dark)`
+The project ships a token system in `src/assets/styles.css`. **Use the Tailwind utilities, not arbitrary `var(...)` syntax**, in component classes:
+
+```tsx
+// ✓ Use the generated utilities — semantic, terse
+<button className="bg-primary text-primary-foreground rounded-md px-3 py-1.5">
+
+// ✗ Don't use arbitrary values — verbose, no Tailwind variants
+<button className="bg-[var(--primary)] text-[var(--primary-foreground)]">
+```
+
+How it works (one-time setup, already done in `styles.css`):
+
+- Tokens live in `:root` / `.dark` as `--background`, `--foreground`, `--primary`, etc.
+- An `@theme inline` block in `styles.css` aliases each one to `--color-<name>`
+- Tailwind v4 sees those `--color-*` aliases inside `@theme` and auto-generates utilities (`bg-<name>`, `text-<name>`, `border-<name>`, `ring-<name>`, etc.)
+
+**To add a new token:** declare it in both `:root` and `.dark`, then add the alias inside `@theme inline`. The utility appears automatically.
+
+## Light / dark mode
+
+The dark theme activates when the `.dark` class is on a parent (typically `<html>` or `<body>`). Toggle programmatically; do not rely on `prefers-color-scheme` alone.
 
 ## Component patterns
 
@@ -19,14 +35,14 @@
 import { Dialog } from "@base-ui/react/dialog";
 
 <Dialog.Root>
-  <Dialog.Trigger className="px-3 py-1.5 rounded-[var(--radius)] bg-[var(--color-primary)] text-[var(--color-primary-foreground)]">
+  <Dialog.Trigger className="bg-primary text-primary-foreground rounded-md px-3 py-1.5">
     Open
   </Dialog.Trigger>
   <Dialog.Portal>
     <Dialog.Backdrop className="fixed inset-0 bg-black/40" />
-    <Dialog.Popup className="fixed inset-0 m-auto p-6 rounded-[var(--radius)] bg-[var(--color-background)] text-[var(--color-foreground)]">
+    <Dialog.Popup className="fixed inset-0 m-auto p-6 rounded-lg bg-background text-foreground border border-border">
       <Dialog.Title>Title</Dialog.Title>
-      <Dialog.Description>Description</Dialog.Description>
+      <Dialog.Description className="text-muted-foreground">Description</Dialog.Description>
     </Dialog.Popup>
   </Dialog.Portal>
 </Dialog.Root>
@@ -43,6 +59,7 @@ Wrap commonly-used compositions in `features/shared/components/` so consumers ge
 
 ## Rules
 
-- Always import each Base UI component from its specific entry point: `@base-ui/react/dialog`, `@base-ui/react/popover`, etc. Better tree-shaking and clearer dependency graphs.
-- Add `isolation: isolate` to `html` (already in `styles.css`) so Base UI portals stack correctly.
+- **Always import each Base UI component from its specific entry point**: `@base-ui/react/dialog`, `@base-ui/react/popover`, etc. Better tree-shaking.
+- **Always use semantic Tailwind utilities (`bg-primary`, `text-muted-foreground`)**, never raw color values like `bg-blue-500` or `bg-[#abc]`. The token system is the single source of truth for color.
+- **Never use arbitrary `var(...)` values for tokens that already have a generated utility.** If `bg-foo` doesn't exist, you missed adding the alias inside `@theme inline`.
 - Use `useRender` for headless / "render-prop" customizations rather than reaching into refs.

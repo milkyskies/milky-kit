@@ -18,11 +18,15 @@ rm -rf directory
 After scaffolding, run these once to finish setup:
 
 ```bash
-# Create GitHub repo + set up task tracking
+# Create GitHub repo
 gh repo create {{project_name}} --source . --push
-glb init                        # Creates .ghlobes.toml + adds agent instructions
-cargo install ghlobes           # If not already installed
+
+# Install glb (ghlobes) — task tracking via GitHub Issues + Projects
+cargo install --git https://github.com/milkyskies/ghlobes.git
+glb init                        # detects repo + project, writes .ghlobes.toml
 ```
+
+See `.claude/rules/workflow.md` for daily glb usage.
 
 ## Key mise Commands
 
