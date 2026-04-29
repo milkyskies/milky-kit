@@ -1,4 +1,4 @@
-import { createQueryOptions } from "@/lib/query";
+import { createQueryOptions } from "@/lib/query/create-query-options";
 import { Post } from "@/models/post";
 import { api } from "@/services/api/client";
 import { postKeys } from "./post-keys";

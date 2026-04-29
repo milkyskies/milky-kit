@@ -1,7 +1,12 @@
+import { AppProviders } from "@/features/shared/providers/app-providers";
 import { Outlet, createRootRoute } from "@tanstack/react-router";
 
 export const Route = createRootRoute({
-	component: () => <Outlet />,
+	component: () => (
+		<AppProviders>
+			<Outlet />
+		</AppProviders>
+	),
 	errorComponent: ({ error, reset }) => (
 		<div className="max-w-2xl mx-auto p-6 space-y-4">
 			<h1 className="text-2xl font-bold text-red-600">Something went wrong</h1>

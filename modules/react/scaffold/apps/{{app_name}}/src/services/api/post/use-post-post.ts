@@ -1,4 +1,4 @@
-import { createMutationHook } from "@/lib/query";
+import { createMutationHook } from "@/lib/query/create-mutation-hook";
 import { api } from "@/services/api/client";
 import { postKeys } from "./post-keys";
 
