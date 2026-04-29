@@ -7,6 +7,8 @@ languages = ["ts"]
 frontend = "react"
 backend = "hono"
 database = "postgres"
+ui = "shadcn"
+tauri = true
 
 [skills]
 include = [

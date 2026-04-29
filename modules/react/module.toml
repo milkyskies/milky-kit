@@ -17,3 +17,7 @@ dest = ".mise/tasks/api/generate"
 [variants.mobile]
 options = ["none", "tauri", "capacitor"]
 default = "none"
+
+[variants.ui]
+options = ["none", "shadcn", "heroui"]
+default = "none"

@@ -5,7 +5,7 @@ worktree_dir = "ts-supabase-worktrees"
 [[apps]]
 name = "client"
 template = "react"
-variants = { mobile = "capacitor" }
+variants = { mobile = "capacitor", ui = "heroui" }
 
 [[apps]]
 name = "api"

@@ -1,0 +1,8 @@
+{
+	"dependencies": {
+		"@heroui/react": "^3.0.0",
+		"@heroui/styles": "^3.0.0",
+		"react-aria-components": "^1.5.0",
+		"tailwind-variants": "^0.3.0"
+	}
+}

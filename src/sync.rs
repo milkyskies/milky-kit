@@ -51,8 +51,50 @@ pub fn run(kit_home: &Path, dry_run: bool) -> Result<()> {
             )?;
         }
 
-        // Sync files/* -> destinations per module.toml
+        // Sync rules from chosen variants too. Each app declares its variants;
+        // any variant of a module that's referenced by any app gets its rules
+        // included. Multiple apps using the same module but different variants
+        // means *both* variants' rules are pulled in (rare but supported).
         let module_manifest = config::load_module_manifest(&module_dir)?;
+        if !module_manifest.variants.is_empty() {
+            let apps = config.resolved_apps();
+            let mut chosen_variants: std::collections::HashSet<(String, String)> =
+                Default::default();
+            for app in &apps {
+                if app.template != *module_name {
+                    continue;
+                }
+                for (axis, axis_def) in &module_manifest.variants {
+                    let chosen = config::KitConfig::resolve_variant(
+                        &app.variants,
+                        module_name,
+                        axis,
+                        axis_def,
+                    )?;
+                    chosen_variants.insert((axis.clone(), chosen.to_string()));
+                }
+            }
+            for (axis, choice) in &chosen_variants {
+                let variant_rules = module_dir
+                    .join("variants")
+                    .join(axis)
+                    .join(choice)
+                    .join("rules");
+                if variant_rules.exists() {
+                    sync_rules(
+                        &variant_rules,
+                        &format!("{}[{}={}]", module_name, axis, choice),
+                        &config,
+                        kit_home,
+                        excludes,
+                        &mut actions,
+                        &mut managed,
+                    )?;
+                }
+            }
+        }
+
+        // Sync files/* -> destinations per module.toml
         for mapping in &module_manifest.files {
             let src = module_dir.join("files").join(&mapping.src);
             if !src.exists() {

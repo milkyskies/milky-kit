@@ -142,6 +142,12 @@ fn copy_tree(
         }
 
         let relative = entry.path().strip_prefix(src_dir)?;
+        // `rules/` is sync-managed (lands in .claude/rules/), not scaffold-copied.
+        // Skip it here so a variant directory with both `apps/` and `rules/`
+        // doesn't dump rules at the project root.
+        if relative.starts_with("rules") {
+            continue;
+        }
         // Path itself is templated: `apps/{{app_name}}/...` -> `apps/client/...`
         let dest = template::render(&relative.to_string_lossy(), vars);
 

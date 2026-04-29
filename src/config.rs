@@ -145,9 +145,9 @@ impl KitConfig {
         if let Some(ref f) = self.stack.frontend {
             modules.push(f.clone());
         }
-        if let Some(ref u) = self.stack.ui {
-            modules.push(u.clone());
-        }
+        // ui (shadcn / heroui) used to be a separate module; now it's a
+        // [variants.ui] axis on the react template. The synthesis above
+        // (resolved_apps) wires [stack].ui through to that variant.
 
         // Pull in templates referenced by [[apps]] (without duplicating).
         for app in &self.apps {
@@ -173,9 +173,8 @@ impl KitConfig {
         {
             modules.push("ts".to_string());
         }
-        if self.stack.tauri {
-            modules.push("tauri".to_string());
-        }
+        // [stack].tauri used to pull in a standalone module; now it's wired
+        // to [variants.react.mobile = "tauri"] via resolved_apps.
 
         // Legacy tools field (backwards compat)
         for tool in &self.stack.tools {
@@ -328,6 +327,9 @@ impl KitConfig {
             let mut variants = self.variants.get(frontend).cloned().unwrap_or_default();
             if self.stack.tauri && !variants.contains_key("mobile") {
                 variants.insert("mobile".into(), "tauri".into());
+            }
+            if let Some(ref ui) = self.stack.ui {
+                variants.entry("ui".into()).or_insert_with(|| ui.clone());
             }
             apps.push(AppSpec {
                 name: "client".into(),
