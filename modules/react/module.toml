@@ -19,5 +19,5 @@ options = ["none", "tauri", "capacitor"]
 default = "none"
 
 [variants.ui]
-options = ["none", "shadcn", "heroui"]
+options = ["none", "shadcn", "heroui", "base-ui"]
 default = "none"

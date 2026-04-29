@@ -1,0 +1,21 @@
+[project]
+name = "ts-baseui"
+worktree_dir = "ts-baseui-worktrees"
+
+[[apps]]
+name = "client"
+template = "react"
+variants = { ui = "base-ui" }
+
+[[apps]]
+name = "api"
+template = "hono"
+variants = { db = "d1", api_style = "rpc" }
+
+[skills]
+include = [
+    "ship",
+    "rulify",
+    "retrospective",
+    "land",
+]
