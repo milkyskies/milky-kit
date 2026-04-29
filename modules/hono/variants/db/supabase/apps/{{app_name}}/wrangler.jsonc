@@ -1,0 +1,20 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "{{project_name}}-{{app_name}}",
+	"main": "src/app.ts",
+	"compatibility_date": "2026-04-01",
+	"compatibility_flags": ["nodejs_compat"],
+	"hyperdrive": [
+		{
+			"binding": "HYPERDRIVE",
+			"id": "<set-via-wrangler-hyperdrive-create>",
+			"localConnectionString": "postgres://postgres:dev@localhost:5432/{{project_name}}"
+		}
+	],
+	"observability": {
+		"enabled": true,
+		"head_sampling_rate": 1
+	}
+	// Local dev: localConnectionString points at the docker-compose postgres.
+	// Prod: replace `id` with the value from `wrangler hyperdrive create <name>`.
+}

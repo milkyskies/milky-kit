@@ -1,0 +1,4 @@
+# wrangler dev reads this for local Worker runtime env.
+# Hyperdrive uses localConnectionString from wrangler.jsonc for local dev,
+# so this file is mostly empty for the supabase variant. Add app-level
+# secrets here as needed (auth keys, third-party API tokens, etc.).

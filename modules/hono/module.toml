@@ -3,7 +3,7 @@ src = "mise-tasks/dev/api"
 dest = ".mise/tasks/dev/api"
 
 [variants.db]
-options = ["d1", "neon"]
+options = ["d1", "neon", "supabase"]
 default = "d1"
 
 [variants.api_style]
