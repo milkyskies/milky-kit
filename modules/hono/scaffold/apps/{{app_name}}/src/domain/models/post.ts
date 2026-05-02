@@ -18,15 +18,6 @@ export type PostRow = {
 	updatedAt: Date;
 };
 
-export type PostDto = {
-	id: string;
-	title: string;
-	body: string;
-	publishedAt: string | null;
-	createdAt: string;
-	updatedAt: string;
-};
-
 export const Post = {
 	make: Data.case<Post>(),
 
@@ -39,16 +30,4 @@ export const Post = {
 			createdAt: row.createdAt,
 			updatedAt: row.updatedAt,
 		}),
-
-	toDto: (post: Post): PostDto => ({
-		id: post.id,
-		title: post.title,
-		body: post.body,
-		publishedAt: Option.match(post.publishedAt, {
-			onNone: () => null,
-			onSome: (d) => d.toISOString(),
-		}),
-		createdAt: post.createdAt.toISOString(),
-		updatedAt: post.updatedAt.toISOString(),
-	}),
 };

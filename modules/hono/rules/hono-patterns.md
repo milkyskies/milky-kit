@@ -12,14 +12,17 @@ Clean-architecture DDD split. Each layer depends only on inner layers.
 ```
 apps/api/src/
 ├── domain/               # pure types, no I/O
-│   ├── models/           # Data.case + Option — fromRow, toApi
+│   ├── models/           # Data.case + Option — fromRow only
 │   └── repositories/     # repository interfaces (types)
 ├── application/
 │   └── use-case/         # orchestration, takes repo by parameter
 ├── infrastructure/
 │   └── db/               # schema, drizzle client, repository impls
 └── presentation/
-    └── routes.ts         # Hono app — thin handlers, edge conversions
+    ├── app.ts            # Hono app composition — applies middleware, mounts routers
+    ├── middleware/       # cross-cutting wiring — repositories.ts injects repos onto context.var
+    ├── routes/           # one file per resource — <resource>-routes.ts
+    └── dto/              # one file per resource — <resource>-dto.ts (types + to/from helpers)
 ```
 
 - `domain/` must not import from `infrastructure/`, `application/`, or `hono`.
@@ -29,7 +32,7 @@ apps/api/src/
 ## Domain models
 
 - Live in `apps/api/src/domain/models/`. Use `Data.case` + `Option` per `models.md`.
-- Provide `fromRow(row)` for Drizzle row → domain, `toApi(model)` for domain → JSON response.
+- Provide `fromRow(row)` for Drizzle row → domain. **No DTO conversion in the domain** — wire-shape conversion is presentation's job (see `presentation/dto/`).
 - Nullable DB columns become `Option.Option<T>`; consumers never see `null` in domain code.
 - `Date` columns stay as `Date` in the model — Drizzle already parses them via the timestamp mode.
 
@@ -71,18 +74,21 @@ apps/api/src/
 
 ## Routes (presentation)
 
-- `presentation/routes.ts` exports `export const app = new Hono<{ Bindings: Bindings }>()`.
-- Handlers are thin: parse input → instantiate repo → call use case → convert domain → JSON.
-- Instantiate the repository **per request** from `c.env` — Workers isolates are stateless.
-- Convert `Option` → JSON null at the edge using `Option.match` / `Snippet.toApi`. Never return a raw domain value with `Option` fields to the wire.
+- One router file per resource: `presentation/routes/<resource>-routes.ts`. Each exports a Hono router (e.g. `postRoutes`).
+- `presentation/app.ts` composes them: `new Hono<{ Bindings; Variables }>().use("*", repositoriesMiddleware).route("/", postRoutes).route("/", commentRoutes)`. Chain calls so Hono RPC types flow through.
+- Handlers are thin: parse input → call use case with `context.var.<resource>Repository` → convert domain → JSON. **Routes never call `makePostRepository` directly** — that's the middleware's job. No inline DTO massaging either; defer to helpers in `presentation/dto/`.
+- Use full parameter names (`context`, not `c`). Avoid abbreviations even when the framework convention is shorter.
+- Convert `Option` → JSON null at the edge using `Option.match` / `toPostDto`. Never return a raw domain value with `Option` fields to the wire.
 
   ```typescript
-  app.get("/snippets/:code", async (c) => {
-    const repo = makeD1SnippetRepository(c.env.DB);
-    const maybe = await getSnippet(repo, c.req.param("code"));
+  postRoutes.get("/snippets/:code", async (context) => {
+    const maybe = await getSnippet(
+      context.var.snippetRepository,
+      context.req.param("code"),
+    );
     return Option.match(maybe, {
-      onNone: () => c.json({ error: "Not found or expired" }, 404),
-      onSome: (s) => c.json(Snippet.toApi(s)),
+      onNone: () => context.json({ error: "Not found or expired" }, 404),
+      onSome: (snippet) => context.json(toSnippetDto(snippet)),
     });
   });
   ```
@@ -91,10 +97,27 @@ apps/api/src/
 
   ```typescript
   // apps/api/src/app.ts
-  import { app } from "./presentation/routes";
+  import { app } from "./presentation/app";
   export type AppType = typeof app;
   export default app;
   ```
+
+## Middleware (presentation)
+
+- Per-request wiring lives in `presentation/middleware/`. The standing piece is `repositories.ts`, which builds repository instances from `context.env` and exposes them via `context.var`.
+- Workers isolates are stateless, so repos must be built per request — middleware is the right hook for that.
+- Each new resource adds one line to the middleware (`context.set("postRepository", makePostRepository(context.env))`) and an entry in `RepositoryVariables`.
+- Routes type their Hono generic with `{ Bindings; Variables: RepositoryVariables }` so `context.var.postRepository` is typed.
+
+## DTOs (presentation)
+
+- One file per resource: `presentation/dto/<resource>-dto.ts`.
+- Owns the wire-shape types (`PostDto`, `CreatePostDto`, `UpdatePostDto`) and the conversion helpers:
+  - `toPostDto(post: Post): PostDto` — domain → wire (Option/Date → null/string).
+  - `fromCreatePostDto(dto: CreatePostDto): CreatePostInput` — wire → use case input.
+  - `fromUpdatePostDto(dto: UpdatePostDto): PostPatch`.
+- For the OpenAPI variant, DTOs are Zod schemas (`PostDtoSchema`, etc.) and types are `z.infer<typeof Schema>`.
+- Routes never construct `Option`/`Date` from request bodies inline — always go through a `from*Dto` helper.
 
 ## Frontend consumption (Hono RPC)
 

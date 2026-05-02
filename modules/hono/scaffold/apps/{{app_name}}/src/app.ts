@@ -1,4 +1,4 @@
-import { app } from "./presentation/routes";
+import { app } from "./presentation/app";
 
 export type AppType = typeof app;
 
