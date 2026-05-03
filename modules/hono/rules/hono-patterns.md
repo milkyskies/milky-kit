@@ -37,27 +37,43 @@ apps/api/src/
 - `Date` columns stay as `Date` in the model — Drizzle already parses them via the timestamp mode.
 - **Row → domain** conversion is the repository's job (see below). **Domain → DTO** is presentation's (see `presentation/dto/`).
 
-## Repositories
+## Database handle
 
-- Interface (type, not class) lives in `domain/repositories/<resource>-repository.ts`.
-- Implementation lives in `infrastructure/db/<driver>-<resource>-repository.ts`.
-- **Functional factory pattern** — no classes, no `this`, no `new`:
+- Built **once per request** in `infrastructure/db/database.ts`. Repositories take this handle as input — they never construct their own client.
+- Why: a single Hono request can touch multiple repositories. Each repo creating its own postgres-js / Neon / drizzle client per request burns connections and wastes setup work. One shared `Database` per request fixes that.
 
   ```typescript
-  export const makeD1SnippetRepository = (d1: D1Database): SnippetRepository => {
-    const db = drizzle(d1);
-    return {
-      findByCode: async (code) => { /* ... */ },
-      create: async (input) => { /* ... */ },
-      // ...
-    };
+  // infrastructure/db/database.ts (supabase variant — Hyperdrive + postgres-js)
+  import type { Hyperdrive } from "@cloudflare/workers-types";
+  import { type PostgresJsDatabase, drizzle } from "drizzle-orm/postgres-js";
+  import postgres from "postgres";
+
+  export type Bindings = { HYPERDRIVE: Hyperdrive };
+  export type Database = PostgresJsDatabase;
+
+  export const makeDatabase = (env: Bindings): Database => {
+    const sql = postgres(env.HYPERDRIVE.connectionString, {
+      max: 5,
+      fetch_types: false,
+    });
+    return drizzle(sql);
   };
   ```
 
-- Repository methods return `Promise<Option.Option<T>>` for "may not exist", `Promise<T>` for guaranteed results, `Promise<void>` for commands.
-- **Row → domain conversion is private to the repo.** Use Drizzle's inferred row type and a local `fromRow` helper:
+- The `Bindings` type lives here too — single source of truth for what env each db variant needs (`{ DB: D1Database }` vs `{ DATABASE_URL: string }` vs `{ HYPERDRIVE: Hyperdrive }`).
+- The `repositoriesMiddleware` (in `presentation/middleware/repositories.ts`) calls `makeDatabase(context.env)` once per request, then instantiates every repo against the result.
+
+## Repositories
+
+- Interface (type, not class) lives in `domain/repositories/<resource>-repository.ts`.
+- Implementation lives in `infrastructure/db/<resource>-repository.ts`.
+- **Take `Database` as input — never build one.** Functional factory, no classes / `this` / `new`. Methods return `Promise<Option.Option<T>>` for "may not exist", `Promise<T>` for guaranteed results, `Promise<void>` for commands.
+- **Row → domain conversion is private to the repo.** Use Drizzle's `$inferSelect` for the row type — schema is the single source of truth.
 
   ```typescript
+  import type { Database } from "./database";
+  import { snippetsTable } from "./schema";
+
   type SnippetRow = typeof snippetsTable.$inferSelect;
 
   const fromRow = (row: SnippetRow): Snippet =>
@@ -68,16 +84,13 @@ apps/api/src/
       // ...
     });
 
-  export const makeD1SnippetRepository = (env: Bindings): SnippetRepository => {
-    const db = drizzle(env.DB);
-    return {
-      findByCode: async (code) => {
-        const row = await db.select()...;
-        return row ? Option.some(fromRow(row)) : Option.none();
-      },
-      // ...
-    };
-  };
+  export const makeSnippetRepository = (db: Database): SnippetRepository => ({
+    findByCode: async (code) => {
+      const row = await db.select()...;
+      return row ? Option.some(fromRow(row)) : Option.none();
+    },
+    // ...
+  });
   ```
 
 - Never leak Drizzle types out of the repository. Domain layer must not know the table exists.
