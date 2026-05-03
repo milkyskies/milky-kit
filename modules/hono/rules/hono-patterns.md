@@ -12,7 +12,7 @@ Clean-architecture DDD split. Each layer depends only on inner layers.
 ```
 apps/api/src/
 ├── domain/               # pure types, no I/O
-│   ├── models/           # Data.case + Option — fromRow only
+│   ├── models/           # Data.case + Option — pure interface, no row/DTO knowledge
 │   └── repositories/     # repository interfaces (types)
 ├── application/
 │   └── use-case/         # orchestration, takes repo by parameter
@@ -32,9 +32,10 @@ apps/api/src/
 ## Domain models
 
 - Live in `apps/api/src/domain/models/`. Use `Data.case` + `Option` per `models.md`.
-- Provide `fromRow(row)` for Drizzle row → domain. **No DTO conversion in the domain** — wire-shape conversion is presentation's job (see `presentation/dto/`).
-- Nullable DB columns become `Option.Option<T>`; consumers never see `null` in domain code.
+- **Pure** — no row shape, no DTO type, no converters. The model file imports nothing from `infrastructure/` or `presentation/`.
+- Nullable DB columns become `Option.Option<T>` in the model; consumers never see `null` in domain code.
 - `Date` columns stay as `Date` in the model — Drizzle already parses them via the timestamp mode.
+- **Row → domain** conversion is the repository's job (see below). **Domain → DTO** is presentation's (see `presentation/dto/`).
 
 ## Repositories
 
@@ -54,7 +55,31 @@ apps/api/src/
   ```
 
 - Repository methods return `Promise<Option.Option<T>>` for "may not exist", `Promise<T>` for guaranteed results, `Promise<void>` for commands.
-- Repo impls are where Drizzle row → domain conversion happens (`Snippet.fromRow(row)`).
+- **Row → domain conversion is private to the repo.** Use Drizzle's inferred row type and a local `fromRow` helper:
+
+  ```typescript
+  type SnippetRow = typeof snippetsTable.$inferSelect;
+
+  const fromRow = (row: SnippetRow): Snippet =>
+    Snippet.make({
+      id: row.id,
+      code: row.code,
+      expiresAt: Option.fromNullable(row.expiresAt),
+      // ...
+    });
+
+  export const makeD1SnippetRepository = (env: Bindings): SnippetRepository => {
+    const db = drizzle(env.DB);
+    return {
+      findByCode: async (code) => {
+        const row = await db.select()...;
+        return row ? Option.some(fromRow(row)) : Option.none();
+      },
+      // ...
+    };
+  };
+  ```
+
 - Never leak Drizzle types out of the repository. Domain layer must not know the table exists.
 
 ## Use cases
