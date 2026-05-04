@@ -6,6 +6,10 @@
 		{
 			"binding": "JWK_CACHE",
 			"id": "<run-wrangler-kv-namespace-create-JWK_CACHE>"
+		},
+		{
+			"binding": "USER_CACHE",
+			"id": "<run-wrangler-kv-namespace-create-USER_CACHE>"
 		}
 	]
 }

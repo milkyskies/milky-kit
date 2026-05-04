@@ -9,6 +9,10 @@ export type AuthVariables = {
 	userId: string;
 };
 
+// Short TTL: balances DB-lookup avoidance against picking up user-row
+// changes in a reasonable window. KV propagates globally in ~60s anyway.
+const USER_CACHE_TTL_SECONDS = 300;
+
 export const authMiddleware = createMiddleware<{
 	Bindings: Bindings;
 	Variables: RepositoryVariables & AuthVariables;
@@ -35,11 +39,26 @@ export const authMiddleware = createMiddleware<{
 		return context.json({ error: "Invalid token" }, 401);
 	}
 
+	// Try the cache before hitting the DB. Internal user ids are stable
+	// once assigned, so a cache hit is safe to trust for the TTL.
+	const cacheKey = `user-by-firebase:${firebaseToken.uid}`;
+	const cachedUserId = await context.env.USER_CACHE.get(cacheKey);
+
+	if (cachedUserId) {
+		context.set("userId", cachedUserId);
+		await next();
+		return;
+	}
+
 	const user = await findOrCreateUserFromFirebase(context.var.userRepository, {
 		firebaseUid: firebaseToken.uid,
 		email: Option.fromNullable(firebaseToken.email ?? null),
 		displayName: Option.fromNullable(firebaseToken.name ?? null),
 		avatarUrl: Option.fromNullable(firebaseToken.picture ?? null),
+	});
+
+	await context.env.USER_CACHE.put(cacheKey, user.id, {
+		expirationTtl: USER_CACHE_TTL_SECONDS,
 	});
 
 	context.set("userId", user.id);

@@ -5,9 +5,9 @@ The auth=firebase variant scaffolded:
 - `domain/models/user.ts`, `domain/repositories/user-repository.ts` — User domain
 - `infrastructure/db/user-repository.ts` — repo impl (uses the always-present `usersTable`)
 - `application/use-case/find-or-create-user-from-firebase.ts` — first-touch upsert
-- `infrastructure/env-auth.ts` — `FIREBASE_PROJECT_ID`, `JWK_CACHE` KV binding
+- `infrastructure/env-auth.ts` — `FIREBASE_PROJECT_ID`, `JWK_CACHE` + `USER_CACHE` KV bindings
 - `package.json` — added `firebase-auth-cloudflare-workers`
-- `wrangler.jsonc` — added `vars.FIREBASE_PROJECT_ID` + `kv_namespaces` for `JWK_CACHE`
+- `wrangler.jsonc` — added `vars.FIREBASE_PROJECT_ID` + `kv_namespaces` for `JWK_CACHE` and `USER_CACHE`
 
 ## Manual setup
 
@@ -21,14 +21,19 @@ The auth=firebase variant scaffolded:
 
 Edit `apps/{{app_name}}/wrangler.jsonc` — replace `<your-firebase-project-id>` in `vars.FIREBASE_PROJECT_ID`.
 
-### 3. Create the JWKS cache KV namespace
+### 3. Create the KV namespaces
+
+The Worker uses two KV namespaces:
+- `JWK_CACHE` — caches Google's JWKS so Firebase token verification avoids hitting Google's URL on every request.
+- `USER_CACHE` — caches `firebaseUid → internal userId` so authed requests skip the DB lookup on warm sessions (5-minute TTL).
 
 ```bash
 cd apps/{{app_name}}
 pnpm wrangler kv namespace create JWK_CACHE
+pnpm wrangler kv namespace create USER_CACHE
 ```
 
-Paste the returned `id` into `wrangler.jsonc` under the `JWK_CACHE` binding.
+Paste the returned `id`s into `wrangler.jsonc` under the matching bindings.
 
 ### 4. Wire the auth middleware into your routes
 
