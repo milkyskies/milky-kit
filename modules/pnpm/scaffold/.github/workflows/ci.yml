@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Lint + typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install pnpm
+        # No `version:` — action-setup reads packageManager from
+        # package.json so local and CI use the exact same pnpm.
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+
+      - name: Install Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version-file: package.json
+          cache: pnpm
+
+      - name: Setup Aikido safe-chain
+        # Installs PATH shims that intercept pnpm/npm/yarn/npx and check
+        # every package against Aikido's feed of known-malicious releases
+        # before the install runs. MUST come before pnpm install so the
+        # shims are on PATH when packages are fetched.
+        env:
+          # pnpm dlx itself honors minimum-release-age, which would refuse
+          # to fetch the safe-chain CLI. Disable the cooldown for this one
+          # invocation; the shims it installs are the actual control.
+          npm_config_minimum_release_age: "0"
+        run: pnpm dlx @aikidosec/safe-chain@1.5.1 setup-ci
+
+      - name: Install dependencies
+        # --frozen-lockfile fails the build if pnpm-lock.yaml is out of
+        # sync with package.json instead of silently re-resolving (which
+        # would defeat the cooldown + trust-policy checks applied locally).
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm -r lint
+
+      - name: Typecheck
+        run: pnpm -r typecheck

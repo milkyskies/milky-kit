@@ -1,4 +1,17 @@
 {
 	"name": "{{project_name}}",
-	"private": true
+	"private": true,
+	"packageManager": "pnpm@10.29.3",
+	"engines": {
+		"node": ">=22"
+	},
+	"pnpm": {
+		"onlyBuiltDependencies": [
+			"@biomejs/biome",
+			"@tailwindcss/oxide",
+			"esbuild",
+			"sharp",
+			"workerd"
+		]
+	}
 }

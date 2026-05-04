@@ -1,0 +1,4 @@
+{
+	"//": "Mirrors .npmrc minimum-release-age (1 day). npm-check-updates won't propose versions inside the cooldown window.",
+	"cooldown": 1
+}
