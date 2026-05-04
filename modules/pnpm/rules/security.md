@@ -55,10 +55,13 @@ A commit SHA cannot be reassigned. Even if the tag \`v6\` is repointed to malici
 
 The trailing-comment placement matters — Dependabot updates the SHA + comment together. Other styles go stale.
 
-## What's NOT here yet
+### Trust policy
+`package.json` sets `pnpm.trustPolicy: "no-downgrade"` (pnpm ≥ 10.21). Refuses install if a package's trust level decreased compared to previously installed versions (e.g. previously published with provenance, new version doesn't). Catches the common compromise pattern where an attacker republishes from a stolen account without the original signing setup.
 
-- \`pnpm.trustPolicy: "no-downgrade"\` — refuses install if a package's trust level decreased (e.g. previously had provenance, new version doesn't). Tracked in milky-kit issue #8 — pending pnpm version availability.
-- \`pnpm.blockExoticSubdeps: true\` — refuses transitive deps from non-registry sources. Same issue.
+For legitimate exceptions: `pnpm.trustPolicyExclude` (package names that bypass) or `pnpm.trustPolicyIgnoreAfter` (skip for versions older than a duration). Use sparingly with written justification.
+
+### Block exotic transitive deps
+`pnpm.blockExoticSubdeps: true` (pnpm ≥ 10.26). Direct deps can still resolve from git URLs / tarballs / local paths when explicitly declared, but a transitive dep can never drag in code from outside the registry.
 
 ## When you bump dependencies
 
