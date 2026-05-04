@@ -1,21 +1,22 @@
 import { Option } from "effect";
 import { Auth, WorkersKVStoreSingle } from "firebase-auth-cloudflare-workers";
 import { createMiddleware } from "hono/factory";
-import { findOrCreateUserFromFirebase } from "../../application/use-case/find-or-create-user-from-firebase";
 import type { Bindings } from "../../infrastructure/env";
-import type { RepositoryVariables } from "./repositories";
 
+// Verifies the Firebase ID token and exposes the claims on context.
+// Does NOT do the user lookup — that's `require-user.ts`. This separation
+// lets a signup endpoint be authed (firebaseUid available) without
+// requiring a profile row to exist yet.
 export type AuthVariables = {
-	userId: string;
+	firebaseUid: string;
+	firebaseEmail: Option.Option<string>;
+	firebaseName: Option.Option<string>;
+	firebasePicture: Option.Option<string>;
 };
-
-// Short TTL: balances DB-lookup avoidance against picking up user-row
-// changes in a reasonable window. KV propagates globally in ~60s anyway.
-const USER_CACHE_TTL_SECONDS = 300;
 
 export const authMiddleware = createMiddleware<{
 	Bindings: Bindings;
-	Variables: RepositoryVariables & AuthVariables;
+	Variables: AuthVariables;
 }>(async (context, next) => {
 	const header = context.req.header("Authorization");
 	if (!header || !header.startsWith("Bearer ")) {
@@ -39,28 +40,15 @@ export const authMiddleware = createMiddleware<{
 		return context.json({ error: "Invalid token" }, 401);
 	}
 
-	// Try the cache before hitting the DB. Internal user ids are stable
-	// once assigned, so a cache hit is safe to trust for the TTL.
-	const cacheKey = `user-by-firebase:${firebaseToken.uid}`;
-	const cachedUserId = await context.env.USER_CACHE.get(cacheKey);
-
-	if (cachedUserId) {
-		context.set("userId", cachedUserId);
-		await next();
-		return;
-	}
-
-	const user = await findOrCreateUserFromFirebase(context.var.userRepository, {
-		firebaseUid: firebaseToken.uid,
-		email: Option.fromNullable(firebaseToken.email ?? null),
-		displayName: Option.fromNullable(firebaseToken.name ?? null),
-		avatarUrl: Option.fromNullable(firebaseToken.picture ?? null),
-	});
-
-	await context.env.USER_CACHE.put(cacheKey, user.id, {
-		expirationTtl: USER_CACHE_TTL_SECONDS,
-	});
-
-	context.set("userId", user.id);
+	context.set("firebaseUid", firebaseToken.uid);
+	context.set(
+		"firebaseEmail",
+		Option.fromNullable(firebaseToken.email ?? null),
+	);
+	context.set("firebaseName", Option.fromNullable(firebaseToken.name ?? null));
+	context.set(
+		"firebasePicture",
+		Option.fromNullable(firebaseToken.picture ?? null),
+	);
 	await next();
 });
