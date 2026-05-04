@@ -33,6 +33,69 @@ pub fn is_managed(content: &str) -> bool {
     content.contains("managed by milky-kit")
 }
 
+/// Strip `//` line comments and `/* ... */` block comments from a JSONC source
+/// so it can be parsed by a plain JSON parser. Comments inside string literals
+/// are preserved by tracking string state (with `\\` escape handling).
+///
+/// Trailing commas (the other JSONC nicety) aren't stripped — none of our
+/// templates use them. If we add some later, extend this with a second pass.
+pub fn strip_jsonc_comments(input: &str) -> String {
+    let bytes = input.as_bytes();
+    let mut out = String::with_capacity(input.len());
+    let mut i = 0;
+    let mut in_string = false;
+    let mut escaped = false;
+
+    while i < bytes.len() {
+        let c = bytes[i];
+
+        if in_string {
+            out.push(c as char);
+            if escaped {
+                escaped = false;
+            } else if c == b'\\' {
+                escaped = true;
+            } else if c == b'"' {
+                in_string = false;
+            }
+            i += 1;
+            continue;
+        }
+
+        if c == b'"' {
+            in_string = true;
+            out.push('"');
+            i += 1;
+            continue;
+        }
+
+        // Line comment: `//` -> skip to end of line (but keep the newline).
+        if c == b'/' && i + 1 < bytes.len() && bytes[i + 1] == b'/' {
+            i += 2;
+            while i < bytes.len() && bytes[i] != b'\n' {
+                i += 1;
+            }
+            continue;
+        }
+
+        // Block comment: `/* ... */` -> skip everything inside, including
+        // newlines. JSON parsers don't care about extra whitespace afterwards.
+        if c == b'/' && i + 1 < bytes.len() && bytes[i + 1] == b'*' {
+            i += 2;
+            while i + 1 < bytes.len() && !(bytes[i] == b'*' && bytes[i + 1] == b'/') {
+                i += 1;
+            }
+            i = (i + 2).min(bytes.len());
+            continue;
+        }
+
+        out.push(c as char);
+        i += 1;
+    }
+
+    out
+}
+
 /// Deep-merge two JSON values: overlay keys win on object conflicts; recurses
 /// into nested objects; arrays and primitives are replaced wholesale (no
 /// concat). Used to merge variant package.json into base package.json without

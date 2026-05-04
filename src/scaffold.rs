@@ -171,11 +171,24 @@ fn copy_tree(
         // confusing.
         let is_variant = variant_of_module.is_some();
         let base_existed = written.contains(&dest);
-        let content = if is_variant && base_existed && ext == "json" {
+        let content = if is_variant && base_existed && (ext == "json" || ext == "jsonc") {
             let base_text = fs::read_to_string(&dest)?;
-            let base_json: serde_json::Value = serde_json::from_str(&base_text)
+            // .jsonc files use // and /* */ comments; strip before parsing so
+            // serde_json can read them. Merged output is JSON (comments lost) —
+            // explanatory text lives in DB-SETUP.md / SETUP-AUTH.md anyway.
+            let base_clean = if ext == "jsonc" {
+                template::strip_jsonc_comments(&base_text)
+            } else {
+                base_text
+            };
+            let overlay_clean = if ext == "jsonc" {
+                template::strip_jsonc_comments(&raw_content)
+            } else {
+                raw_content.clone()
+            };
+            let base_json: serde_json::Value = serde_json::from_str(&base_clean)
                 .with_context(|| format!("Parsing base JSON at {} for variant merge", dest))?;
-            let overlay_json: serde_json::Value = serde_json::from_str(&raw_content)
+            let overlay_json: serde_json::Value = serde_json::from_str(&overlay_clean)
                 .with_context(|| format!("Parsing variant JSON from {}", entry.path().display()))?;
             let merged = template::merge_json(base_json, overlay_json);
             // Use tab indent to match the conventional formatting in this kit.

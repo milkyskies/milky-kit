@@ -13,6 +13,13 @@
 		"enabled": true
 	},
 	"files": {
-		"ignore": ["routeTree.gen.ts", "_generated/", "dist/", "node_modules/", "*.css"]
+		"ignore": [
+			"routeTree.gen.ts",
+			"_generated/",
+			"dist/",
+			"node_modules/",
+			"*.css",
+			"wrangler.jsonc"
+		]
 	}
 }

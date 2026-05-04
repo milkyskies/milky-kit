@@ -21,3 +21,7 @@ default = "none"
 [variants.ui]
 options = ["none", "shadcn", "heroui", "base-ui"]
 default = "none"
+
+[variants.auth]
+options = ["none", "firebase"]
+default = "none"
