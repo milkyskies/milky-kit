@@ -1,5 +1,6 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
 import type { Bindings } from "../infrastructure/env";
+import { corsMiddleware } from "./middleware/cors";
 import {
 	type RepositoryVariables,
 	repositoriesMiddleware,
@@ -11,6 +12,7 @@ export const app = new OpenAPIHono<{
 	Variables: RepositoryVariables;
 }>();
 
+app.use("*", corsMiddleware);
 app.use("*", repositoriesMiddleware);
 app.route("/", postRoutes);
 

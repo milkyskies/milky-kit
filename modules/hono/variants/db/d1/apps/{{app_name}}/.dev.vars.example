@@ -1,3 +1,6 @@
 # wrangler dev reads this for local Worker runtime env.
 # D1 needs no DATABASE_URL — it's bound via wrangler.jsonc and addressed
 # as `c.env.DB`. Use this file for app-level secrets only.
+
+# Local CORS origins — overrides wrangler.jsonc's prod value.
+CORS_ORIGINS = "http://localhost:5173,capacitor://localhost"

@@ -3,6 +3,10 @@
 	"name": "{{project_name}}-{{app_name}}",
 	"main": "src/app.ts",
 	"compatibility_date": "2026-04-01",
+	"vars": {
+		// Comma-separated allowed CORS origins. Override locally via .dev.vars.
+		"CORS_ORIGINS": "https://{{project_name}}.app"
+	},
 	"observability": {
 		"enabled": true,
 		"head_sampling_rate": 1

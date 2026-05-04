@@ -2,3 +2,6 @@
 # Hyperdrive uses localConnectionString from wrangler.jsonc for local dev,
 # so this file is mostly empty for the supabase variant. Add app-level
 # secrets here as needed (auth keys, third-party API tokens, etc.).
+
+# Local CORS origins — overrides wrangler.jsonc's prod value.
+CORS_ORIGINS = "http://localhost:5173,capacitor://localhost"
