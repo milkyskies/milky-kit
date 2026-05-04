@@ -63,6 +63,22 @@ For legitimate exceptions: `pnpm.trustPolicyExclude` (package names that bypass)
 ### Block exotic transitive deps
 `pnpm.blockExoticSubdeps: true` (pnpm ≥ 10.26). Direct deps can still resolve from git URLs / tarballs / local paths when explicitly declared, but a transitive dep can never drag in code from outside the registry.
 
+### Transitive dep overrides
+`pnpm.overrides` pins a vulnerable transitive dep to a fixed version when the direct dep hasn't patched yet. Document each pin in a sibling `//overrides-<name>` key (sibling of `overrides`, not inside it — pnpm rejects `//`-prefixed package selectors). Example from the scaffolded `package.json`:
+
+```json
+"//overrides-esbuild": "GHSA-67mh-4wv8-2f99 — esbuild < 0.25.0 lets any website send requests to dev server.",
+"overrides": {
+  "esbuild": "^0.25.0"
+}
+```
+
+Each override should:
+1. Reference an OSV / CVE id in an adjacent `//overrides-<name>` comment so a future reader knows why the pin exists.
+2. Be removed once the upstream direct deps have caught up — leaving stale overrides locks you out of legitimate version bumps.
+
+OSV-Scanner CI surfaces these advisories — when a new advisory lands, add the override + commit the updated lockfile.
+
 ## When you bump dependencies
 
 - Use Dependabot PRs (auto-respects cooldown). For urgent off-cycle bumps, add the package to \`.npmrc\`'s \`minimum-release-age-exclude\` with a justification, then remove once the cooldown passes.
