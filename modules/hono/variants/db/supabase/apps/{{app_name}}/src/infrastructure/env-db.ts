@@ -1,5 +1,5 @@
 import type { Hyperdrive } from "@cloudflare/workers-types";
 
-export type Bindings = {
+export type DbBindings = {
 	HYPERDRIVE: Hyperdrive;
 };

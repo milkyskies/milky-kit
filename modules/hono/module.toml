@@ -9,3 +9,7 @@ default = "d1"
 [variants.api_style]
 options = ["rpc", "openapi"]
 default = "rpc"
+
+[variants.auth]
+options = ["none", "firebase"]
+default = "none"

@@ -1,0 +1,11 @@
+{
+	"vars": {
+		"FIREBASE_PROJECT_ID": "<your-firebase-project-id>"
+	},
+	"kv_namespaces": [
+		{
+			"binding": "JWK_CACHE",
+			"id": "<run-wrangler-kv-namespace-create-JWK_CACHE>"
+		}
+	]
+}

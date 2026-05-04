@@ -16,3 +16,23 @@ export const postsTable = sqliteTable(
 	},
 	(t) => [index("idx_posts_created_at").on(t.createdAt)],
 );
+
+// Always present so the auth=firebase variant's user-repository compiles
+// regardless of which auth strategy is selected. Idle when auth=none.
+export const usersTable = sqliteTable(
+	"users",
+	{
+		id: text("id").primaryKey(),
+		firebaseUid: text("firebase_uid").unique(),
+		email: text("email").unique(),
+		displayName: text("display_name").notNull(),
+		avatarUrl: text("avatar_url"),
+		createdAt: integer("created_at", { mode: "timestamp" })
+			.notNull()
+			.$defaultFn(() => new Date()),
+		updatedAt: integer("updated_at", { mode: "timestamp" })
+			.notNull()
+			.$defaultFn(() => new Date()),
+	},
+	(t) => [index("idx_users_firebase_uid").on(t.firebaseUid)],
+);

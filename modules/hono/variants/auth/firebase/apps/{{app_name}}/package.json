@@ -1,0 +1,5 @@
+{
+	"dependencies": {
+		"firebase-auth-cloudflare-workers": "^2.0.6"
+	}
+}
