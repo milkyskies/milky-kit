@@ -12,6 +12,10 @@
 			"esbuild",
 			"sharp",
 			"workerd"
-		]
+		],
+		"//trustPolicy": "Refuse install if a package's trust level decreased from a prior version (e.g. previously had provenance, new version doesn't). Catches the common compromise pattern where an attacker republishes from a stolen account without the original publisher's signing setup. (pnpm >= 10.21)",
+		"trustPolicy": "no-downgrade",
+		"//blockExoticSubdeps": "Refuse transitive deps from non-registry sources (git URLs, tarballs, local paths). Direct deps can still use exotic sources when explicitly declared, but a transitive dep is never allowed to drag in code from outside the registry. (pnpm >= 10.26)",
+		"blockExoticSubdeps": true
 	}
 }
