@@ -33,11 +33,13 @@ Edit `apps/{{app_name}}/wrangler.jsonc` — replace `<your-firebase-project-id>`
 
 ```bash
 cd apps/{{app_name}}
-pnpm wrangler kv namespace create JWK_CACHE
-pnpm wrangler kv namespace create USER_CACHE
+pnpm wrangler kv namespace create {{project_name}}_jwk_cache
+pnpm wrangler kv namespace create {{project_name}}_user_cache
 ```
 
 Paste returned `id`s into `wrangler.jsonc` under the matching bindings.
+
+The `binding` (how your code addresses it via `c.env.JWK_CACHE` / `c.env.USER_CACHE`) stays uppercase — that's a Worker-local name. The KV namespace **title** is project-prefixed so multiple projects on the same Cloudflare account don't collide (KV titles are account-scoped).
 
 ### 4. Wire the routes into app.ts
 

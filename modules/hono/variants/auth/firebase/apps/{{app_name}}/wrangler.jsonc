@@ -5,11 +5,11 @@
 	"kv_namespaces": [
 		{
 			"binding": "JWK_CACHE",
-			"id": "<run-wrangler-kv-namespace-create-JWK_CACHE>"
+			"id": "<run-wrangler-kv-namespace-create-{{project_name}}_jwk_cache>"
 		},
 		{
 			"binding": "USER_CACHE",
-			"id": "<run-wrangler-kv-namespace-create-USER_CACHE>"
+			"id": "<run-wrangler-kv-namespace-create-{{project_name}}_user_cache>"
 		}
 	]
 }
