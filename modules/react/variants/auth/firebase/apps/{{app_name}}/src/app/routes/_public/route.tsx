@@ -2,13 +2,14 @@ import { Outlet, createFileRoute, redirect } from "@tanstack/react-router";
 import { Match } from "effect";
 
 // Public routes (sign-in, sign-up). Signed-in users are redirected home.
+// `useAuth()` suspends in main.tsx, so by the time beforeLoad runs the
+// auth state is always settled (SignedIn or SignedOut, never Loading).
 export const Route = createFileRoute("/_public")({
 	beforeLoad: ({ context }) => {
 		Match.value(context.auth).pipe(
 			Match.tag("SignedIn", () => {
 				throw redirect({ to: "/" });
 			}),
-			Match.tag("Loading", () => {}),
 			Match.tag("SignedOut", () => {}),
 			Match.exhaustive,
 		);
