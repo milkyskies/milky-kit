@@ -1,8 +1,6 @@
-import type { Hyperdrive } from "@cloudflare/workers-types";
 import { type PostgresJsDatabase, drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-
-export type Bindings = { HYPERDRIVE: Hyperdrive };
+import type { Bindings } from "../env";
 
 // Single Drizzle handle every repository takes. Built once per request
 // (in `presentation/middleware/repositories.ts`) and shared across all repos

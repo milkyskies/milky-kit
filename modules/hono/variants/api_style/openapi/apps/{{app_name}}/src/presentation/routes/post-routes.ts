@@ -5,7 +5,7 @@ import { deletePost } from "../../application/use-case/delete-post";
 import { getPost } from "../../application/use-case/get-post";
 import { listPosts } from "../../application/use-case/list-posts";
 import { updatePost } from "../../application/use-case/update-post";
-import type { Bindings } from "../../infrastructure/db/database";
+import type { Bindings } from "../../infrastructure/env";
 import {
 	CreatePostDtoSchema,
 	ErrorResSchema,

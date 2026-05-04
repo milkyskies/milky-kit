@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import type { Bindings } from "../infrastructure/db/database";
+import type { Bindings } from "../infrastructure/env";
 import {
 	type RepositoryVariables,
 	repositoriesMiddleware,

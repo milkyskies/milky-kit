@@ -1,7 +1,6 @@
 import { neon } from "@neondatabase/serverless";
 import { type NeonHttpDatabase, drizzle } from "drizzle-orm/neon-http";
-
-export type Bindings = { DATABASE_URL: string };
+import type { Bindings } from "../env";
 
 // Single Drizzle handle every repository takes. Built once per request
 // (in `presentation/middleware/repositories.ts`) and shared across all repos

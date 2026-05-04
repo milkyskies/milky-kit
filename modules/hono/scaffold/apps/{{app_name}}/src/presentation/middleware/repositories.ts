@@ -1,7 +1,8 @@
 import { createMiddleware } from "hono/factory";
 import type { PostRepository } from "../../domain/repositories/post-repository";
-import { type Bindings, makeDatabase } from "../../infrastructure/db/database";
+import { makeDatabase } from "../../infrastructure/db/database";
 import { makePostRepository } from "../../infrastructure/db/post-repository";
+import type { Bindings } from "../../infrastructure/env";
 
 export type RepositoryVariables = {
 	postRepository: PostRepository;

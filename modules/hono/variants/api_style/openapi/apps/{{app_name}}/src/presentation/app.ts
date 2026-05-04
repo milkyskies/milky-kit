@@ -1,5 +1,5 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
-import type { Bindings } from "../infrastructure/db/database";
+import type { Bindings } from "../infrastructure/env";
 import {
 	type RepositoryVariables,
 	repositoriesMiddleware,

@@ -1,7 +1,5 @@
-import type { D1Database } from "@cloudflare/workers-types";
 import { type DrizzleD1Database, drizzle } from "drizzle-orm/d1";
-
-export type Bindings = { DB: D1Database };
+import type { Bindings } from "../env";
 
 // Single Drizzle handle every repository takes. Built once per request
 // (in `presentation/middleware/repositories.ts`) and shared across all repos
