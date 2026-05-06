@@ -34,11 +34,15 @@ if tmux has-session -t "$SESSION" 2>/dev/null; then
   exec tmux attach -t "$SESSION"
 fi
 
+# Pane targeting without explicit indices — works regardless of the
+# user's `pane-base-index` setting (some tmux.conf has it set to 1,
+# breaking `:dev.0` lookups). After new-session the only pane is active;
+# after split-window the NEW pane is active by default.
 tmux new-session -d -s "$SESSION" -n dev -c "$TARGET_DIR"
-tmux send-keys -t "$SESSION:dev.0" "mise run dev:api" Enter
+tmux send-keys -t "$SESSION:dev" "mise run dev:api $WORKTREE" Enter
 tmux split-window -v -t "$SESSION:dev" -c "$TARGET_DIR"
-tmux send-keys -t "$SESSION:dev.1" "mise run dev:client" Enter
-tmux select-pane -t "$SESSION:dev.0"
+tmux send-keys -t "$SESSION:dev" "mise run dev:client $WORKTREE" Enter
+tmux select-pane -U -t "$SESSION:dev"
 exec tmux attach -t "$SESSION"
 """
 

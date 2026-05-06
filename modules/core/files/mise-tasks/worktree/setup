@@ -15,21 +15,34 @@ cd "$WT_DIR"
 # Per-worktree database (skip if no DB configured)
 createdb "$DB_NAME" 2>/dev/null || true
 
-# Copy ALL .env files from main repo (preserves real API keys, secrets, etc.)
-find "$REPO_ROOT" -name ".env" -not -path "*/node_modules/*" -not -path "*/.git/*" -not -path "*/target/*" | while read -r envfile; do
-  relative="${envfile#$REPO_ROOT/}"
-  mkdir -p "$WT_DIR/$(dirname "$relative")"
-  cp -f "$envfile" "$WT_DIR/$relative"
-done
+# Copy ALL env-style secret files from main repo into the worktree.
+# Covers .env, .env.local, .env.development, .dev.vars (wrangler), and
+# any .env.<env> variant. Skips .example since those are already tracked
+# by git, plus heavy build artefacts.
+find "$REPO_ROOT" \
+	\( -name ".env" -o -name ".env.*" -o -name ".dev.vars" -o -name ".dev.vars.*" \) \
+	-not -name "*.example" \
+	-not -path "*/node_modules/*" \
+	-not -path "*/.git/*" \
+	-not -path "*/target/*" \
+	-not -path "*/dist/*" \
+	-not -path "*/.wrangler/*" \
+	-not -path "*/.next/*" \
+	| while read -r envfile; do
+		relative="${envfile#$REPO_ROOT/}"
+		mkdir -p "$WT_DIR/$(dirname "$relative")"
+		cp -f "$envfile" "$WT_DIR/$relative"
+	done
 
 # Fall back to .env.example if no .env exists at root
 if [ ! -f "$WT_DIR/.env" ] && [ -f .env.example ]; then
-  cp -f .env.example .env
+	cp -f .env.example .env
 fi
 
-# Patch DATABASE_URL for per-worktree database
+# Patch DATABASE_URL for per-worktree database (Postgres convention).
+# Skips wrangler's .dev.vars (uses Hyperdrive/D1, not a plain DATABASE_URL).
 if [ -f "$WT_DIR/.env" ]; then
-  sed -i '' "s|DATABASE_URL=.*|DATABASE_URL=postgres://{{project_name}}:{{project_name}}@localhost:5432/$DB_NAME|" "$WT_DIR/.env"
+	sed -i '' "s|DATABASE_URL=.*|DATABASE_URL=postgres://{{project_name}}:{{project_name}}@localhost:5432/$DB_NAME|" "$WT_DIR/.env"
 fi
 
 # Dependencies

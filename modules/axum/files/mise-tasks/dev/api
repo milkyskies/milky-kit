@@ -1,5 +1,20 @@
 #!/bin/bash
-#MISE description="Start API server"
+#MISE description="Start API server. Pass a worktree number to run in that worktree (e.g. `mise run dev:api 3`)."
 set -euo pipefail
 
-cargo run -p api
+WORKTREE="${1:-}"
+if [ -n "$WORKTREE" ]; then
+	GIT_COMMON_DIR="$(git rev-parse --path-format=absolute --git-common-dir)"
+	MAIN_REPO="$(dirname "$GIT_COMMON_DIR")"
+	BASE_DIR="$MAIN_REPO/../{{worktree_dir}}/$WORKTREE"
+	if [ ! -d "$BASE_DIR" ]; then
+		echo "No worktree at $BASE_DIR"
+		echo "Create one with: mise run worktree:setup $WORKTREE feature/#$WORKTREE.<summary>"
+		exit 1
+	fi
+	BASE_DIR="$(cd "$BASE_DIR" && pwd)"
+else
+	BASE_DIR="$(pwd)"
+fi
+
+cd "$BASE_DIR" && cargo run -p api
