@@ -77,6 +77,16 @@ feature/#409.llm-infrastructure -> main            <- one final PR
 - Use `glb search "query"` to find existing issues
 - Do NOT create markdown TODO lists or use external trackers
 
+## Pull Requests
+
+Every PR must link back to the issue it closes. This applies whether you open the PR via `/ship` or `gh pr create` directly.
+
+- **Title:** `[#<num>] <issue title>` — e.g. `[#22] Retire Cloudflare Pages branch previews`. Use the issue title from `glb show <num>`, not a conventional-commit summary.
+- **Sub-issue title** (epic-branch workflow only): `[#<epic-num>/#<num>] <issue title>`.
+- **Body:** must start with `closes #<num>` on the first line so GitHub auto-closes the issue on merge. Sub-issue PRs still use `closes #<sub-num>`.
+
+Do NOT use conventional-commit titles (`feat(api): …`, `fix(client): …`) for PRs — those belong on commits, not PRs. The `[#<num>]` prefix is what links the PR to the tracker.
+
 ## Multi-Agent Environment
 
 Multiple agents run in parallel on separate branches. This means:
