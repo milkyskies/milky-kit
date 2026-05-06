@@ -42,32 +42,49 @@ In the Supabase dashboard → SQL Editor → run:
 CREATE EXTENSION IF NOT EXISTS postgis;
 ```
 
-### 3. Get the connection string
+### 3. Two connection strings — know which goes where
 
-Project Settings → Database → Connection pooling. Copy the **Transaction pooler** URL (port 6543). It looks like:
+Supabase exposes the same database via two endpoints. Use the right one for the right thing or you'll spend hours debugging hung requests.
 
-```
-postgres://postgres.<project-ref>:<password>@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres
-```
+**Project Settings → Database** (or the Database tab) shows both:
+
+| URL | Port | Username | Use for |
+|---|---|---|---|
+| **Direct** — `db.<ref>.supabase.co` | `5432` | `postgres` | **Hyperdrive ONLY** (it runs its own transaction-mode pool on top — Cloudflare's docs require the direct host). |
+| **Supavisor pooler** — `aws-X-<region>.pooler.supabase.com` | `5432` (session) or `6543` (transaction) | `postgres.<ref>` | Migrations from your laptop (drizzle-kit). Long-lived connections from Node servers. NEVER for Hyperdrive. |
+
+**Why:** Hyperdrive is itself a transaction-mode pool. Stacking it on Supavisor's pool causes connections to silently hang during establishment — the Worker logs show alternating `Network connection lost` and `Worker's code had hung after we tried other drivers`. There's no clean error; requests just freeze.
 
 ### 4. Apply migrations to prod
 
+Use the **Supavisor pooler** URL here (drizzle-kit runs from your laptop, not from a Worker, so the pooler is fine and cheaper than direct):
+
 ```bash
-# Temporarily point .env at prod, run drizzle-kit migrate, revert.
-# OR: export DATABASE_URL inline so .env stays local-pointing:
-DATABASE_URL="postgres://..." pnpm db:migrate
+DATABASE_URL="postgres://postgres.<ref>:<password>@aws-X-<region>.pooler.supabase.com:6543/postgres" \
+  pnpm db:migrate
 ```
+
+(Or temporarily edit `.env`, run `pnpm db:migrate`, revert.)
 
 ### 5. Wire up Cloudflare Hyperdrive
 
+Use the **direct** URL — port 5432, user `postgres` (no `.<ref>` suffix):
+
 ```bash
-# Use the DIRECT (non-pooler) connection string for Hyperdrive — it does its own pooling.
-# Direct URL is on the same Database settings page (port 5432, not 6543).
 pnpm wrangler hyperdrive create {{project_name}}-db \
   --connection-string="postgres://postgres:<password>@db.<project-ref>.supabase.co:5432/postgres"
 ```
 
 It returns a Hyperdrive ID. Edit `wrangler.jsonc` and replace the `id` placeholder.
+
+**Heads-up if you're updating an existing Hyperdrive that was previously pointed at the pooler:**
+
+```bash
+pnpm wrangler hyperdrive update <existing-id> \
+  --connection-string="postgres://postgres:<password>@db.<project-ref>.supabase.co:5432/postgres"
+```
+
+Or recreate (`hyperdrive create` again) and bump `wrangler.jsonc`'s `id` to the new one. The symptom of an existing-pool-on-pool config is the same hang.
 
 ### 6. Deploy the Worker
 
@@ -120,3 +137,4 @@ await db.execute(sql`
 | `extension postgis does not exist` | Step 2 above (local) or Supabase SQL editor (prod) |
 | Hyperdrive returns stale connection | `wrangler hyperdrive update <id> --connection-string="..."` after rotating password |
 | Slow first query in prod | Hyperdrive is warming a connection; subsequent queries are fast |
+| Authed routes hang forever / `Network connection lost` / `Worker's code had hung after we tried other drivers` | Hyperdrive is pointed at Supabase's **Supavisor pooler** instead of the direct host. Stacking transaction pools breaks. Recreate Hyperdrive against `db.<ref>.supabase.co:5432` (user `postgres`) — see step 5. |
