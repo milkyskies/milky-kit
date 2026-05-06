@@ -4,7 +4,7 @@ import { useAuth } from "@/features/auth/use-auth";
 import { FullPageLoader } from "@/features/shared/components/full-page-loader";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider, createRouter } from "@tanstack/react-router";
-import { StrictMode, Suspense } from "react";
+import { StrictMode, Suspense, useMemo } from "react";
 import { createRoot } from "react-dom/client";
 import { routeTree } from "./app/routeTree.gen";
 
@@ -33,7 +33,12 @@ declare module "@tanstack/react-router" {
 
 function App() {
 	const auth = useAuth();
-	return <RouterProvider router={router} context={{ auth, queryClient }} />;
+	// Memoize so the context reference only changes when `auth` actually
+	// changes. A fresh `{ auth, queryClient }` object on every render makes
+	// TanStack Router think the context changed → it cancels in-flight
+	// loaders (matches show as `Canceled` in `wrangler tail`).
+	const context = useMemo(() => ({ auth, queryClient }), [auth]);
+	return <RouterProvider router={router} context={context} />;
 }
 
 const rootElement = document.getElementById("app");

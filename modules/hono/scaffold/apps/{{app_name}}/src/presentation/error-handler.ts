@@ -20,6 +20,16 @@ export const errorHandler: ErrorHandler = (error, context) => {
 		return context.json(mapped.value.body, mapped.value.status);
 	}
 
-	console.error(error);
+	// Drizzle / postgres-js wrap the real failure in a `cause` chain.
+	// `console.error(error)` alone prints only the top-level message,
+	// hiding the diagnostic text we actually need. Walk the chain.
+	console.error("[unhandled]", error);
+	let cursor: unknown = error instanceof Error ? error.cause : undefined;
+	let depth = 0;
+	while (cursor && depth < 5) {
+		console.error(`[unhandled.cause.${depth}]`, cursor);
+		cursor = cursor instanceof Error ? cursor.cause : undefined;
+		depth += 1;
+	}
 	return context.json({ error: "InternalServerError" }, 500);
 };
