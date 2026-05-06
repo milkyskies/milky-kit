@@ -6,20 +6,39 @@ rust = "latest"
 node = "22"
 
 [tasks.dev]
-description = "Full stack in tmux (API + client)"
+description = "Full stack in tmux split (API top, client bottom). Pass a worktree number to run in that worktree (e.g. `mise run dev 3`)."
 run = """
 #!/usr/bin/env bash
 set -euo pipefail
-SESSION="{{project_name}}"
+
+WORKTREE="${1:-}"
+if [ -n "$WORKTREE" ]; then
+  GIT_COMMON_DIR="$(git rev-parse --path-format=absolute --git-common-dir)"
+  MAIN_REPO="$(dirname "$GIT_COMMON_DIR")"
+  TARGET_DIR="$MAIN_REPO/../{{worktree_dir}}/$WORKTREE"
+  if [ ! -d "$TARGET_DIR" ]; then
+    echo "No worktree at $TARGET_DIR"
+    echo "Create one with: mise run worktree:setup $WORKTREE feature/#$WORKTREE.<summary>"
+    exit 1
+  fi
+  TARGET_DIR="$(cd "$TARGET_DIR" && pwd)"
+  (cd "$TARGET_DIR" && mise trust --all) >/dev/null 2>&1 || true
+  SESSION="{{project_name}}-$WORKTREE"
+else
+  TARGET_DIR="$(pwd)"
+  SESSION="{{project_name}}"
+fi
+
 if tmux has-session -t "$SESSION" 2>/dev/null; then
   echo "Session '$SESSION' already running. Attaching..."
   exec tmux attach -t "$SESSION"
 fi
-tmux new-session -d -s "$SESSION" -n api
-tmux send-keys -t "$SESSION:api" "mise run dev:api" Enter
-tmux new-window -t "$SESSION" -n client
-tmux send-keys -t "$SESSION:client" "mise run dev:client" Enter
-tmux select-window -t "$SESSION:api"
+
+tmux new-session -d -s "$SESSION" -n dev -c "$TARGET_DIR"
+tmux send-keys -t "$SESSION:dev.0" "mise run dev:api" Enter
+tmux split-window -v -t "$SESSION:dev" -c "$TARGET_DIR"
+tmux send-keys -t "$SESSION:dev.1" "mise run dev:client" Enter
+tmux select-pane -t "$SESSION:dev.0"
 exec tmux attach -t "$SESSION"
 """
 
