@@ -198,11 +198,7 @@ impl KitConfig {
             }
         }
 
-        // Collect @-references for every rule file for AGENTS.md's lazy-load
-        // list. Scans (1) each included module's rules/ directory, filtered
-        // by excludes, and (2) the project's local .claude/rules/ directory
-        // to include project-specific unmanaged rules. Skips general.md and
-        // workflow.md since they're always-loaded via opencode.json.
+        // general.md, workflow.md, and comments.md are always-loaded via opencode.json, so they are skipped here to avoid double-listing in AGENTS.md's lazy-load section.
         let mut rule_names: std::collections::BTreeSet<String> = Default::default();
         for module in &self.module_names() {
             let rules_dir = kit_home.join("modules").join(module).join("rules");
@@ -238,7 +234,7 @@ impl KitConfig {
         }
         let rule_refs: Vec<String> = rule_names
             .into_iter()
-            .filter(|n| n != "general.md" && n != "workflow.md")
+            .filter(|n| n != "general.md" && n != "workflow.md" && n != "comments.md")
             .map(|n| format!("- @.claude/rules/{}", n))
             .collect();
         extra.insert("rule_refs".into(), rule_refs.join("\n"));

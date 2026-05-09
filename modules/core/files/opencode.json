@@ -3,6 +3,7 @@
   "instructions": [
     "CLAUDE.md",
     ".claude/rules/general.md",
-    ".claude/rules/workflow.md"
+    ".claude/rules/workflow.md",
+    ".claude/rules/comments.md"
   ]
 }

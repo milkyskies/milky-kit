@@ -1,5 +1,6 @@
 # General Practices
 
+- **Comments — read `.claude/rules/comments.md` before writing any comment.** The default is no comment. Narration of what code does, "mirrors X" pointers, hand-wrapped lines, and sentence fragments are forbidden. WHY-only, proper sentences, let the formatter wrap.
 - **No abbreviations in communication.** Write full words in responses. Avoid abbreviations like "cfg" (config), "deps" (dependencies), "repo" (repository), etc. Common acronyms like CI, DI, PR are fine.
 
 - **Use libraries.** Search for existing crates/packages before building. Prefer mature, well-maintained ones. Only roll your own when nothing suitable exists or the functionality is trivial.
