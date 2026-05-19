@@ -6,6 +6,7 @@
 - **Use libraries.** Search for existing crates/packages before building. Prefer mature, well-maintained ones. Only roll your own when nothing suitable exists or the functionality is trivial.
 - **Use CLI to add packages** — never edit manifest files by hand. Rust: `cargo add <crate>` from the app directory. Node: `pnpm add <package>` from the app directory.
 - **Use Context7 MCP** for library/framework docs before guessing APIs. Use WebSearch/WebFetch when stuck.
+- **Hand off interactive steps.** When a command needs an interactive TTY (prompts, arrow-key selects) or another human-only step, ask the user to run that one step — give them a plain command and tell them exactly what to answer at each prompt. Don't burn multiple attempts on pseudo-TTY workarounds (`script`, `expect`, piped newline feeds, background-process juggling). One quick automated check is fine; if it clearly needs a TTY, hand it off.
 - **If something is hard**, don't skip it. Search the internet. If still stuck, leave a stub and a TODO comment.
 - **No bandaid fixes.** Always do the correct, elegant, and scalable fix. If a quick hack would fix the symptom but leave the root cause or create tech debt, stop and think about the proper solution first. Ask the user if unsure. A correct fix now saves three fix-the-fix PRs later.
 - **Bug fixes start with a failing test.** Reproduce the bug with a test that fails, then fix it.

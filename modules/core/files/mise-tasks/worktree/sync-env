@@ -1,0 +1,37 @@
+#!/bin/bash
+#MISE description="Re-copy env files (.env, .dev.vars, etc.) from main repo into an existing worktree. Useful when a worktree was created before .dev.vars existed, or when secrets rotated in main."
+set -euo pipefail
+
+NUM="$1"
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+WT_DIR="$REPO_ROOT/../{{worktree_dir}}/$NUM"
+
+if [ ! -d "$WT_DIR" ]; then
+	echo "No worktree at $WT_DIR"
+	echo "Create one with: mise run worktree:setup $NUM feature/#$NUM.<summary>"
+	exit 1
+fi
+
+WT_DIR="$(cd "$WT_DIR" && pwd)"
+
+# Same env-file collection as worktree/setup. Idempotent — overwrites
+# (cp -f) so re-running is safe.
+copied=0
+find "$REPO_ROOT" \
+	\( -name ".env" -o -name ".env.*" -o -name ".dev.vars" -o -name ".dev.vars.*" \) \
+	-not -name "*.example" \
+	-not -path "*/node_modules/*" \
+	-not -path "*/.git/*" \
+	-not -path "*/target/*" \
+	-not -path "*/dist/*" \
+	-not -path "*/.wrangler/*" \
+	-not -path "*/.next/*" \
+	| while read -r envfile; do
+		relative="${envfile#$REPO_ROOT/}"
+		mkdir -p "$WT_DIR/$(dirname "$relative")"
+		cp -f "$envfile" "$WT_DIR/$relative"
+		echo "  + $relative"
+		copied=$((copied + 1))
+	done
+
+echo "Synced env files from $REPO_ROOT into $WT_DIR"

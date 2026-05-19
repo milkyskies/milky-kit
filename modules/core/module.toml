@@ -7,6 +7,10 @@ src = "mise-tasks/worktree/cleanup"
 dest = ".mise/tasks/worktree/cleanup"
 
 [[files]]
+src = "mise-tasks/worktree/sync-env"
+dest = ".mise/tasks/worktree/sync-env"
+
+[[files]]
 src = "AGENTS.md"
 dest = "AGENTS.md"
 
