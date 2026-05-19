@@ -1,310 +1,153 @@
 # milky-kit
 
-Scaffold full-stack projects from composable templates and keep their shared rules/skills/configs in sync. Built around three ideas:
+Personal project kit for full-stack work. Ships paradigm-complete stack templates, composable modules for cross-cutting concerns (CI, security, ghlobes), and a Claude Code plugin that scaffolds new projects and retrofits existing ones.
 
-- **Modules** — reusable units (`react`, `hono`, `rust`, `axum`, etc.) that ship rules, mise tasks, and scaffold trees
-- **Apps** — instances of a template inside a project (`apps/api`, `apps/client`, `apps/admin`) — same template, different name
-- **Variants** — swappable parts of a template (e.g. `db = "neon" | "d1" | "supabase"`, `mobile = "tauri" | "capacitor" | "none"`) that overlay onto the base scaffold
+## The two layers
 
-## Install
+Two kinds of things live in this repo, and they compose differently. Mixing them up is the trap most kit repos fall into.
 
-```bash
-git clone git@github.com:milkyskies/milky-kit.git ~/.milky-kit
-cd ~/.milky-kit && cargo install --path .
-```
+### Templates (alternatives) — pick one per project
 
-Or set `MILKY_KIT_HOME` to wherever you cloned it and run from there.
+A **template** is a complete paradigm choice for a project. Each template owns its rules, scaffold tree, CLAUDE.md template, and capability set. Templates don't compose with each other.
 
-## Quick start
-
-```bash
-mkdir my-app && cd my-app
-git init
-```
-
-Write a `milky-kit.toml`. Two equally-supported shapes:
-
-### New shape — `[[apps]]` (recommended)
-
-Explicit, supports multiple apps from the same template, per-app variants:
-
-```toml
-[project]
-name = "my-app"
-worktree_dir = "my-app-worktrees"
-
-[[apps]]
-name = "api"
-template = "hono"
-variants = { db = "supabase", api_style = "rpc" }
-
-[[apps]]
-name = "client"
-template = "react"
-variants = { mobile = "capacitor", ui = "heroui" }
-
-[[apps]]
-name = "admin"
-template = "react"
-# admin gets defaults: mobile=none, ui=none
-
-[skills]
-include = ["ship", "rulify", "retrospective", "land"]
-```
-
-### Legacy shape — `[stack]`
-
-Single backend + single frontend, no app naming. Still works; synthesized into the `[[apps]]` form internally:
-
-```toml
-[project]
-name = "my-app"
-worktree_dir = "my-app-worktrees"
-
-[stack]
-languages = ["ts"]
-backend = "hono"
-database = "postgres"     # → variants = { db = "neon" }
-frontend = "react"
-ui = "shadcn"             # → variants = { ui = "shadcn" }
-tauri = true              # → variants = { mobile = "tauri" }
-
-[skills]
-include = ["ship", "rulify", "retrospective", "land"]
-```
-
-Then:
-
-```bash
-milky-kit scaffold        # generate apps/, packages/, configs
-pnpm install              # for TS projects
-```
-
-## Commands
-
-| Command | Effect |
-|---|---|
-| `milky-kit scaffold` | One-shot — generates `apps/`, `packages/`, configs from your `milky-kit.toml`. Skips files that already exist. |
-| `milky-kit sync` | Re-sync rules, skills, mise tasks. Idempotent. Run after editing milky-kit upstream. |
-| `milky-kit diff` | Dry run of `sync` — shows what would change. |
-| `milky-kit init` | Interactive `milky-kit.toml` builder. (Note: the prompt UI lags the new variant system; hand-write `[[apps]]` for new projects.) |
-
-## How variants work
-
-A module declares variant axes in its `module.toml`:
-
-```toml
-# modules/hono/module.toml
-[variants.db]
-options = ["d1", "neon", "supabase"]
-default = "d1"
-
-[variants.api_style]
-options = ["rpc", "openapi"]
-default = "rpc"
-```
-
-Files specific to a variant live in `variants/<axis>/<choice>/`:
-
-```
-modules/hono/
-├── scaffold/                                       # always copied
-│   └── apps/{{app_name}}/
-│       ├── src/domain/                             # shared across all variants
-│       └── src/application/
-└── variants/
-    ├── db/
-    │   ├── d1/apps/{{app_name}}/...                # only when db=d1
-    │   ├── neon/apps/{{app_name}}/...
-    │   └── supabase/apps/{{app_name}}/...
-    └── api_style/
-        ├── rpc/apps/{{app_name}}/src/presentation/routes.ts
-        └── openapi/apps/{{app_name}}/...
-```
-
-When the user picks `variants = { db = "neon", api_style = "rpc" }`:
-1. Base scaffold copies first
-2. Each chosen variant directory layers on top
-3. **JSON files merge** (variant `package.json` overlay adds deps to base) — supports tabs/indent preserved
-4. Other file collisions error loudly — design rule is variants don't write paths the base also writes
-
-## Multi-app + `{{app_name}}`
-
-Templates use `{{app_name}}` in paths AND content. The scaffold engine renders the same template once per `[[apps]]` entry:
-
-```
-modules/react/scaffold/apps/{{app_name}}/package.json
-```
-
-becomes
-
-```
-my-app/apps/client/package.json
-my-app/apps/admin/package.json
-```
-
-with `app_name = "client"` or `"admin"` substituted. The React app code is single-source — no duplication for `client + admin`.
-
-## Available modules
-
-| Module | What it produces | Variant axes |
+| Template | Stack | Headline capabilities |
 |---|---|---|
-| `core` | mise.toml, AGENTS.md, CLAUDE.md, .gitignore, .env.example, worktree tasks, base rules | — |
-| `pnpm` | pnpm-workspace.yaml, root package.json | — |
-| `monorepo` | rust workspace Cargo.toml | — |
-| `ts-shared` | `packages/tsconfig/`, `packages/biome-config/` (auto-included for any TS project) | — |
-| `rust` | rust-style + clean-architecture rules | — |
-| `axum` | rust API server scaffold (CRUD + OpenAPI) | — |
-| `postgres` | docker-compose.yml | — |
-| `sqlite` | sqlite .env stub | — |
-| `seaorm` | rust ORM scaffold (entities, migrator) | — |
-| `sqlx` | rust sqlx scaffold (compile-time SQL) | — |
-| **`hono`** | Cloudflare Workers API + Drizzle + RPC | `db = d1 \| neon \| supabase`, `api_style = rpc \| openapi` |
-| **`react`** | TanStack Router/Query + Vite + biome + Tailwind | `mobile = none \| tauri \| capacitor`, `ui = none \| shadcn \| heroui` |
+| `templates/effect-api` | TS + Effect + `@effect/platform` + `@effect/sql-drizzle` + Postgres | HttpApi-driven server, auto-generated OpenAPI + Swagger, typed `HttpApiClient`, MCP server (`@effect/ai`), typed error channel, Schema-everywhere boundaries, Layer/Context DI, `@effect/vitest` |
+| `templates/hono-api` | TS + Hono + Drizzle + Effect (flavored) | Hono RPC, Zod-OpenAPI (manual), middleware DI, Workers deploy |
+| `templates/react-spa` | TS + React + TanStack Router/Query + Vite | Suspense-first data fetching, file-based routing, UI variants |
+| `templates/axum-api` | Rust + Axum + SeaORM + Postgres | Clean-architecture domain split, typed Result errors, OpenAPI via utoipa |
+| `templates/bun-scripts` | Bun + TS | Single-file scripts, no build step, Bun-native APIs |
 
-The `**bold**` ones are the recently rebuilt templates that ship with full integration tests. The Rust set (`axum`/`seaorm`/`sqlx`) is older and uses the legacy `[stack]` form; it works but doesn't have variants yet.
+### Modules (composables) — layer on top of any template
 
-## Project layout (after scaffold)
+A **module** is one orthogonal concern that composes cleanly with any template. They don't conflict because each module addresses a different concern.
 
-```
-my-app/
-├── milky-kit.toml          # your config
-├── milky-kit.lock          # auto-managed (lists every file synced)
-├── mise.toml               # composite tasks (project-owned)
-├── .mise/tasks/            # per-module synced tasks
-├── .claude/
-│   ├── rules/              # synced rules (.md, managed)
-│   ├── skills/              # synced skills (managed)
-│   └── settings.json       # project-owned
-├── apps/
-│   ├── api/                # one [[apps]] entry → one dir
-│   └── client/
-├── packages/               # auto: tsconfig, biome-config, ...
-├── docker-compose.yml      # only if a postgres-using variant ships one
-├── AGENTS.md               # synced (with @-refs to all rules)
-├── CLAUDE.md               # synced
-├── opencode.json           # synced (OpenCode config)
-└── package.json            # synced (workspace root)
-```
-
-## Synced vs scaffolded vs project-owned
-
-| | Where it goes | When | Idempotent? | Touched by sync? |
-|---|---|---|---|---|
-| **Scaffolded** | `apps/`, `packages/`, root `Cargo.toml`, etc. | One-shot via `scaffold` | No (skips existing files) | No |
-| **Synced** | `.claude/rules/`, `.claude/skills/`, `.mise/tasks/`, `AGENTS.md`, etc. | Every `sync` run | Yes (managed-marker header) | Yes (overwrites) |
-| **Project-owned** | Everything else (`src/` you wrote, `.claude/rules/my-rule.md` you added, etc.) | n/a | n/a | Never touched |
-
-Synced files have a `managed by milky-kit | DO NOT EDIT` header. milky-kit only deletes/overwrites files it remembers from `milky-kit.lock`.
-
-## Excluding from sync
-
-```toml
-[sync]
-exclude = [
-    "ship/SKILL.md",                # matches .claude/skills/ship/SKILL.md
-    ".claude/rules/testing.md",     # exact path
-    ".cargo/config.toml",
-]
-```
-
-Excluded files are skipped by sync. The project owns them.
-
-## How-to
-
-### Edit a shared rule
-
-```bash
-vim ~/.milky-kit/modules/rust/rules/rust-style.md
-cd ~/.milky-kit && git add -A && git commit -m "update rust style" && git push
-
-# Sync to each project that uses it
-cd ~/Code/Projects/my-app && milky-kit sync
-```
-
-### Add a synced mise task
-
-```bash
-cat > ~/.milky-kit/modules/rust/files/mise-tasks/test/rust << 'EOF'
-#!/bin/bash
-#MISE description="Run Rust tests"
-set -euo pipefail
-cargo nextest run
-EOF
-chmod +x ~/.milky-kit/modules/rust/files/mise-tasks/test/rust
-
-# Map it
-echo '
-[[files]]
-src = "mise-tasks/test/rust"
-dest = ".mise/tasks/test/rust"' >> ~/.milky-kit/modules/rust/module.toml
-```
-
-### Add a new variant
-
-Pick an axis on a module, drop files in `variants/<axis>/<choice>/`. The scaffold engine picks them up; sync picks up rules in `variants/<axis>/<choice>/rules/`. See `modules/hono/variants/db/supabase/` for a complete example.
-
-### Add a new module
-
-Create `modules/<name>/`:
-- `module.toml` — declares `[[files]]` mappings and `[variants.<axis>]` blocks
-- `rules/*.md` — rules to sync
-- `files/<...>` — files mapped via `[[files]]`
-- `scaffold/<...>` — one-shot files copied at scaffold time
-- `variants/<axis>/<choice>/<...>` — variant overlays
-
-Then reference it from `[[apps]]` (`template = "<name>"`) or include it via `[stack]` if it's an infra module.
-
-## Testing
-
-The scaffold engine has an end-to-end integration test:
-
-```bash
-bash scripts/test-scaffold.sh                   # all fixtures
-bash scripts/test-scaffold.sh ts-fullstack      # one fixture
-KEEP_SCAFFOLD=1 bash scripts/test-scaffold.sh   # leave temp dirs for debugging
-```
-
-For each fixture in `scripts/scaffold-fixtures/<name>/milky-kit.toml`:
-1. `milky-kit scaffold` into a temp dir
-2. `pnpm install` if `pnpm-workspace.yaml` was emitted
-3. Per app: `pnpm routes:generate` + `pnpm typecheck` + `pnpm lint`
-4. `cargo check` if `Cargo.toml` was emitted
-
-Add a fixture when you add a variant or stack combination worth keeping green. CI runs the same script via `.github/workflows/scaffold-test.yml` on every push.
-
-## Template variables
-
-Module files (any text file, including paths) use `{{var}}` substitution:
-
-| Variable | Source |
+| Module | What it adds |
 |---|---|
-| `{{project_name}}` | `[project].name` |
-| `{{worktree_dir}}` | `[project].worktree_dir` |
-| `{{app_name}}` | Set per-app when rendering an app template |
-| `{{project_root}}` | Absolute path to project root |
-| `{{db_driver}}`, `{{db_url_example}}` | Derived from `[stack].database` (legacy) |
-| Anything in `[project]` | `[project].my_var = "x"` → `{{my_var}}` |
+| `modules/core` | General rules, comments, config/env conventions, worktree mise tasks |
+| `modules/ts` | Paradigm-neutral TypeScript conventions, blank-lines style |
+| `modules/ci` | GitHub Actions workflow + per-package script enforcement |
+| `modules/security` | OSV-Scanner, zizmor, pinned actions, GitHub-context shell-injection prevention |
+| `modules/pnpm` | pnpm workspace config + pnpm-specific supply-chain controls (cooldown, safe-chain, trust policy, onlyBuiltDependencies) |
+| `modules/bun` | Bun workspace + Bun-specific security notes (with honest gaps) |
+| `modules/ghlobes` | `.ghlobes.toml` scaffold + the glb agent rule file |
+| `modules/postgres` | docker-compose Postgres + Effect-flavored `@effect/sql-pg` notes |
+| `modules/sqlite` | local SQLite scaffold |
 
-## Lock file
+A project's `CLAUDE.md` picks one template's rules and as many module rules as it needs, all via `@`-refs into milky-kit.
 
-`milky-kit.lock` records what was synced:
+## How a project consumes the kit
 
-```toml
-kit_version = "0.1.0"
-kit_commit = "a51cf15"
-last_sync = "2026-04-29T04:40:35Z"
-managed = [
-    ".claude/rules/workflow.md",
-    ".mise/tasks/worktree/setup",
-    # ...
-]
+Rules are **referenced**, not copied. Each project's `CLAUDE.md` is a short list of `@`-refs into this repo:
+
+```md
+# Template
+@~/.claude/kit/templates/effect-api/rules/effect.md
+
+# Shared
+@~/.claude/kit/modules/core/rules/general.md
+@~/.claude/kit/modules/core/rules/comments.md
+@~/.claude/kit/modules/core/rules/config-and-env.md
+
+# Composables
+@~/.claude/kit/modules/pnpm/rules/pnpm.md
+@~/.claude/kit/modules/pnpm/rules/pnpm-security.md
+@~/.claude/kit/modules/security/rules/security.md
+@~/.claude/kit/modules/ghlobes/rules/glb.md
+@~/.claude/kit/modules/postgres/rules/postgres.md
+
+## Project-specific
+
+(project-specific rules go here, owned by the project)
 ```
 
-Used to detect files that should be removed when a module is removed from the config. Glance at it to see if a project is behind.
+Edit a rule file in milky-kit, and every project picks it up next time Claude loads `CLAUDE.md`. No sync step, no copy, no drift.
 
-## Open questions / known gaps
+Scaffold files (gitignore, biome.json, tsconfig, CI workflows, .ghlobes.toml) are **copied once at init**, then the project owns them. Updates flow through the upgrade skill.
 
-- **`milky-kit init`** is still wired to the legacy `[stack]` prompt — doesn't generate `[[apps]]` form. Hand-write configs for now.
-- The Rust side (`axum`, `seaorm`, `sqlx`) hasn't been migrated to the variant system yet. Works fine via `[stack]`, but no per-app variants.
-- No automatic migration tool for legacy → `[[apps]]`. The legacy form keeps working indefinitely; migrate when you need a new feature.
+## Setup
+
+Symlink milky-kit at a stable path so `@`-refs in scaffolded `CLAUDE.md` files resolve everywhere:
+
+```bash
+ln -s ~/Code/Projects/milky-kit ~/.claude/kit
+```
+
+Install the milky-kit Claude Code plugin (provides the `milky-kit:new`, `milky-kit:retrofit`, `milky-kit:upgrade`, `milky-kit:check-version` skills).
+
+## Scaffold a new project
+
+In Claude Code, in an empty directory:
+
+```
+/milky-kit:new
+```
+
+The skill asks:
+1. Which template? (`effect-api`, `hono-api`, `react-spa`, `axum-api`, `bun-scripts`)
+2. Which composable modules? (multi-select: ghlobes, security, ci, postgres, etc.)
+3. Variants where applicable (db backend, auth, UI library)
+4. Project name + directory
+5. Any project-specific rules to append? (free-text, written under `## Project-specific` in CLAUDE.md)
+
+Then it copies the template + module scaffolds, writes `CLAUDE.md` with the right `@`-refs, runs the package manager install, initializes git, and commits the initial scaffold.
+
+## Apply the kit to an existing repo
+
+```
+/milky-kit:retrofit
+```
+
+The skill detects the current stack, asks which modules to apply, and copies in scaffold files while merging (not overwriting) anything the project already has. `CLAUDE.md` gets `@`-refs appended; existing project-specific content stays.
+
+## Upgrade an existing project
+
+```
+/milky-kit:upgrade
+```
+
+The skill reads `.milky-kit-version`, walks milky-kit's git log since that SHA, and guides you through each change that affects your project's stack — with judgment, because every project diverges from the kit over time.
+
+## Versioning
+
+milky-kit has no semver tags (yet). The version of milky-kit a project was scaffolded against is the **commit SHA** at scaffold time, recorded in the project's `.milky-kit-version` file. `milky-kit:check-version` compares that SHA against `git rev-parse HEAD` of the local kit checkout and prints what's changed since.
+
+Tagged releases may come later as the kit stabilizes; the skills will prefer tag names over SHAs once they exist.
+
+## Repo layout
+
+```
+milky-kit/
+├── README.md
+├── .claude-plugin/             Claude Code plugin manifest
+├── skills/                     Plugin skills (new, retrofit, upgrade, check-version)
+├── templates/                  Stack templates (alternatives — pick one per project)
+│   ├── effect-api/
+│   │   ├── rules/
+│   │   ├── scaffold/           One-shot copy at init
+│   │   └── CLAUDE.md           Template for the project's CLAUDE.md
+│   ├── hono-api/
+│   ├── react-spa/
+│   ├── axum-api/
+│   └── bun-scripts/
+└── modules/                    Cross-cutting modules (composables — layer freely)
+    ├── core/
+    ├── ts/                     Paradigm-neutral TS rules
+    ├── ci/
+    ├── security/
+    ├── pnpm/
+    ├── bun/
+    ├── ghlobes/
+    ├── postgres/
+    └── sqlite/
+```
+
+## Why templates vs modules
+
+The split exists because not every concern composes. Templates declare paradigm choices that conflict with each other (Effect's typed error channel vs Hono's middleware throws; Rust's Result vs TS's Promise). You pick one. Modules declare orthogonal concerns (CI is independent of the API framework; ghlobes is independent of the language). They layer freely.
+
+This split is what makes the asymmetry between templates honest. `effect-api` ships MCP, `hono-api` does not — that's not a missing feature, it's a different paradigm with a different ceiling. Each template's `README.md` lists its capabilities so projects choose with eyes open.
+
+## Task tracking
+
+This kit uses `glb` (ghlobes) for issue tracking via GitHub Issues + Projects. See `modules/ghlobes/rules/glb.md` for the agent workflow and command reference.
