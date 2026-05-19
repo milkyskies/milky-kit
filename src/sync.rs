@@ -21,6 +21,7 @@ pub fn run(kit_home: &Path, dry_run: bool) -> Result<()> {
     let config = config::load_kit_config()?;
     let module_names = config.module_names();
     let excludes = &config.sync.exclude;
+    let vars = config.template_vars(kit_home);
     let mut managed: Vec<String> = Vec::new();
     let mut actions: Vec<SyncAction> = Vec::new();
 
@@ -43,8 +44,7 @@ pub fn run(kit_home: &Path, dry_run: bool) -> Result<()> {
             sync_rules(
                 &rules_dir,
                 module_name,
-                &config,
-                kit_home,
+                &vars,
                 excludes,
                 &mut actions,
                 &mut managed,
@@ -84,8 +84,7 @@ pub fn run(kit_home: &Path, dry_run: bool) -> Result<()> {
                     sync_rules(
                         &variant_rules,
                         &format!("{}[{}={}]", module_name, axis, choice),
-                        &config,
-                        kit_home,
+                        &vars,
                         excludes,
                         &mut actions,
                         &mut managed,
@@ -105,7 +104,7 @@ pub fn run(kit_home: &Path, dry_run: bool) -> Result<()> {
                 continue;
             }
             let content = fs::read_to_string(&src)?;
-            let content = template::render(&content, &config.template_vars(kit_home));
+            let content = template::render(&content, &vars);
             let ext = src.extension().and_then(|e| e.to_str()).unwrap_or("");
             let content = template::add_managed_header(&content, ext);
 
@@ -133,8 +132,7 @@ pub fn run(kit_home: &Path, dry_run: bool) -> Result<()> {
             &skill_dir,
             &dest_prefix,
             skill_name,
-            &config,
-            kit_home,
+            &vars,
             excludes,
             &mut actions,
             &mut managed,
@@ -231,8 +229,7 @@ pub fn run(kit_home: &Path, dry_run: bool) -> Result<()> {
 fn sync_rules(
     rules_dir: &Path,
     module_name: &str,
-    config: &config::KitConfig,
-    kit_home: &Path,
+    vars: &config::ProjectVars,
     excludes: &[String],
     actions: &mut Vec<SyncAction>,
     managed: &mut Vec<String>,
@@ -249,7 +246,7 @@ fn sync_rules(
             continue;
         }
         let content = fs::read_to_string(&path)?;
-        let content = template::render(&content, &config.template_vars(kit_home));
+        let content = template::render(&content, vars);
         let content = template::add_managed_header(&content, "md");
 
         actions.push(SyncAction {
@@ -262,13 +259,11 @@ fn sync_rules(
     Ok(())
 }
 
-#[allow(clippy::too_many_arguments)]
 fn sync_directory(
     src_dir: &Path,
     dest_prefix: &str,
     source_label: &str,
-    config: &config::KitConfig,
-    kit_home: &Path,
+    vars: &config::ProjectVars,
     excludes: &[String],
     actions: &mut Vec<SyncAction>,
     managed: &mut Vec<String>,
@@ -293,7 +288,7 @@ fn sync_directory(
 
         let content = if is_text {
             let raw = fs::read_to_string(entry.path())?;
-            template::render(&raw, &config.template_vars(kit_home))
+            template::render(&raw, vars)
         } else {
             fs::read_to_string(entry.path()).unwrap_or_default()
         };
