@@ -46,8 +46,18 @@ jobs:
         # would defeat the cooldown + trust-policy checks applied locally).
         run: pnpm install --frozen-lockfile
 
+      - name: Check every package defines typecheck/lint/test
+        # Catches "added a package but forgot to wire up the test runner"
+        # at PR time. See modules/ci/rules/ci.md.
+        run: bash .github/scripts/check-package-scripts.sh
+
       - name: Lint
         run: pnpm -r lint
 
       - name: Typecheck
         run: pnpm -r typecheck
+
+      - name: Test
+        # No --if-present — every package must define `test`. The
+        # check-package-scripts step above enforces that.
+        run: pnpm -r test

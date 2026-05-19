@@ -1,3 +1,23 @@
 [[files]]
 src = "mise-tasks/dev/api"
 dest = ".mise/tasks/dev/api"
+
+[[files]]
+src = "mise-tasks/check/rust"
+dest = ".mise/tasks/check/rust"
+
+[[files]]
+src = "mise-tasks/fmt/rust"
+dest = ".mise/tasks/fmt/rust"
+
+[[files]]
+src = "mise-tasks/clean"
+dest = ".mise/tasks/clean"
+
+[[files]]
+src = "mise-tasks/db/migrate"
+dest = ".mise/tasks/db/migrate"
+
+[[files]]
+src = "mise-tasks/db/status"
+dest = ".mise/tasks/db/status"

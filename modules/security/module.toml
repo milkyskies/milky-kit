@@ -1,0 +1,3 @@
+[[files]]
+src = "../scaffold/.github/workflows/security.yml"
+dest = ".github/workflows/security.yml"

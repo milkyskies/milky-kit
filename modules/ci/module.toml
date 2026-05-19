@@ -1,0 +1,4 @@
+[[files]]
+src = "../scaffold/.github/scripts/check-package-scripts.sh"
+dest = ".github/scripts/check-package-scripts.sh"
+mode = "0755"
