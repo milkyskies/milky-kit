@@ -21,6 +21,18 @@ Every fallible or effectful operation returns `Effect<A, E, R>`:
 
 Compose with `Effect.gen` (sequential, generator style) or `pipe(...)` (transformation style). Run at the edge with `Effect.runPromise` / `Effect.runFork` once, at the top of `main.ts`, with every `Layer` provided.
 
+## Use cases are mandatory
+
+**Every operation the system performs is a use case in `application/use-case/<verb>-<resource>.ts`.** This is the load-bearing discipline of the template — break it and the whole layout falls apart.
+
+- **Never** write business logic inline in a presentation handler (HTTP route, MCP tool, CLI command). The handler is a 3-line shim: parse input → call use case → return result.
+- **Never** call repositories or services directly from presentation. Presentation only knows the use case.
+- **If a handler needs to do two things in sequence, that's a new use case.** Don't compose use cases inline at the handler. Make a `checkoutAndNotify` use case that calls both, then call the new one from the handler.
+- **Use cases are the unit of MCP exposure too.** An MCP tool is a use case picked for agent ergonomics. New agent-shaped operation → new use case, not a special handler.
+- The exception is genuinely zero-logic endpoints (health check, schema introspection). Those can be inline. Anything with branching, state, or side effects becomes a use case.
+
+A presentation file with an `Effect.gen` block longer than 3 lines is a code smell. Extract.
+
 ## Where things live
 
 ```

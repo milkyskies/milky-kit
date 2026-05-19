@@ -1,0 +1,7 @@
+# Template-level mise tasks. The template scaffold itself ships
+# scripts in package.json; these mise tasks wrap docker-compose and
+# common dev loops at the project root.
+
+[[files]]
+src = "../scaffold/docker-compose.yml"
+dest = "docker-compose.yml"

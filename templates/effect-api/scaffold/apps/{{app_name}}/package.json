@@ -1,0 +1,36 @@
+{
+	"name": "@{{project_name}}/{{app_name}}",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "bun --hot src/main.ts",
+		"start": "bun src/main.ts",
+		"typecheck": "tsc --noEmit",
+		"lint": "biome check .",
+		"test": "vitest run",
+		"db:generate": "drizzle-kit generate",
+		"db:migrate": "drizzle-kit migrate",
+		"db:studio": "drizzle-kit studio"
+	},
+	"dependencies": {
+		"effect": "^3.18.0",
+		"@effect/platform": "^0.95.0",
+		"@effect/platform-bun": "^0.94.0",
+		"@effect/sql": "^0.49.0",
+		"@effect/sql-drizzle": "^0.49.0",
+		"@effect/sql-pg": "^0.49.0",
+		"@effect/ai": "^0.30.0",
+		"drizzle-orm": "^0.38.0",
+		"postgres": "^3.4.5"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.4.15",
+		"@effect/vitest": "^0.27.0",
+		"@milkyskies/biome-config": "^0.1.0",
+		"@types/bun": "^1.1.14",
+		"drizzle-kit": "^0.30.0",
+		"typescript": "^5.7.0",
+		"vitest": "^2.1.0"
+	}
+}
