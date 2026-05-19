@@ -14,6 +14,7 @@ The user's global `~/.claude/CLAUDE.md` already references the universal rules i
 @./modules/ghlobes/rules/glb.md
 @./modules/ci/rules/ci.md
 @./modules/security/rules/security.md
+@./modules/release-please/rules/release-please.md
 
 ## Project-specific
 

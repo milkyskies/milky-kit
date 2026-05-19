@@ -1,0 +1,26 @@
+name: Release
+
+# Kit-self-apply: mirrors modules/release-please/variants/publish/none/.github/workflows/release.yml.
+# milky-kit itself is not published anywhere — release-please just creates
+# the tag + GitHub release, which gives the kit a versioned reference
+# that projects record in .milky-kit-version.
+
+on:
+  workflow_call:
+    inputs:
+      tag_name:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  tag-only:
+    name: Tag-only release (no publish target)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report
+        run: |
+          echo "Release ${{ inputs.tag_name }} cut. No publish step configured."
+          echo "release-please already created the tag + GitHub release."

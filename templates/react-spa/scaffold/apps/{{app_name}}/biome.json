@@ -1,7 +1,6 @@
 {
 	"$schema": "https://biomejs.dev/schemas/2.4.15/schema.json",
 	"extends": ["@milkyskies/biome-config/biome.json"],
-	"plugins": ["./node_modules/@milkyskies/biome-config/plugins/no-as-cast.grit"],
 	"files": {
 		"includes": ["**", "!**/routeTree.gen.ts", "!**/_generated"]
 	}

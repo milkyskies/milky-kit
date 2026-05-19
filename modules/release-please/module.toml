@@ -1,0 +1,15 @@
+[[files]]
+src = "../scaffold/.github/release-please-config.json"
+dest = ".github/release-please-config.json"
+
+[[files]]
+src = "../scaffold/.github/release-please-manifest.json"
+dest = ".github/release-please-manifest.json"
+
+[[files]]
+src = "../scaffold/.github/workflows/release-please.yml"
+dest = ".github/workflows/release-please.yml"
+
+[variants.publish]
+options = ["npm", "none"]
+default = "npm"

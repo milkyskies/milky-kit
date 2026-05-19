@@ -14,6 +14,7 @@ Effect-TS API. `@effect/platform` for HTTP, `@effect/sql-drizzle` for Postgres, 
 @~/.claude/kit/modules/ghlobes/rules/glb.md
 @~/.claude/kit/modules/ci/rules/ci.md
 @~/.claude/kit/modules/security/rules/security.md
+@~/.claude/kit/modules/release-please/rules/release-please.md
 @~/.claude/kit/modules/pnpm/rules/pnpm-security.md
 @~/.claude/kit/modules/postgres/rules/postgres.md
 

@@ -1,0 +1,21 @@
+name: Release
+
+on:
+  workflow_call:
+    inputs:
+      tag_name:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  tag-only:
+    name: Tag-only release (no publish target)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report
+        run: |
+          echo "Release ${{ inputs.tag_name }} cut. No publish step configured."
+          echo "release-please already created the tag + GitHub release."
