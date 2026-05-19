@@ -4,33 +4,47 @@ paths:
   - "**/*.tsx"
 ---
 
-# TypeScript Conventions
+# TypeScript conventions
+
+Paradigm-neutral rules that apply to every TS file. Projects using Effect-TS additionally follow `templates/effect-api/rules/effect.md`, which supersedes the optionals / pattern-matching / sum-type choices below with Effect equivalents.
 
 ## Strong typing
 
-- **Never use `!`** (non-null assertion). Handle the absent case explicitly.
-- **Never use `as`** type casts except at system boundaries (parsing JSON, env vars). If you reach for `as`, the types are wrong upstream.
-- Prefer narrowing via `typeof`, `in`, discriminated unions, or pattern matching over casts.
+- Never use `!` (non-null assertion). Handle the absent case explicitly.
+- Never use `as` type casts except at trusted system boundaries (parsing JSON, env vars). If you reach for `as`, the types are wrong upstream. `@milkyskies/biome-config`'s `no-as-cast.grit` plugin enforces this at lint time.
+- `noExplicitAny` is `error` via `@milkyskies/biome-config`. Use `unknown` and narrow.
+- Prefer narrowing via `typeof`, `in`, or discriminated unions over casts.
 
 ## Optionals
 
-- **Domain models**: `Option.Option<T>` from `effect` — rich API (`map`, `flatMap`, `getOrElse`, `match`)
-- **Component props / callbacks**: `T?` (optional) — native JSX ergonomics
-- **API DTOs**: `T | null` — only at the wire boundary (matches OpenAPI nullable)
-- Convert at layer boundaries: `Option.getOrUndefined(x)` from domain → props, `Option.fromNullable(dto.x)` from DTO → domain
-
-Rule of thumb: **Option for logic, `?` for props.**
+- Domain logic: use `T | undefined` and narrow with explicit checks. Don't mix `null` and `undefined` in the same field — pick one (`undefined` is the TypeScript-native choice for "absent").
+- Component props: `T?` (optional) for native JSX ergonomics.
+- API DTOs: `T | null` only at the wire boundary (matches OpenAPI nullable).
+- Convert at layer boundaries: don't let `null` leak past the wire.
 
 ## Pattern matching
 
-- Use `Match` from `effect` instead of `if`/`else if`/`switch` chains
-- `if` is fine for early returns (guard clauses)
-- Avoid `else` — invert the condition and return early
+- For tagged unions, write a `switch (x.kind) { ... }` with `never` exhaustiveness:
 
-## Enums
+  ```ts
+  function handle(event: Event): string {
+    switch (event.kind) {
+      case "created": return ...
+      case "deleted": return ...
+      default: {
+        const _exhaustive: never = event
+        return _exhaustive
+      }
+    }
+  }
+  ```
 
-- Use `Data.taggedEnum` from `effect` for discriminated unions when possible — gives you constructors, `$is`, `$match` for free
+- `if` is fine for guard clauses with early return. Avoid `else` — invert the condition and return.
+
+## Sums
+
+- Discriminated unions with a `kind` (or `type`, `_tag`) literal field. Make the discriminator a `const`-ish string literal, not an enum.
 
 ## Dates
 
-- Use `date-fns` for all date manipulation and formatting
+- `date-fns` for date manipulation and formatting in view-layer code. Domain logic that needs deterministic time should reach for a clock service rather than calling `new Date()` directly.
