@@ -30,6 +30,8 @@
 ## Memory
 - Whoever allocates, frees — document ownership when a function returns allocated memory
 - Pair every `alloc` with a `defer free`, or `errdefer free` when the allocation escapes on success
+- Any test that allocates uses `std.testing.allocator` — it fails the test on a leak, double-free, or bad free, so write a test for anything that allocates just to run it over that path
+- The executable's top-level allocator is a `GeneralPurposeAllocator` with a `deinit` leak check in debug builds
 
 ## Comptime
 - Reach for `comptime` when it removes a runtime cost or makes an invalid state uncompilable — not as a default
