@@ -1,10 +1,13 @@
 # {{project_name}}
 
-Effect-TS API. `@effect/platform` for HTTP, `@effect/sql-drizzle` for Postgres, `@effect/ai` for the MCP server. Clean-architecture split: `domain/` → `application/use-case/` → `infrastructure/` → `presentation/{http,mcp}`.
+Rust API with Axum, SeaORM, Postgres. Clean-architecture workspace: `packages/domain`, `packages/application`, `packages/infrastructure`, `apps/api`, `apps/db` (migrator).
 
 ## Rules
 
-@~/.claude/kit/templates/effect-api/rules/effect.md
+@~/.claude/kit/templates/axum-api/rules/rust-style.md
+@~/.claude/kit/templates/axum-api/rules/clean-architecture.md
+@~/.claude/kit/templates/axum-api/rules/axum-patterns.md
+@~/.claude/kit/templates/axum-api/rules/database.md
 
 @~/.claude/kit/modules/core/rules/general.md
 @~/.claude/kit/modules/core/rules/comments.md
@@ -12,13 +15,11 @@ Effect-TS API. `@effect/platform` for HTTP, `@effect/sql-drizzle` for Postgres, 
 @~/.claude/kit/modules/core/rules/workflow.md
 @~/.claude/kit/modules/core/rules/worktrees.md
 @~/.claude/kit/modules/core/rules/testing.md
-@~/.claude/kit/modules/ts/rules/blank-lines.md
 
 @~/.claude/kit/modules/ghlobes/rules/glb.md
 @~/.claude/kit/modules/ci/rules/ci.md
 @~/.claude/kit/modules/security/rules/security.md
 @~/.claude/kit/modules/release-please/rules/release-please.md
-@~/.claude/kit/modules/pnpm/rules/pnpm-security.md
 @~/.claude/kit/modules/postgres/rules/postgres.md
 
 ## Project-specific
