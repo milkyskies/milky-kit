@@ -44,8 +44,10 @@ For each change the user accepts:
 
 After all changes are applied (or skipped):
 
-1. **Update `.milky-kit-version`** to the new kit SHA + new timestamp. Preserve the template + modules list.
-2. **Final summary** — applied N, skipped M, what's still TODO.
+1. **Scan the project's CLAUDE.md for drift.** Now that the kit has moved, some `@`-refs may point to files that were renamed or deleted. Detect by reading each `@`-ref path and checking it resolves to a real file. Propose fixes (rename `@-ref` to new path, or remove if the rule was deleted). Walk one at a time.
+2. **Invoke the `realign` skill.** Pass it the list of rules that changed in this upgrade so realign focuses on those rather than scanning everything. The user accepts/skips each violation realign finds.
+3. **Update `.milky-kit-version`** to the new kit SHA + new timestamp. Preserve the template + modules list.
+4. **Final summary** — applied N, skipped M, what's still TODO. Include realign's report.
 
 ## Things to be careful about
 

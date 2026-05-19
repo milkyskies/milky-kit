@@ -58,7 +58,14 @@ Report findings briefly. Then ask which modules to apply.
 
 5. **Commit** with a single commit per logical chunk. Suggested: one commit per module applied. Use scoped messages: `chore(security): apply milky-kit security module`, `chore(ci): apply milky-kit CI module`, etc.
 
-6. **Report what was added vs skipped.** Be explicit about anything that would have overwritten existing config and what the user should review.
+6. **Scan the codebase for patterns that need migrating to the new rules.** Examples:
+   - If the project just adopted the Effect template's rules, scan for `throw new Error` in business logic, `T | null` in domain types, `Promise.all`, `console.log` in `src/`, inline `Effect.gen` in presentation handlers.
+   - If the project just adopted the strict biome config, expect `noExplicitAny: error` + the `no-as-cast.grit` plugin to flag existing code. Run `pnpm -r lint` and surface findings.
+   - For each pattern found, propose the rule-conforming version and ask whether to apply. Migrations that are mechanical (rename, single-file edit) get applied with consent. Migrations that require restructuring (extract a use case, refactor a layer) get a `// TODO: realign — <rule>` marker and the user fixes by hand.
+
+7. **Invoke the `realign` skill** for the broader cross-check on the project as a whole.
+
+8. **Report what was added vs skipped.** Be explicit about anything that would have overwritten existing config and what the user should review. Include realign's report.
 
 ## Refuse to do
 
