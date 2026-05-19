@@ -1,0 +1,2 @@
+# Standalone Bun + TypeScript project for one-off scripts.
+# No workspace, no monorepo — just `bun run scripts/foo.ts`.

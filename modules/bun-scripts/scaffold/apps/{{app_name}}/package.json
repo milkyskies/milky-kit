@@ -1,0 +1,14 @@
+{
+	"name": "{{app_name}}",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"check": "biome check .",
+		"fix": "biome check --write ."
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^1.9.4",
+		"@types/bun": "latest",
+		"typescript": "^5.6.0"
+	}
+}
