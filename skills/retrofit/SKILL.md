@@ -53,13 +53,15 @@ Report findings briefly. Then ask which modules to apply.
 
    Always-on rules: `core/rules/{general,comments,config-and-env,workflow,worktrees,testing}.md`. Per chosen module: its `rules/*.md` files. Skip symlinks that already exist; if a regular file with the same name exists, ask before replacing.
 
-2. **Merge scaffold files** for each chosen module:
+2. **Merge scaffold files** for each chosen module. Substitute all placeholders (`{{project_name}}`, `{{worktree_dir}}`, `{{app_name}}`, etc.) when copying:
    - For `package.json`: deep-merge — add new deps + scripts without touching existing keys. If a script name collides (e.g. `lint` already defined), ask which to keep.
    - For `biome.json`: replace with `{ "$schema": "...", "extends": ["@milkyskies/biome-config/biome.json"] }`, preserving any project-specific `files.includes` patterns from the old config.
    - For `tsconfig.json`: only update `extends` if the project doesn't already extend something the user cares about.
    - For `.github/workflows/*.yml`: skip if file exists; show diff and ask if they want to replace.
    - For `.ghlobes.toml`: skip if present.
    - For `CLAUDE.md`: if missing, copy `~/.claude/kit/modules/core/scaffold/CLAUDE.md` (the minimal one) into the project. If present, leave it alone — rules now load from `.claude/rules/` symlinks, so any existing `@`-ref list in CLAUDE.md becomes redundant but harmless; suggest cleaning it up only if the user asks.
+   - For `mise.toml`: if missing, generate it from the chosen modules following the same per-template `[tools]` + `[tasks.dev]` rules as the `new` skill. If present, ask before touching `[tools]`; offer to add missing `[tasks.check]`/`[tasks.fmt]`/`[tasks."db:setup"]` if absent.
+   - For `.mise/tasks/worktree/{setup,cleanup,sync-env}`: render with placeholders substituted AND with the DB block conditional on whether `postgres` was applied. If `postgres` not in the applied set, strip `createdb`, the `DATABASE_URL` patch, and `mise run db:migrate` from worktree/setup; strip `dropdb` from cleanup. Same install-step logic as the `new` skill (pnpm/bun/none).
 
 3. **Add `.milky-kit-version`** if missing. Same format as the `new` skill — kit SHA + timestamp + applied-modules list.
 

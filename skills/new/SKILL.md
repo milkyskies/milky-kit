@@ -40,7 +40,13 @@ User says any of: "scaffold a new project", "set up an Effect API", "new milky-k
 
 2. **Create the directory and `cd` into it.**
 
-3. **Copy the template's scaffold tree.** Walk `~/.claude/kit/templates/<template>/scaffold/` recursively, copying every file. Substitute `{{app_name}}` in both paths and file contents with the project name (or `api` / `web` / `client` etc. when the template ships with such defaults — read the template's README to learn the convention).
+3. **Copy the template's scaffold tree.** Walk `~/.claude/kit/templates/<template>/scaffold/` recursively, copying every file. Substitute **all** placeholders in both paths and file contents:
+   - `{{app_name}}` — the conventional name for each app (`api`, `client`, etc. — read the template's README; for multi-app projects the skill renders once per app).
+   - `{{project_name}}` — the project's slug (kebab-case version of the directory name).
+   - `{{worktree_dir}}` — `<project_name>-worktrees` by default. Used in worktree mise tasks.
+   - Any template-specific placeholders the template's README documents.
+
+   The substitution applies to **every** file under `scaffold/`, including `files/mise-tasks/**` scripts that ship with `{{project_name}}` and `{{worktree_dir}}` embedded.
 
 4. **Apply variant overlays.** For each chosen variant, copy `~/.claude/kit/templates/<template>/variants/<axis>/<choice>/` over the base scaffold (overlay, not merge). JSON files (`package.json`, `tsconfig.json`) merge by key when both exist; everything else overwrites the base.
 
@@ -65,7 +71,41 @@ User says any of: "scaffold a new project", "set up an Effect API", "new milky-k
 
    The symlinks point through `~/.claude/kit/` (absolute), so they survive the user moving project directories but require `~/.claude/kit/` to be set up on each machine (see kit README — `ln -s ~/Code/Projects/milky-kit ~/.claude/kit`).
 
-8. **Write `.milky-kit-version`** at the project root. Contents:
+8. **Generate `mise.toml`** at the project root (don't ship a stale shared one — emit the file based on what was chosen).
+
+   **`[tools]` block** — only list runtimes the project actually uses:
+
+   | Template | `[tools]` |
+   |---|---|
+   | effect-api | `bun = "latest"`, `node = "24"` |
+   | hono-api | `node = "24"` |
+   | react-spa | `node = "24"` |
+   | axum-api | `rust = "latest"` (+ `node = "24"` if a co-located web app exists) |
+   | bun-scripts | `bun = "latest"` |
+
+   Pin Node to **24** specifically (LTS, bundles npm 11.5+ which OIDC trusted publishing needs). Don't write `"latest"` for node.
+
+   **`[tasks.dev]` block** — adapt to the app count:
+
+   - 1 app → single command: `mise run dev:<app_name>` (no tmux split).
+   - 2 apps → vertical tmux split (`dev:<app1>` top, `dev:<app2>` bottom). Match the adoba pattern: pane targeting without explicit indices, accepts an optional worktree number argument.
+   - 3-4 apps → 2x2 tmux grid.
+   - 5+ apps → emit a `# TODO: customize` comment in the dev task and tell the user.
+   - bun-scripts → no `dev` task at all (scripts are one-off).
+
+   **`[tasks.check]` / `[tasks.fmt]`** — always include, both as `depends = ["check:*"]` / `depends = ["fmt:*"]` glob aggregators.
+
+   **`[tasks."db:setup"]` / `[tasks."db:seed"]`** — include ONLY if the `postgres` module is chosen. Otherwise omit.
+
+9. **Render worktree mise tasks conditionally** (the kit ships `modules/core/files/mise-tasks/worktree/{setup,cleanup,sync-env}` with `{{project_name}}` / `{{worktree_dir}}` placeholders + a hard-coded DB block):
+
+   - Always substitute `{{project_name}}` and `{{worktree_dir}}`.
+   - If `postgres` module was chosen → keep the `createdb`, `DATABASE_URL` patch, and `mise run db:migrate` lines.
+   - If `postgres` was NOT chosen → strip those lines entirely (don't ship dead code that silently `|| true`s).
+   - If `pnpm` module → keep the `pnpm install` line. If `bun` → swap to `bun install`. If neither (Rust-only) → strip the install line; cargo shares the target dir across worktrees.
+   - Firebase configs (`google-services.json` / `GoogleService-Info.plist`) — only add the find pattern if a Firebase variant of `react-spa` was chosen. Default skips them.
+
+10. **Write `.milky-kit-version`** at the project root. Contents:
 
    ```
    <kit SHA from `git -C ~/.claude/kit rev-parse HEAD`>
@@ -74,7 +114,7 @@ User says any of: "scaffold a new project", "set up an Effect API", "new milky-k
    modules: <comma-separated list>
    ```
 
-9. **Initialize git.** `git init -b main`. Add a `.gitignore` if not already present (most scaffolds ship one). Make the initial commit:
+11. **Initialize git.** `git init -b main`. Add a `.gitignore` if not already present (most scaffolds ship one). Make the initial commit:
 
    ```
    chore: initial scaffold from milky-kit <short SHA>
@@ -84,11 +124,11 @@ User says any of: "scaffold a new project", "set up an Effect API", "new milky-k
    Variants: <list>
    ```
 
-10. **Install dependencies.** If `pnpm` module chosen: `pnpm install`. If `bun`: `bun install`. If Cargo (Rust template): `cargo fetch`. Report install output.
+12. **Install dependencies.** If `pnpm` module chosen: `pnpm install`. If `bun`: `bun install`. If Cargo (Rust template): `cargo fetch`. Report install output.
 
-11. **Run formatter.** Format the freshly-scaffolded code to the project's biome / cargo fmt to clean up any `{{app_name}}` substitution artifacts.
+13. **Run formatter.** Format the freshly-scaffolded code to the project's biome / cargo fmt to clean up any placeholder-substitution artifacts.
 
-12. **Print "Manual steps you need to do" with direct links.** Every step that requires the user (web UI clicks, interactive prompts, credentials) gets its own line with **either a clickable URL or explicit click-path instructions**. Never leave the user guessing where to go. Substitute `{{owner}}`, `{{repo}}`, `{{package}}` from the project's actual values.
+14. **Print "Manual steps you need to do" with direct links.** Every step that requires the user (web UI clicks, interactive prompts, credentials) gets its own line with **either a clickable URL or explicit click-path instructions**. Never leave the user guessing where to go. Substitute `{{owner}}`, `{{repo}}`, `{{package}}` from the project's actual values.
 
     Always include:
 
