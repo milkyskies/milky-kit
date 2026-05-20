@@ -27,9 +27,10 @@ Report findings briefly. Then ask which modules to apply.
 
 ## Inputs to gather
 
-1. **Which composable modules to apply** (multi-select, only modules that make sense for the detected stack):
+1. **Which composable modules to apply** (multi-select, only modules that make sense for the detected stack; default-on for `security` and `release-please` unless the user unchecks):
    - `ghlobes` — task tracking via GitHub Issues + Projects
-   - `security` — runtime-neutral CI security workflow + rules
+   - `security` — runtime-neutral CI security workflow + dependabot + rules (default-on)
+   - `release-please` — tagged releases via release-please (variant: `publish/none` for tag-only, `publish/npm` for npm Trusted Publishing). Default-on with `publish/none`; switch to `publish/npm` only if the project will publish to npm.
    - `ci` — CI scripts (check-package-scripts.sh)
    - `pnpm-security` (TS + pnpm only) — supply-chain controls
    - `bun-security` (TS + bun only)
