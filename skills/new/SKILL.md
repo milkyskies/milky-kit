@@ -20,11 +20,11 @@ User says any of: "scaffold a new project", "set up an Effect API", "new milky-k
    - `axum-api` — Rust + Axum + SeaORM + Postgres
    - `bun-scripts` — Bun + TS scripts
 
-2. **Composable modules** (multi-select): `ghlobes`, `security`, `ci`, `postgres`, `sqlite`, `pnpm` or `bun`. Default selections per template:
+2. **Composable modules** (multi-select): `ghlobes`, `security`, `ci`, `postgres`, `sqlite`, `pnpm` or `bun`. Default selections per template (`security` is always default; it ships the supply-chain workflows + dependabot):
    - `effect-api` / `hono-api`: `ghlobes`, `security`, `ci`, `pnpm`, `postgres`
    - `react-spa`: `ghlobes`, `security`, `ci`, `pnpm`
    - `axum-api`: `ghlobes`, `security`, `ci`, `postgres`
-   - `bun-scripts`: `ghlobes`, `bun`
+   - `bun-scripts`: `ghlobes`, `security`, `bun`
 
 3. **Variants** (only when the chosen template has them). Read `~/.claude/kit/templates/<template>/variants/` to discover axes. Examples:
    - `hono-api`: `db` (d1/neon/supabase), `api_style` (rpc/openapi), `auth` (firebase/none)
@@ -51,6 +51,13 @@ User says any of: "scaffold a new project", "set up an Effect API", "new milky-k
 4. **Apply variant overlays.** For each chosen variant, copy `~/.claude/kit/templates/<template>/variants/<axis>/<choice>/` over the base scaffold (overlay, not merge). JSON files (`package.json`, `tsconfig.json`) merge by key when both exist; everything else overwrites the base.
 
 5. **Apply composable module scaffolds.** For each chosen module in `~/.claude/kit/modules/<name>/scaffold/`, copy files into the project root (or wherever the module's `module.toml` says). Same merge rules: JSON merge, others overwrite.
+
+5a. **Prune `dependabot.yml` ecosystem blocks** based on what the project actually uses. The security module's `.github/dependabot.yml` ships `github-actions`, `npm`, and `cargo` blocks; strip the ones that don't apply:
+   - No `package.json` anywhere in the scaffolded project (Rust-only `axum-api` without a web app) → remove the `npm` block.
+   - No `Cargo.toml` anywhere → remove the `cargo` block.
+   - `github-actions` block always stays.
+
+   For monorepo projects, leave the `directories` globs (`/apps/*`, `/packages/*`, `/crates/*`) as-is — they're harmless if the directory doesn't exist (Dependabot just skips empty matches).
 
 6. **Write `CLAUDE.md`.** Copy `~/.claude/kit/templates/<template>/CLAUDE.md` into the project. It has the project description and `## Project-specific` section. Don't add `@`-refs to it — rules load from `.claude/rules/` (next step) automatically. Append the user's tsuika text from step 5 under `## Project-specific`.
 

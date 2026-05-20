@@ -1,0 +1,99 @@
+version: 2
+updates:
+  # GitHub Actions workflows — always present.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    labels:
+      - "dependencies"
+    cooldown:
+      # Mirrors .npmrc minimum-release-age (24h) where applicable. Dependabot
+      # won't propose versions inside the cooldown window so it never suggests
+      # something the lockfile would refuse to install.
+      # zizmor flags <7d as `dependabot-cooldown`; intentional mismatch
+      # documented in modules/security/rules/security.md.
+      default-days: 1 # zizmor: ignore[dependabot-cooldown]
+      semver-major-days: 1
+      semver-minor-days: 1
+      semver-patch-days: 1
+
+  # npm ecosystem — covers pnpm and bun lockfiles. Scaffolders prune this
+  # block when the project has no package.json (e.g. Rust-only).
+  - package-ecosystem: "npm"
+    directories:
+      - "/"
+      - "/apps/*"
+      - "/packages/*"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    labels:
+      - "dependencies"
+    open-pull-requests-limit: 5
+    groups:
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
+      tanstack:
+        patterns:
+          - "@tanstack/*"
+      effect:
+        patterns:
+          - "effect"
+          - "@effect/*"
+      biome:
+        patterns:
+          - "@biomejs/*"
+          - "@milkyskies/biome-config"
+      tailwind:
+        patterns:
+          - "tailwindcss"
+          - "@tailwindcss/*"
+          - "tailwind-merge"
+      drizzle:
+        patterns:
+          - "drizzle-orm"
+          - "drizzle-kit"
+          - "drizzle-zod"
+      vite:
+        patterns:
+          - "vite"
+          - "@vitejs/*"
+      hono:
+        patterns:
+          - "hono"
+          - "@hono/*"
+    cooldown:
+      default-days: 1 # zizmor: ignore[dependabot-cooldown]
+      semver-major-days: 1
+      semver-minor-days: 1
+      semver-patch-days: 1
+
+  # Cargo ecosystem — covers Rust workspaces. Scaffolders prune this block
+  # when the project has no Cargo.toml.
+  - package-ecosystem: "cargo"
+    directories:
+      - "/"
+      - "/crates/*"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    labels:
+      - "dependencies"
+    open-pull-requests-limit: 5
+    cooldown:
+      default-days: 1 # zizmor: ignore[dependabot-cooldown]
+      semver-major-days: 1
+      semver-minor-days: 1
+      semver-patch-days: 1

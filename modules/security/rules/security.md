@@ -14,7 +14,19 @@ Rules that apply regardless of language or package manager. Package-manager-spec
 
 ## zizmor
 
-Same workflow runs zizmor — static analysis for GitHub Actions misconfigurations (unsafe expression interpolation, overprivileged tokens, missing `persist-credentials: false`, etc.). Treat zizmor findings the way you treat type errors: fix or suppress with a documented reason.
+Same workflow runs zizmor for static analysis of GitHub Actions misconfigurations (unsafe expression interpolation, overprivileged tokens, missing `persist-credentials: false`, etc.). Treat zizmor findings the way you treat type errors: fix or suppress with a documented reason.
+
+## Dependabot
+
+`.github/dependabot.yml` ships alongside this module. Covers three ecosystems at once:
+
+- `github-actions` at `/` — keeps workflow `uses:` SHAs current (the trailing-comment style above is what Dependabot updates).
+- `npm` at `/`, `/apps/*`, `/packages/*` — covers root + monorepo workspace packages. Works for both pnpm and bun lockfiles.
+- `cargo` at `/`, `/crates/*` — covers single-crate + workspace Rust projects.
+
+The `new` and `retrofit` skills prune the npm or cargo block when the project doesn't use that ecosystem (e.g. an axum-api project gets cargo + github-actions only). All three blocks use the same 1-day cooldown (matching `.npmrc` `minimum-release-age` where applicable) and group related packages (react, tanstack, effect, biome, tailwind, drizzle, vite, hono) into single PRs so update PR noise stays low.
+
+zizmor flags cooldowns under 7 days as `dependabot-cooldown`; the 1-day choice is an intentional mismatch — documented inline in the config with `# zizmor: ignore[dependabot-cooldown]`.
 
 ## Pinned actions
 
