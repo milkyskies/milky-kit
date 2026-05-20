@@ -8,7 +8,9 @@ paths:
 
 # CI conventions
 
-Every workspace package defines three scripts: `typecheck`, `lint`, `test`. CI runs them recursively across the workspace. A package missing any of the three fails the build — that's the enforcement, no PR can land a package without test/lint/typecheck wired up.
+Every workspace package that ships or builds code defines three scripts: `typecheck`, `lint`, `test`. CI runs them recursively across the workspace. A package missing any of the three fails the build — that's the enforcement, no PR can land a package without test/lint/typecheck wired up.
+
+**Tooling-only manifests are exempt.** A root `package.json` whose only purpose is to install repo-wide CI tooling (e.g. biome + biome-config so the project's own CI can lint scaffolds) does not ship runtime code and does not get its own `typecheck` / `test` scripts. Such manifests carry only the scripts the tooling itself needs (typically just `lint` / `lint:fix`). The `check-package-scripts.sh` step skips manifests with `"private": true` and no `dependencies` block.
 
 ## Required scripts per package
 
