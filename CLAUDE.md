@@ -9,7 +9,14 @@ This repository is milky-kit itself. It holds:
 
 ## Rules loaded here
 
-The user's global `~/.claude/CLAUDE.md` already references the universal rules in `modules/core/` and `modules/ts/`. This file only adds what's specific to working on the kit itself.
+The kit eats its own dog food: every rule milky-kit ships also applies to milky-kit itself, refed explicitly so the kit's own work follows them regardless of the contributor's global config.
+
+@./modules/core/rules/general.md
+@./modules/core/rules/comments.md
+@./modules/core/rules/config-and-env.md
+@./modules/core/rules/workflow.md
+@./modules/core/rules/worktrees.md
+@./modules/core/rules/testing.md
 
 @./modules/ghlobes/rules/glb.md
 @./modules/ci/rules/ci.md
