@@ -1,7 +1,7 @@
 {
 	"$schema": "https://json.schemastore.org/claude-code-plugin",
 	"name": "milky-kit",
-	"version": "0.1.0",
+	"version": "0.0.0",
 	"description": "Scaffold and maintain projects from milky-kit templates and modules. Provides /milky-kit:new, retrofit, upgrade, and check-version skills.",
 	"author": {
 		"name": "milkyskies"
