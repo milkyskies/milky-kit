@@ -87,7 +87,7 @@ In any Claude Code session (project doesn't matter for the install):
 /plugin install milky-kit@milkyskies
 ```
 
-Claude clones the repo to its own plugin cache and registers the skills. Run `/help` to confirm `/milky-kit:new`, `:retrofit`, `:upgrade`, `:realign`, `:edit`, `:kit-modify`, `:check-version`, plus the pre-existing `:ship`, `:land`, `:rulify`, `:simplify`, etc. all appear.
+Claude clones the repo to its own plugin cache and registers the skills. Run `/help` to confirm `/milky-kit:new`, `:retrofit`, `:upgrade`, `:realign`, `:edit`, `:kit-modify`, `:check-version`, `:purge`, plus the pre-existing `:ship`, `:land`, `:rulify`, `:simplify`, etc. all appear.
 
 To pull future kit changes:
 
@@ -140,7 +140,7 @@ Tagged releases may come later as the kit stabilizes; the skills will prefer tag
 milky-kit/
 ├── README.md
 ├── .claude-plugin/             Claude Code plugin manifest
-├── skills/                     Plugin skills (new, retrofit, upgrade, realign, edit, kit-modify, check-version, ship, land, rulify, simplify, retrospective, and template-specific helpers)
+├── skills/                     Plugin skills (new, retrofit, upgrade, realign, edit, kit-modify, check-version, purge, ship, land, rulify, simplify, retrospective, and template-specific helpers)
 ├── templates/                  Stack templates (alternatives — pick one per project)
 │   ├── effect-api/
 │   │   ├── rules/

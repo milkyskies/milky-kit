@@ -4,7 +4,7 @@ This repository is milky-kit itself. It holds:
 
 - `templates/` — paradigm-complete stack templates (alternatives, pick one per consuming project)
 - `modules/` — cross-cutting modules that compose with any template
-- `skills/` — Claude Code plugin skills (`new`, `retrofit`, `upgrade`, `realign`, `edit`, `kit-modify`, `check-version`)
+- `skills/` — Claude Code plugin skills (`new`, `retrofit`, `upgrade`, `realign`, `edit`, `kit-modify`, `check-version`, `purge`)
 - `.claude-plugin/plugin.json` — the plugin manifest itself
 
 Rules are loaded automatically by Claude Code from `.claude/rules/`. Those files are relative symlinks into `modules/*/rules/` — the kit dogfoods its own modules, single source of truth, no copying.
