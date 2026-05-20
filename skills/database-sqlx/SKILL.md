@@ -1,5 +1,5 @@
 ---
-name: database
+name: database-sqlx
 description: Database operations — create migrations, modify schema, check migration status, and manage PostgreSQL tables (sqlx). Use when adding/changing tables, fields, indexes, constraints, or working with migrations.
 argument-hint: <action> (e.g. "add a tasks table", "add field to agent", "create migration for reminders", "status")
 ---
