@@ -2,7 +2,22 @@
 
 **MANDATORY for every task. Do NOT skip any step.**
 
-## glb (ghlobes) — Issue Tracking
+## Read the workflow mode FIRST
+
+At session start, before doing anything else, read the `.milky-kit-mode` file at project root:
+
+```bash
+cat .milky-kit-mode  # → root  OR  worktrees
+```
+
+- **`root`** — work directly in the project root checkout. Commit to whichever branch is checked out (usually `main`). Push directly. No PRs, no worktrees. Best for solo work, small projects, the kit itself.
+- **`worktrees`** — each task runs in its own isolated `../<worktree-dir>/<num>/` directory on a feature branch. Ships via PR. Best for parallel multi-agent work, anywhere PR review is wanted.
+
+If `.milky-kit-mode` is missing, default to `root` and tell the user — they probably want to flip to `worktrees` via `/milky-kit:mode worktrees` if that wasn't intentional.
+
+To switch modes between tasks, run `/milky-kit:mode root` or `/milky-kit:mode worktrees`. The flip applies to the next task — finish whatever you're doing in the current mode first.
+
+## glb (ghlobes) — Issue Tracking (both modes)
 
 Use `glb` for ALL task tracking via GitHub Issues + Projects. Do NOT use TodoWrite, TaskCreate, or markdown TODOs.
 
@@ -46,30 +61,7 @@ glb sub remove <parent> <child> # Remove a sub-issue from a parent
 glb sub list <parent>           # List sub-issues with progress
 ```
 
-**Default: sub-issues branch off `main` and PR into `main`, just like any other issue.** The parent/child relationship is organizational only.
-
-**Only use the epic-branch workflow when the user explicitly asks for it** (e.g. "use an epic branch", "ship this as an epic"). Do NOT create an epic branch on your own just because an issue has sub-issues.
-
-When the user *does* ask for the epic-branch workflow, it looks like this:
-
-```
-main
- └── feature/#409.llm-infrastructure              <- epic branch
-      ├── feature/#409/#505.model-registry        <- PRs into epic branch
-      ├── feature/#409/#498.complexity-routing    <- PRs into epic branch
-      └── feature/#409/#494.cost-tracking         <- PRs into epic branch
-
-# When all sub-issues are done:
-feature/#409.llm-infrastructure -> main            <- one final PR
-```
-
-**Epic workflow (only when explicitly requested):**
-1. Create the epic branch: `git worktree add ../{{worktree_dir}}/<epic-num> -b feature/#<num>.<summary> main`
-2. **Immediately create the epic PR** (even if empty) so progress is visible
-3. Sub-issue worktrees branch off the **epic branch**, not main
-4. Sub-issue PRs target the **epic branch** (`gh pr create --base feature/#<epic-num>.<summary>`)
-5. Sub-issue PR body uses `closes #<sub-num>` as usual
-6. When all sub-issues are merged, mark the epic PR as ready for review
+**Default: sub-issues branch off `main` and PR into `main`, just like any other issue.** The parent/child relationship is organizational only. Epic-branch workflow (sub-PRs into an epic branch) is `worktrees`-mode only, and only when the user explicitly asks for it.
 
 ### Rules
 
@@ -77,25 +69,7 @@ feature/#409.llm-infrastructure -> main            <- one final PR
 - Use `glb search "query"` to find existing issues
 - Do NOT create markdown TODO lists or use external trackers
 
-## Pull Requests
-
-Every PR must link back to the issue it closes. This applies whether you open the PR via `/ship` or `gh pr create` directly.
-
-- **Title:** `[#<num>] <issue title>` — e.g. `[#22] Retire Cloudflare Pages branch previews`. Use the issue title from `glb show <num>`, not a conventional-commit summary.
-- **Sub-issue title** (epic-branch workflow only): `[#<epic-num>/#<num>] <issue title>`.
-- **Body:** must start with `closes #<num>` on the first line so GitHub auto-closes the issue on merge. Sub-issue PRs still use `closes #<sub-num>`.
-
-Do NOT use conventional-commit titles (`feat(api): …`, `fix(client): …`) for PRs — those belong on commits, not PRs. The `[#<num>]` prefix is what links the PR to the tracker.
-
-## Multi-Agent Environment
-
-Multiple agents run in parallel on separate branches. This means:
-
-- **Only touch files relevant to your task.** Do not modify, stash, reset, or discard files you didn't create or change yourself.
-- **Never run `git stash`, `git reset --hard`, `git checkout -- <file>`, or `git clean`** unless you are certain those changes belong to you. When in doubt, leave it alone.
-- If you see unexpected files or changes, investigate before acting — they likely belong to another agent working in parallel.
-
-## Session Start — MANDATORY
+## Session Start — MANDATORY (both modes)
 
 Sync before doing anything:
 
@@ -103,7 +77,7 @@ Sync before doing anything:
 git checkout main && git pull
 ```
 
-## Read the Docs — MANDATORY
+## Read the Docs — MANDATORY (both modes)
 
 **Before touching any code**, check whether the feature or area you are working on has a doc.
 
@@ -112,11 +86,74 @@ git checkout main && git pull
 
 Do not assume you know how something works — read the doc first.
 
-## Task Workflow
+---
+
+## Task Workflow — `root` mode
+
+When `.milky-kit-mode` is `root`, follow this section. Skip the worktrees mode section below.
+
+### 1. Claim the issue
+
+```bash
+glb update <num> --claim
+```
+
+### 2. Verify branch
+
+Confirm you are on the branch you intend to commit to (usually `main`):
+
+```bash
+git branch --show-current   # usually `main`
+```
+
+### 3. Work
+
+Edit, build, test directly in the project root. **Before writing new code, find a similar existing implementation in each layer you're about to touch and follow its patterns.**
+
+Commit semi-frequently with `(#N)` issue refs in the message:
+
+```bash
+git add <specific files>
+git commit -m "<type>(<scope>): <subject> (#<num>)"
+```
+
+Never `git add -A` or `git add .` — stage specific files.
+
+### 4. Push directly
+
+In `root` mode there are no PRs. Push to the branch you're on:
+
+```bash
+git push origin main
+```
+
+Run formatter + linter before every push. No exceptions.
+
+### 5. Close the issue
+
+```bash
+glb done <num> --comment "<short summary>"
+```
+
+For commits that fix the issue completely, include `closes #<num>` in the commit body so GitHub also closes via the commit.
+
+---
+
+## Task Workflow — `worktrees` mode
+
+When `.milky-kit-mode` is `worktrees`, follow this section. Skip the root mode section above.
+
+### Multi-Agent Environment (worktrees mode only)
+
+Multiple agents run in parallel on separate branches. This means:
+
+- **Only touch files relevant to your task.** Do not modify, stash, reset, or discard files you didn't create or change yourself.
+- **Never run `git stash`, `git reset --hard`, `git checkout -- <file>`, or `git clean`** unless you are certain those changes belong to you. When in doubt, leave it alone.
+- If you see unexpected files or changes, investigate before acting — they likely belong to another agent working in parallel.
 
 ### 1. Create a Worktree
 
-Each task gets its own isolated worktree. See worktrees rule for the full workflow.
+Each task gets its own isolated worktree. See `worktrees.md` for the full workflow.
 
 ```bash
 mise run worktree:setup <num> feature/#<num>.<summary>
@@ -146,11 +183,45 @@ glb update <num> --claim
 
 Commit semi-frequently — don't save everything for one giant commit.
 
-### 4. Ship
+### 4. Ship via PR
 
 **When implementation is done, run `/ship`.** It handles everything: quality gates, code review, draft PR, CI loop (including merge conflicts), and mark ready. After the user merges, say "merged" to trigger `/land`.
 
-## Session Completion
+### Pull Requests (worktrees mode only)
+
+Every PR must link back to the issue it closes. This applies whether you open the PR via `/ship` or `gh pr create` directly.
+
+- **Title:** `[#<num>] <issue title>` — e.g. `[#22] Retire Cloudflare Pages branch previews`. Use the issue title from `glb show <num>`, not a conventional-commit summary.
+- **Sub-issue title** (epic-branch workflow only): `[#<epic-num>/#<num>] <issue title>`.
+- **Body:** must start with `closes #<num>` on the first line so GitHub auto-closes the issue on merge.
+
+Do NOT use conventional-commit titles for PRs — those belong on commits, not PRs. The `[#<num>]` prefix is what links the PR to the tracker.
+
+### Epic-branch workflow (worktrees mode, on request)
+
+When the user explicitly asks for an epic branch:
+
+```
+main
+ └── feature/#409.llm-infrastructure              <- epic branch
+      ├── feature/#409/#505.model-registry        <- PRs into epic branch
+      ├── feature/#409/#498.complexity-routing    <- PRs into epic branch
+      └── feature/#409/#494.cost-tracking         <- PRs into epic branch
+
+# When all sub-issues are done:
+feature/#409.llm-infrastructure -> main            <- one final PR
+```
+
+1. Create the epic branch: `git worktree add ../{{worktree_dir}}/<epic-num> -b feature/#<num>.<summary> main`
+2. **Immediately create the epic PR** (even if empty) so progress is visible
+3. Sub-issue worktrees branch off the **epic branch**, not main
+4. Sub-issue PRs target the **epic branch** (`gh pr create --base feature/#<epic-num>.<summary>`)
+5. Sub-issue PR body uses `closes #<sub-num>` as usual
+6. When all sub-issues are merged, mark the epic PR as ready for review
+
+---
+
+## Session Completion (both modes)
 
 - **NEVER stop before pushing** — that leaves work stranded locally. YOU must push; never say "ready to push when you are."
 - **File issues** for any remaining work — `glb create`

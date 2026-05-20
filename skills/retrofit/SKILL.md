@@ -73,6 +73,8 @@ Report findings briefly. Then ask which modules to apply.
 
 3. **Add `.milky-kit-version`** if missing. Same format as the `new` skill — kit SHA + timestamp + applied-modules list.
 
+3a. **Add `.milky-kit-mode`** if missing. Default `root` (single word, single line). The user can flip later with `/milky-kit:mode worktrees`. If the file already exists, leave it alone — the user's prior choice stands.
+
 4. **Add deps** via the project's package manager (`pnpm add -D` / `bun add -d`). Pin versions to match what the templates ship.
 
 5. **Run formatter** (`pnpm biome check --write .` or equivalent) so the just-added scaffold files conform.

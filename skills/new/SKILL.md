@@ -122,6 +122,8 @@ User says any of: "scaffold a new project", "set up an Effect API", "new milky-k
    modules: <comma-separated list>
    ```
 
+10a. **Write `.milky-kit-mode`** at the project root. Default `root` (single word, single line). The user can flip later with `/milky-kit:mode worktrees`. Don't ask at scaffold — `root` is the safe default; switching to `worktrees` is a deliberate later choice once the user knows they want multi-agent parallel work for this project.
+
 11. **Initialize git.** `git init -b main`. Add a `.gitignore` if not already present (most scaffolds ship one). Make the initial commit:
 
    ```

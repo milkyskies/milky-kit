@@ -87,7 +87,7 @@ In any Claude Code session (project doesn't matter for the install):
 /plugin install milky-kit@milkyskies
 ```
 
-Claude clones the repo to its own plugin cache and registers the skills. Run `/help` to confirm `/milky-kit:new`, `:retrofit`, `:upgrade`, `:realign`, `:edit`, `:kit-modify`, `:check-version`, `:purge`, plus the pre-existing `:ship`, `:land`, `:rulify`, `:simplify`, etc. all appear.
+Claude clones the repo to its own plugin cache and registers the skills. Run `/help` to confirm `/milky-kit:new`, `:retrofit`, `:upgrade`, `:realign`, `:edit`, `:kit-modify`, `:check-version`, `:purge`, `:mode`, plus the pre-existing `:ship`, `:land`, `:rulify`, `:simplify`, etc. all appear.
 
 To pull future kit changes:
 
@@ -128,6 +128,23 @@ The skill detects the current stack, asks which modules to apply, copies in scaf
 
 The skill reads `.milky-kit-version`, walks milky-kit's git log since that SHA, and guides you through each change that affects your project's stack — with judgment, because every project diverges from the kit over time.
 
+## Workflow modes (`root` vs `worktrees`)
+
+Each project picks one workflow mode via the `.milky-kit-mode` file at its root:
+
+- **`root`** (default) — work directly in the project root checkout. Push to main. No PRs, no worktrees. Best for solo work, small projects, the kit itself.
+- **`worktrees`** — each task runs in its own `../<worktree-dir>/<num>/` directory on a feature branch. Ships via PR. Best for parallel multi-agent work, or anywhere PR review is wanted.
+
+Flip per project at any time:
+
+```
+/milky-kit:mode root         # switch to root
+/milky-kit:mode worktrees    # switch to worktrees
+/milky-kit:mode              # show current
+```
+
+`workflow.md` reads `.milky-kit-mode` at session start and follows the matching task workflow.
+
 ## Versioning
 
 milky-kit has no semver tags (yet). The version of milky-kit a project was scaffolded against is the **commit SHA** at scaffold time, recorded in the project's `.milky-kit-version` file. `milky-kit:check-version` compares that SHA against `git rev-parse HEAD` of the local kit checkout and prints what's changed since.
@@ -140,7 +157,7 @@ Tagged releases may come later as the kit stabilizes; the skills will prefer tag
 milky-kit/
 ├── README.md
 ├── .claude-plugin/             Claude Code plugin manifest
-├── skills/                     Plugin skills (new, retrofit, upgrade, realign, edit, kit-modify, check-version, purge, ship, land, rulify, simplify, retrospective, and template-specific helpers)
+├── skills/                     Plugin skills (new, retrofit, upgrade, realign, edit, kit-modify, check-version, purge, mode, ship, land, rulify, simplify, retrospective, and template-specific helpers)
 ├── templates/                  Stack templates (alternatives — pick one per project)
 │   ├── effect-api/
 │   │   ├── rules/

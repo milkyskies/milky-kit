@@ -1,6 +1,8 @@
 # Git Worktree Workflow
 
-Each agent works in its own isolated worktree. This is the standard way to handle parallel work — it structurally prevents agents from touching each other's files.
+**This rule applies only when `.milky-kit-mode` is `worktrees`.** Read `.milky-kit-mode` at session start — if it says `root`, ignore this rule entirely and work directly in the project root checkout per `workflow.md`'s root-mode section.
+
+When in `worktrees` mode, each task runs in its own isolated worktree. This is how parallel multi-agent work stays safe — it structurally prevents agents from touching each other's files.
 
 ## Location
 
@@ -89,7 +91,7 @@ If the project has `mise run worktree:cleanup`, prefer that — it may also clea
 
 ## Rules
 
-- **Always create a worktree before starting work** — never work directly in the main repo's working tree.
+- **Always create a worktree before starting work** — never work directly in the main repo's working tree (in `worktrees` mode).
 - **Never enter another agent's worktree directory.** If `../{{worktree_dir}}/<num>` already exists, another agent owns that issue — pick something else.
 - **One worktree per issue.** Name it `<num>` to match the issue number.
 - **Do not stash, reset, or clean** in someone else's worktree. If you see unexpected state, leave it alone.
