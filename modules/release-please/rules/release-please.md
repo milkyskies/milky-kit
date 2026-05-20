@@ -45,9 +45,23 @@ Merging the PR is what cuts the release. Don't squash-merge — use a merge comm
 
 For projects that want to stay at `0.x.y-alpha.N` while iterating (floe's pattern), add `pin-alpha.yml` that appends an empty `Release-As: 0.x.y-alpha.<N+1>` trailer commit after every user push. Skip this for projects that just want normal semver patches/minors.
 
-## NPM_TOKEN secret
+## npm Trusted Publishing (OIDC)
 
-For projects with `variants/publish/npm/`, the GitHub repo needs an `NPM_TOKEN` secret containing a granular automation token scoped to the publish org (e.g. `@milkyskies`), with read+write on the relevant packages. `npm publish --provenance` uses GitHub OIDC for the actual publish trust, but the CLI auth check still wants `NODE_AUTH_TOKEN` set from `NPM_TOKEN`.
+For projects with `variants/publish/npm/`, authentication uses **npm Trusted Publishing** via OIDC — no long-lived `NPM_TOKEN` secret. The release workflow declares `permissions: id-token: write` and `npm publish` exchanges the GitHub OIDC token for short-lived publish credentials.
+
+One-time setup per package, on npm:
+
+1. Go to the package's settings (`npmjs.com/package/<pkg>/access`).
+2. Add Trusted Publisher → GitHub Actions.
+3. Fill: owner, repository, **workflow filename = `release-please.yml`** (the *caller* workflow; npm authorizes the workflow that initiates the run, not the reusable callee).
+4. Environment name: leave blank unless using GitHub deployment environments.
+
+Provenance attestations are automatic under Trusted Publishing — no `--provenance` flag needed. Requires npm CLI ≥ 11.5.1; the shipped workflow runs `npm install -g npm@latest` before publishing since node 22 LTS ships with npm 10.x.
+
+Two GitHub repo settings must be enabled (one-time, per repo):
+
+- **Settings → Actions → General → Workflow permissions**: check "Allow GitHub Actions to create and approve pull requests" so release-please can open the release PR.
+- No `NPM_TOKEN` secret needed (delete it if you had one from a pre-OIDC setup).
 
 ## Manual first release
 

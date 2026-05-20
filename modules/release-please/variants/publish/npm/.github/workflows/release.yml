@@ -9,18 +9,16 @@ on:
 
 permissions:
   contents: read
+  # id-token: write is the load-bearing permission for npm Trusted
+  # Publishing via OIDC. The npm CLI exchanges the GitHub OIDC token
+  # for short-lived publish credentials at registry.npmjs.org — no
+  # NPM_TOKEN secret, no long-lived credential to rotate.
   id-token: write
 
 jobs:
   publish-npm:
     name: Publish to npm
     runs-on: ubuntu-latest
-    # NPM_TOKEN is a granular automation token scoped to the publish org
-    # with read+write on the relevant packages. `npm publish --provenance`
-    # uses GitHub's OIDC for the actual trust, but the npm CLI's auth check
-    # still wants NODE_AUTH_TOKEN set.
-    env:
-      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -33,9 +31,14 @@ jobs:
           node-version: 22
           registry-url: https://registry.npmjs.org
 
+      - name: Upgrade npm to a Trusted-Publisher-capable version
+        # Trusted Publishing requires npm CLI >= 11.5.1. Node 22 LTS
+        # ships with npm 10.x by default, so we bump explicitly.
+        run: npm install -g npm@latest
+
       - name: Publish
-        # `--access public` is required for scoped packages on the free npm
-        # tier. `--provenance` records the GitHub Actions context (commit
-        # SHA, workflow run) into the published package metadata so
-        # consumers can verify it came from this repo.
-        run: npm publish --access public --provenance
+        # No --provenance flag needed: with Trusted Publishing, npm
+        # auto-generates and publishes the provenance attestation
+        # from the GitHub OIDC context. --access public stays
+        # required for free-tier scoped packages.
+        run: npm publish --access public
