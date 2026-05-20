@@ -88,10 +88,34 @@ User says any of: "scaffold a new project", "set up an Effect API", "new milky-k
 
 11. **Run formatter.** Format the freshly-scaffolded code to the project's biome / cargo fmt to clean up any `{{app_name}}` substitution artifacts.
 
-12. **Print next steps.** Always tell the user:
-    - The project lives at `./<project>`.
-    - If `ghlobes` chosen: "Run `glb init` to wire up the GitHub Project for issue tracking."
-    - Template-specific bootstrap: docker-compose up for postgres, `pnpm db:migrate` for first migration, etc. Read the template's README for the exact steps.
+12. **Print "Manual steps you need to do" with direct links.** Every step that requires the user (web UI clicks, interactive prompts, credentials) gets its own line with **either a clickable URL or explicit click-path instructions**. Never leave the user guessing where to go. Substitute `{{owner}}`, `{{repo}}`, `{{package}}` from the project's actual values.
+
+    Always include:
+
+    **One-time per machine, if not already done:**
+    - Symlink the kit at `~/.claude/kit`:
+      ```
+      ln -s ~/Code/Projects/milky-kit ~/.claude/kit
+      ```
+      (No link — terminal command.)
+
+    **One-time per GitHub repo:**
+    - Create the repo on GitHub. Direct link: <https://github.com/new> — or run `gh repo create <project-name> --private --source . --push` from the project directory.
+    - Enable PR creation by Actions (needed for release-please): direct link <https://github.com/{{owner}}/{{repo}}/settings/actions> → scroll to **Workflow permissions** → check **Allow GitHub Actions to create and approve pull requests** → Save.
+
+    **If ghlobes module chosen:**
+    - Create the GitHub Project (Beta). Direct link for personal account: <https://github.com/users/{{owner}}/projects/new>. For an org: <https://github.com/orgs/{{owner}}/projects/new>. Pick "New project" → "Board" or "Table". Note the project number (e.g. `17`).
+    - Run `glb init` in the project dir. Interactive — it'll prompt for the project number you just noted. It'll create the Status/Priority/Points fields if missing.
+
+    **If the project will publish to npm (e.g. `@scope/pkg`):**
+    - Make sure the npm scope exists. If `@scope` is not yet registered: <https://www.npmjs.com/org/create> (free plan is fine for public packages).
+    - Configure Trusted Publishing (OIDC, no token needed). Direct link: <https://www.npmjs.com/package/{{package}}/access> → scroll to **Trusted Publisher** → **Add** → **GitHub Actions** → fill: Organization=`{{owner}}`, Repository=`{{repo}}`, Workflow filename=`release-please.yml` (the CALLER workflow; npm authorizes the entry point), Environment name=blank → Save.
+
+    **If the project uses Postgres (postgres module chosen):**
+    - Start Docker Desktop (no link — open the app). The scaffold's docker-compose.yml expects it. Verify with `docker info` → no error means it's running.
+    - First migration: `pnpm db:migrate` from the api dir.
+
+    **Project lives at:** `./<project-name>`. Open with your editor.
 
 ## Conventions to honor
 

@@ -37,7 +37,12 @@ Use this skill when the user is working in a project and decides a kit-level con
 
 7. **Realign the current project.** Invoke the `realign` skill. The new kit rule may surface violations in this project's code; walk those one at a time.
 
-8. **Notify the user about other consuming projects.** "This change is now live in milky-kit. Other projects with `@`-refs to that rule will pick it up on next CLAUDE.md load. To proactively realign those, run `/milky-kit:upgrade` in each."
+8. **Notify the user about other consuming projects** with explicit pointers, not vague prose. Tell them:
+
+   - Rules update **automatically** in any project whose `.claude/rules/<rule>.md` symlinks at the changed file — next Claude session loads the new content. No action needed.
+   - Scaffold files (workflows, configs) DON'T update automatically. To pull the kit's change into a consuming project, in that project run `/milky-kit:upgrade`. The skill diffs against `.milky-kit-version` and walks each change.
+   - If a consuming project is on a different machine, that machine also needs `~/.claude/kit` symlinked at the kit checkout. Direct check: `ls -la ~/.claude/kit`. If missing: `ln -s <path-to-kit-checkout> ~/.claude/kit`.
+   - View the just-pushed kit commit at <https://github.com/{{kit_owner}}/{{kit_repo}}/commits/main>.
 
 ## Guardrails
 

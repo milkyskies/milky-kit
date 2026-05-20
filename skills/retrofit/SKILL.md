@@ -76,7 +76,29 @@ Report findings briefly. Then ask which modules to apply.
 
 8. **Invoke the `realign` skill** for the broader cross-check on the project as a whole.
 
-9. **Report what was added vs skipped.** Be explicit about anything that would have overwritten existing config and what the user should review. Include realign's report.
+9. **Report what was added vs skipped + the manual setup steps the user must complete**, with direct links. Substitute `{{owner}}`, `{{repo}}`, `{{package}}` from the project's actual values. Never leave the user guessing where to go.
+
+   **If `~/.claude/kit` doesn't exist on this machine yet:**
+   ```
+   ln -s ~/Code/Projects/milky-kit ~/.claude/kit
+   ```
+
+   **If `release-please` module applied** (need GitHub Actions to be able to open PRs):
+   - <https://github.com/{{owner}}/{{repo}}/settings/actions> → scroll to **Workflow permissions** → check **Allow GitHub Actions to create and approve pull requests** → Save.
+
+   **If `release-please` with npm-publish variant applied** (need Trusted Publishing OIDC):
+   - <https://www.npmjs.com/package/{{package}}/access> → scroll to **Trusted Publisher** → **Add** → **GitHub Actions** → fill: Organization=`{{owner}}`, Repository=`{{repo}}`, Workflow filename=`release-please.yml` (the CALLER workflow), Environment name=blank → Save.
+   - If `@scope` doesn't exist yet on npm: <https://www.npmjs.com/org/create>.
+
+   **If `ghlobes` module applied and project doesn't yet have a GitHub Project:**
+   - Personal account: <https://github.com/users/{{owner}}/projects/new>. Org: <https://github.com/orgs/{{owner}}/projects/new>. Pick "New project" → "Board" or "Table". Note the project number.
+   - Then run `glb init` in the project dir (interactive — answers the project number prompt; creates the Status/Priority/Points fields if missing).
+
+   **If `postgres` module applied:**
+   - Start Docker Desktop (no link — open the app). Verify with `docker info`.
+   - Run the first migration: `pnpm db:migrate` from the api dir (or wherever drizzle.config.ts lives).
+
+   Include realign's report at the end. List anything that would have overwritten existing config and what the user should review.
 
 ## Refuse to do
 

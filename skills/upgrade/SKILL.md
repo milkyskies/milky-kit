@@ -47,7 +47,14 @@ After all changes are applied (or skipped):
 1. **Scan the project's CLAUDE.md for drift.** Now that the kit has moved, some `@`-refs may point to files that were renamed or deleted. Detect by reading each `@`-ref path and checking it resolves to a real file. Propose fixes (rename `@-ref` to new path, or remove if the rule was deleted). Walk one at a time.
 2. **Invoke the `realign` skill.** Pass it the list of rules that changed in this upgrade so realign focuses on those rather than scanning everything. The user accepts/skips each violation realign finds.
 3. **Update `.milky-kit-version`** to the new kit SHA + new timestamp. Preserve the template + modules list.
-4. **Final summary** — applied N, skipped M, what's still TODO. Include realign's report.
+4. **Final summary** — applied N, skipped M, what's still TODO, plus manual setup steps the user must complete (with direct links). Substitute `{{owner}}`, `{{repo}}`, `{{package}}`.
+
+   Always check and surface (skip the ones that don't apply):
+
+   - **Symlink stale?** If `~/.claude/kit` is missing or points to the wrong place, the `.claude/rules/` symlinks won't resolve. Quick check: `ls -la ~/.claude/kit`. Fix: `ln -s <kit-checkout-path> ~/.claude/kit`.
+   - **Workflow permissions** (if release-please module is active and the project hasn't enabled this): <https://github.com/{{owner}}/{{repo}}/settings/actions> → **Workflow permissions** → **Allow GitHub Actions to create and approve pull requests**.
+   - **Trusted Publisher** (if the project publishes to npm and the upgrade introduces a release.yml change): verify the publisher config still matches at <https://www.npmjs.com/package/{{package}}/access>. Workflow filename should match the entry-point (`release-please.yml` for the standard flow).
+   - **Pending release-please PR?** If the project has open release PRs (from kit-side template changes that affect this project), link to them: <https://github.com/{{owner}}/{{repo}}/pulls?q=is%3Apr+is%3Aopen+label%3Aautorelease%3A+pending>.
 
 ## Things to be careful about
 
