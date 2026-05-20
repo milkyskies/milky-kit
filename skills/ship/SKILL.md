@@ -9,13 +9,25 @@ argument-hint: "[issue number (optional, inferred from branch if omitted)]"
 
 # Ship
 
-Full pipeline: quality gates, code review, PR, CI loop, merge wait, and land.
+Full pipeline. Shape depends on the project's workflow mode (see `modules/core/rules/workflow.md`):
+
+- **`main` mode**: quality gates → push to main → `glb done`. No PR.
+- **`branch` or `worktrees` mode**: quality gates → code review → PR → CI loop → mark ready. Full flow below.
 
 On **re-runs** (PR already exists), skip PR creation — just run quality gates, code review, push, and resume the CI + merge loop.
 
 ## Inputs
 
 - `$ARGUMENTS` — issue number. If omitted, infer from the current branch name (e.g. `feature/#123.foo` -> `123`).
+
+## Step 0: Read the workflow mode
+
+```bash
+mode=$(cat .milky-kit-mode 2>/dev/null || echo "branch")
+```
+
+- `main` → follow the **main-mode shortcut** at the bottom of this skill. Skip the PR pipeline.
+- `branch` / `worktrees` → continue with the full pipeline below.
 
 ## Step 1: Determine scope
 
@@ -149,3 +161,51 @@ Tell the user:
 3. Remind them to say "merged" when the PR is merged so `/land` can clean up.
 
 **Never run `gh pr merge`.**
+
+---
+
+## Main-mode shortcut
+
+Invoked when `.milky-kit-mode` is `main`. No branch, no PR, no `/land` follow-up — just verify and push.
+
+### M1: Verify on main
+
+```bash
+git branch --show-current   # must be main
+```
+
+If not on `main`, stop and tell the user the mode is wrong for this branch.
+
+### M2: Verify against the issue
+
+Same as Step 2 above — produce the ✓/✗/⊘ checklist from `glb show <num>`. Finish any ✗ before proceeding.
+
+### M3: Code review + quality gates
+
+Same as steps 3 + 4 above. Run `/simplify` (when non-trivial), `/rulify`, formatter, linter, typecheck, test scoped to changed packages. Commit fixes.
+
+### M4: Push to main
+
+```bash
+git push origin main
+```
+
+If push fails (someone else pushed first), `git pull --rebase` and retry. **No `--force` push, ever.**
+
+### M5: Close the issue
+
+```bash
+glb done <num> --comment "<short summary>"
+```
+
+If the most recent commit's body includes `closes #<num>`, GitHub will also close the issue on push — `glb done` is idempotent and keeps the metadata in sync.
+
+### M6: Report
+
+Tell the user:
+
+1. Issue #N closed.
+2. Commit SHA pushed.
+3. **`/simplify` status** — explicit yes/no + one-line reason if skipped.
+
+No `/land` follow-up needed in main mode; nothing to clean up.
