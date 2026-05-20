@@ -8,7 +8,8 @@
 		"lint": "biome check .",
 		"lint:fix": "biome check --write .",
 		"typecheck": "tsc --noEmit",
-		"check": "pnpm lint && pnpm typecheck",
+		"test": "vitest run",
+		"check": "pnpm lint && pnpm typecheck && pnpm test",
 		"routes:generate": "tsr generate"
 	},
 	"dependencies": {
@@ -25,7 +26,7 @@
 	"devDependencies": {
 		"@{{project_name}}/biome-config": "workspace:*",
 		"@{{project_name}}/tsconfig": "workspace:*",
-		"@biomejs/biome": "^1.9.4",
+		"@biomejs/biome": "^2.4.15",
 		"@tailwindcss/vite": "^4.0.0",
 		"@tanstack/router-cli": "^1.170.4",
 		"@tanstack/router-plugin": "^1.170.4",
@@ -34,6 +35,7 @@
 		"@vitejs/plugin-react": "^4.3.4",
 		"tailwindcss": "^4.0.0",
 		"typescript": "^5.7.0",
-		"vite": "^6.0.0"
+		"vite": "^6.0.0",
+		"vitest": "^3.0.0"
 	}
 }

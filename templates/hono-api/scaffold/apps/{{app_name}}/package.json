@@ -14,7 +14,8 @@
 		"lint": "biome check .",
 		"lint:fix": "biome check --write .",
 		"typecheck": "tsc --noEmit",
-		"check": "pnpm lint && pnpm typecheck"
+		"test": "vitest run",
+		"check": "pnpm lint && pnpm typecheck && pnpm test"
 	},
 	"dependencies": {
 		"date-fns": "^4.1.0",
@@ -26,10 +27,11 @@
 	"devDependencies": {
 		"@{{project_name}}/biome-config": "workspace:*",
 		"@{{project_name}}/tsconfig": "workspace:*",
-		"@biomejs/biome": "^1.9.4",
+		"@biomejs/biome": "^2.4.15",
 		"@cloudflare/workers-types": "^4.20260404.1",
 		"drizzle-kit": "^0.31.10",
 		"typescript": "^5.7.0",
+		"vitest": "^3.0.0",
 		"wrangler": "^4.4.0"
 	}
 }
