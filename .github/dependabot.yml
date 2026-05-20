@@ -23,6 +23,7 @@ updates:
   # Globs catch the literal `{{app_name}}` directory in the kit's tree.
   - package-ecosystem: "npm"
     directories:
+      - "/"
       - "/templates/*/scaffold/apps/*"
       - "/templates/*/variants/*/*/apps/*"
       - "/modules/*/scaffold"
