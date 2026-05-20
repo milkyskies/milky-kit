@@ -1,0 +1,1 @@
+../../modules/core/rules/testing.md

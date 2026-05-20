@@ -46,31 +46,26 @@ User says any of: "scaffold a new project", "set up an Effect API", "new milky-k
 
 5. **Apply composable module scaffolds.** For each chosen module in `~/.claude/kit/modules/<name>/scaffold/`, copy files into the project root (or wherever the module's `module.toml` says). Same merge rules: JSON merge, others overwrite.
 
-6. **Write `CLAUDE.md`.** Use `~/.claude/kit/templates/<template>/CLAUDE.md` as the base template (if it exists), or compose from rule refs. Final shape:
+6. **Write `CLAUDE.md`.** Copy `~/.claude/kit/templates/<template>/CLAUDE.md` into the project. It has the project description and `## Project-specific` section. Don't add `@`-refs to it — rules load from `.claude/rules/` (next step) automatically. Append the user's tsuika text from step 5 under `## Project-specific`.
 
-   ```md
-   # <project name>
+7. **Create `.claude/rules/` and symlink the chosen rules in.** Claude Code auto-loads every `.md` (and `.md` symlink) under `.claude/rules/`. For each rule the template + chosen modules need:
 
-   <one-line description placeholder>
-
-   ## Template
-   @~/.claude/kit/templates/<template>/rules/<rule>.md
-
-   ## Shared
-   @~/.claude/kit/modules/core/rules/general.md
-   @~/.claude/kit/modules/core/rules/comments.md
-   @~/.claude/kit/modules/core/rules/config-and-env.md
-   @~/.claude/kit/modules/ts/rules/blank-lines.md   # if TS
-
-   ## Composables
-   @~/.claude/kit/modules/<each-chosen-module>/rules/*.md
-
-   ## Project-specific
-
-   <whatever the user provided in step 5 of inputs>
+   ```bash
+   mkdir -p .claude/rules
+   ln -s ~/.claude/kit/templates/<template>/rules/<rule>.md .claude/rules/<rule>.md
+   ln -s ~/.claude/kit/modules/<module>/rules/<rule>.md .claude/rules/<rule>.md
    ```
 
-7. **Write `.milky-kit-version`** at the project root. Contents:
+   Always-on rules (every template gets these):
+   - `~/.claude/kit/modules/core/rules/{general,comments,config-and-env,workflow,worktrees,testing}.md`
+
+   Template-specific rules (read the template's `rules/` directory).
+
+   Composable-module rules (per the user's selections in step 2): `ghlobes/rules/glb.md`, `ci/rules/ci.md`, `security/rules/security.md`, `release-please/rules/release-please.md`, `pnpm/rules/pnpm-security.md`, `bun/rules/bun.md`, `postgres/rules/postgres.md`, etc.
+
+   The symlinks point through `~/.claude/kit/` (absolute), so they survive the user moving project directories but require `~/.claude/kit/` to be set up on each machine (see kit README — `ln -s ~/Code/Projects/milky-kit ~/.claude/kit`).
+
+8. **Write `.milky-kit-version`** at the project root. Contents:
 
    ```
    <kit SHA from `git -C ~/.claude/kit rev-parse HEAD`>
@@ -79,7 +74,7 @@ User says any of: "scaffold a new project", "set up an Effect API", "new milky-k
    modules: <comma-separated list>
    ```
 
-8. **Initialize git.** `git init -b main`. Add a `.gitignore` if not already present (most scaffolds ship one). Make the initial commit:
+9. **Initialize git.** `git init -b main`. Add a `.gitignore` if not already present (most scaffolds ship one). Make the initial commit:
 
    ```
    chore: initial scaffold from milky-kit <short SHA>
@@ -89,11 +84,11 @@ User says any of: "scaffold a new project", "set up an Effect API", "new milky-k
    Variants: <list>
    ```
 
-9. **Install dependencies.** If `pnpm` module chosen: `pnpm install`. If `bun`: `bun install`. If Cargo (Rust template): `cargo fetch`. Report install output.
+10. **Install dependencies.** If `pnpm` module chosen: `pnpm install`. If `bun`: `bun install`. If Cargo (Rust template): `cargo fetch`. Report install output.
 
-10. **Run formatter.** Format the freshly-scaffolded code to the project's biome / cargo fmt to clean up any `{{app_name}}` substitution artifacts.
+11. **Run formatter.** Format the freshly-scaffolded code to the project's biome / cargo fmt to clean up any `{{app_name}}` substitution artifacts.
 
-11. **Print next steps.** Always tell the user:
+12. **Print next steps.** Always tell the user:
     - The project lives at `./<project>`.
     - If `ghlobes` chosen: "Run `glb init` to wire up the GitHub Project for issue tracking."
     - Template-specific bootstrap: docker-compose up for postgres, `pnpm db:migrate` for first migration, etc. Read the template's README for the exact steps.

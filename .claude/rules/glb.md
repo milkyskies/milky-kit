@@ -1,0 +1,1 @@
+../../modules/ghlobes/rules/glb.md

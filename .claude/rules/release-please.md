@@ -1,0 +1,1 @@
+../../modules/release-please/rules/release-please.md

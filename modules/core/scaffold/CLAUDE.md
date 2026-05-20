@@ -1,19 +1,6 @@
 # {{project_name}}
 
-<!-- Minimal CLAUDE.md for projects that didn't start from a template
-     (composable-modules-only). Templates ship their own richer CLAUDE.md;
-     this file is what `milky-kit:retrofit` writes when no template applies. -->
-
-## Rules
-
-@~/.claude/kit/modules/core/rules/general.md
-@~/.claude/kit/modules/core/rules/comments.md
-@~/.claude/kit/modules/core/rules/config-and-env.md
-@~/.claude/kit/modules/core/rules/workflow.md
-@~/.claude/kit/modules/core/rules/worktrees.md
-@~/.claude/kit/modules/core/rules/testing.md
-
-@~/.claude/kit/modules/ghlobes/rules/glb.md
+Rules load from `.claude/rules/`, which `milky-kit:retrofit` (or `:new`) populated with symlinks into `~/.claude/kit/`. See the kit's README for the full set.
 
 ## Project-specific
 

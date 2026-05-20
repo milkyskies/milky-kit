@@ -42,30 +42,41 @@ Report findings briefly. Then ask which modules to apply.
 
 ## Steps to execute
 
-1. **Merge scaffold files** for each chosen module:
+1. **Create `.claude/rules/` symlinks** for the chosen rules. Claude Code auto-loads every `.md` (incl. symlinks) under `.claude/rules/`, so this replaces the older `@`-refs-in-CLAUDE.md mechanism:
+
+   ```bash
+   mkdir -p .claude/rules
+   ln -s ~/.claude/kit/modules/core/rules/general.md .claude/rules/general.md
+   ln -s ~/.claude/kit/modules/<module>/rules/<rule>.md .claude/rules/<rule>.md
+   # ... one symlink per rule
+   ```
+
+   Always-on rules: `core/rules/{general,comments,config-and-env,workflow,worktrees,testing}.md`. Per chosen module: its `rules/*.md` files. Skip symlinks that already exist; if a regular file with the same name exists, ask before replacing.
+
+2. **Merge scaffold files** for each chosen module:
    - For `package.json`: deep-merge — add new deps + scripts without touching existing keys. If a script name collides (e.g. `lint` already defined), ask which to keep.
-   - For `biome.json`: replace with `{ "$schema": "...", "extends": ["@milkyskies/biome-config"] }`, preserving any project-specific `files.includes` patterns from the old config.
+   - For `biome.json`: replace with `{ "$schema": "...", "extends": ["@milkyskies/biome-config/biome.json"] }`, preserving any project-specific `files.includes` patterns from the old config.
    - For `tsconfig.json`: only update `extends` if the project doesn't already extend something the user cares about.
    - For `.github/workflows/*.yml`: skip if file exists; show diff and ask if they want to replace.
    - For `.ghlobes.toml`: skip if present.
-   - For `CLAUDE.md`: append `@`-refs that aren't already there, under appropriate sections; never duplicate existing content.
+   - For `CLAUDE.md`: if missing, copy `~/.claude/kit/modules/core/scaffold/CLAUDE.md` (the minimal one) into the project. If present, leave it alone — rules now load from `.claude/rules/` symlinks, so any existing `@`-ref list in CLAUDE.md becomes redundant but harmless; suggest cleaning it up only if the user asks.
 
-2. **Add `.milky-kit-version`** if missing. Same format as the `new` skill — kit SHA + timestamp + applied-modules list.
+3. **Add `.milky-kit-version`** if missing. Same format as the `new` skill — kit SHA + timestamp + applied-modules list.
 
-3. **Add deps** via the project's package manager (`pnpm add -D` / `bun add -d`). Pin versions to match what the templates ship.
+4. **Add deps** via the project's package manager (`pnpm add -D` / `bun add -d`). Pin versions to match what the templates ship.
 
-4. **Run formatter** (`pnpm biome check --write .` or equivalent) so the just-added scaffold files conform.
+5. **Run formatter** (`pnpm biome check --write .` or equivalent) so the just-added scaffold files conform.
 
-5. **Commit** with a single commit per logical chunk. Suggested: one commit per module applied. Use scoped messages: `chore(security): apply milky-kit security module`, `chore(ci): apply milky-kit CI module`, etc.
+6. **Commit** with a single commit per logical chunk. Suggested: one commit per module applied. Use scoped messages: `chore(security): apply milky-kit security module`, `chore(ci): apply milky-kit CI module`, etc.
 
-6. **Scan the codebase for patterns that need migrating to the new rules.** Examples:
+7. **Scan the codebase for patterns that need migrating to the new rules.** Examples:
    - If the project just adopted the Effect template's rules, scan for `throw new Error` in business logic, `T | null` in domain types, `Promise.all`, `console.log` in `src/`, inline `Effect.gen` in presentation handlers.
    - If the project just adopted the strict biome config, expect `noExplicitAny: error` + the `no-as-cast.grit` plugin to flag existing code. Run `pnpm -r lint` and surface findings.
    - For each pattern found, propose the rule-conforming version and ask whether to apply. Migrations that are mechanical (rename, single-file edit) get applied with consent. Migrations that require restructuring (extract a use case, refactor a layer) get a `// TODO: realign — <rule>` marker and the user fixes by hand.
 
-7. **Invoke the `realign` skill** for the broader cross-check on the project as a whole.
+8. **Invoke the `realign` skill** for the broader cross-check on the project as a whole.
 
-8. **Report what was added vs skipped.** Be explicit about anything that would have overwritten existing config and what the user should review. Include realign's report.
+9. **Report what was added vs skipped.** Be explicit about anything that would have overwritten existing config and what the user should review. Include realign's report.
 
 ## Refuse to do
 

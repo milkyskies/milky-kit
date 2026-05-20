@@ -38,42 +38,34 @@ A project's `CLAUDE.md` picks one template's rules and as many module rules as i
 
 ## How a project consumes the kit
 
-Rules are **referenced**, not copied. Each project's `CLAUDE.md` is a short list of `@`-refs into this repo:
+Rules are **symlinked**, not copied. Each project's `.claude/rules/` directory holds one symlink per rule, pointing through `~/.claude/kit/` to the live source-of-truth file in this repo:
 
-```md
-# Template
-@~/.claude/kit/templates/effect-api/rules/effect.md
-
-# Shared
-@~/.claude/kit/modules/core/rules/general.md
-@~/.claude/kit/modules/core/rules/comments.md
-@~/.claude/kit/modules/core/rules/config-and-env.md
-
-# Composables
-@~/.claude/kit/modules/pnpm/rules/pnpm.md
-@~/.claude/kit/modules/pnpm/rules/pnpm-security.md
-@~/.claude/kit/modules/security/rules/security.md
-@~/.claude/kit/modules/ghlobes/rules/glb.md
-@~/.claude/kit/modules/postgres/rules/postgres.md
-
-## Project-specific
-
-(project-specific rules go here, owned by the project)
+```
+my-project/.claude/rules/
+├── general.md           -> ~/.claude/kit/modules/core/rules/general.md
+├── comments.md          -> ~/.claude/kit/modules/core/rules/comments.md
+├── effect.md            -> ~/.claude/kit/templates/effect-api/rules/effect.md
+├── postgres.md          -> ~/.claude/kit/modules/postgres/rules/postgres.md
+└── ...
 ```
 
-Edit a rule file in milky-kit, and every project picks it up next time Claude loads `CLAUDE.md`. No sync step, no copy, no drift.
+Claude Code auto-loads every `.md` (including symlinks) under `.claude/rules/` at session start — no `@`-refs needed in CLAUDE.md. The symlinks live in git (mode 120000); they reconstruct on checkout as long as the target exists on that machine.
+
+Edit a rule file in milky-kit, and every project picks it up immediately — the symlinks point to the live file. Single source of truth, no copy, no drift.
 
 Scaffold files (gitignore, biome.json, tsconfig, CI workflows, .ghlobes.toml) are **copied once at init**, then the project owns them. Updates flow through the upgrade skill.
 
 ## Setup
 
-Symlink milky-kit at a stable path so `@`-refs in scaffolded `CLAUDE.md` files resolve everywhere:
+Symlink milky-kit at a stable path so the `.claude/rules/` symlinks resolve on every machine:
 
 ```bash
 ln -s ~/Code/Projects/milky-kit ~/.claude/kit
 ```
 
-Install the milky-kit Claude Code plugin (provides the `milky-kit:new`, `milky-kit:retrofit`, `milky-kit:upgrade`, `milky-kit:check-version` skills).
+Do this once per machine; the kit can live anywhere as long as `~/.claude/kit` points to it. The kit's own `.claude/rules/` uses *relative* symlinks back into `modules/`, so cloning the kit on a new machine works without any setup — it eats its own dog food.
+
+Install the milky-kit Claude Code plugin (provides the `milky-kit:new`, `milky-kit:retrofit`, `milky-kit:upgrade`, `milky-kit:realign`, `milky-kit:edit`, `milky-kit:kit-modify`, `milky-kit:check-version` skills).
 
 ## Scaffold a new project
 
@@ -90,7 +82,7 @@ The skill asks:
 4. Project name + directory
 5. Any project-specific rules to append? (free-text, written under `## Project-specific` in CLAUDE.md)
 
-Then it copies the template + module scaffolds, writes `CLAUDE.md` with the right `@`-refs, runs the package manager install, initializes git, and commits the initial scaffold.
+Then it copies the template + module scaffolds, creates `.claude/rules/` symlinks for every chosen rule, writes a thin `CLAUDE.md` (project description + project-specific section), runs the package manager install, initializes git, and commits the initial scaffold.
 
 ## Apply the kit to an existing repo
 
