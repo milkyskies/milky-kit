@@ -32,31 +32,37 @@ The Rust counterpart to `effect-api` — same domain/use-case discipline, differ
 
 ## Workspace layout
 
+Each clean-architecture layer is its own crate; cross-layer dependencies are enforced at the Cargo workspace level (the `domain` crate has no dependency on `infrastructure`, etc.).
+
 ```
-apps/
-├── api/                    The HTTP server crate
+Cargo.toml                  Workspace manifest
+docker-compose.yml          Local Postgres
+packages/
+├── domain/                 Pure crate: models, repository traits, errors
 │   └── src/
-│       ├── domain/
-│       │   ├── models/       Plain Rust structs (newtypes welcome)
-│       │   ├── repositories/ Repository traits (interfaces)
-│       │   └── services/     Pure domain services
-│       ├── application/
-│       │   └── use_case/     <verb>_<resource>.rs orchestrations
-│       ├── infrastructure/
-│       │   └── db/           SeaORM-backed repository impls
-│       ├── presentation/
-│       │   ├── routes/       Per-resource routers
-│       │   ├── dto/          Wire types (Serialize/Deserialize/ToSchema)
-│       │   └── error.rs      AppError -> HTTP status mapping
-│       └── main.rs           Composition root
-├── db/                     SeaORM migrator + entity types crate
-│   ├── src/
-│   │   ├── lib.rs            Re-exports for entities
-│   │   ├── m_YYYYMMDD_HHMMSS_<name>.rs  Migration files
-│   │   └── entities/         Generated entity types (sea-orm-cli output)
-│   └── Cargo.toml
-├── docker-compose.yml      Local Postgres
-└── Cargo.toml              Workspace manifest
+│       ├── lib.rs
+│       ├── models.rs       Plain Rust structs (newtypes welcome)
+│       ├── repositories.rs Repository traits (interfaces)
+│       └── errors.rs       Domain error types
+├── application/            Use cases: <verb>_<resource>.rs orchestrations
+│   └── src/lib.rs
+└── infrastructure/         SeaORM-backed repository impls
+    └── src/
+        ├── lib.rs
+        ├── db.rs
+        └── db/
+            ├── entities/   Generated entity types (sea-orm-cli output)
+            └── repositories/  Trait impls
+apps/
+├── api/                    HTTP server: presentation only
+│   └── src/
+│       ├── config.rs
+│       ├── main.rs         Composition root (wires packages together)
+│       └── presentation.rs Routes, DTOs, error → HTTP mapping
+└── db/                     SeaORM migrator binary
+    └── src/
+        ├── main.rs
+        └── migrator/       m_YYYYMMDD_HHMMSS_<name>.rs migrations
 ```
 
 ## First-run
