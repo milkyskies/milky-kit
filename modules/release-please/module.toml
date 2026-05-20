@@ -12,4 +12,4 @@ dest = ".github/workflows/release-please.yml"
 
 [variants.publish]
 options = ["npm", "none"]
-default = "npm"
+default = "none"
