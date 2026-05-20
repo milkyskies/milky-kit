@@ -60,7 +60,7 @@ export function createOptimisticMutationHook<
 				userOnError?.(
 					error,
 					variables,
-					context?.userContext as TContext,
+					context?.userContext,
 					mutationContext,
 				);
 			},
@@ -69,7 +69,7 @@ export function createOptimisticMutationHook<
 				userOnSuccess?.(
 					data,
 					variables,
-					context?.userContext as TContext,
+					context?.userContext,
 					mutationContext,
 				);
 			},
@@ -86,7 +86,7 @@ export function createOptimisticMutationHook<
 					data,
 					error,
 					variables,
-					context?.userContext as TContext,
+					context?.userContext,
 					mutationContext,
 				);
 			},

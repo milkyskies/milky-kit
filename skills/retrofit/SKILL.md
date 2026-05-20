@@ -67,6 +67,7 @@ Report findings briefly. Then ask which modules to apply.
    - For `tsconfig.json`: only update `extends` if the project doesn't already extend something the user cares about.
    - For `.github/workflows/*.yml`: skip if file exists; show diff and ask if they want to replace.
    - For `.github/dependabot.yml` (ships with the `security` module): if missing, copy and prune ecosystem blocks the project doesn't use (no `package.json` anywhere → strip `npm` block; no `Cargo.toml` anywhere → strip `cargo` block; `github-actions` always stays). If present, leave it alone — the user owns it.
+   - For `_<name>` underscore-prefixed config files (e.g. `_biome.json`): strip the leading underscore at the destination. Same as the `new` skill — the underscore exists in scaffold form only, never in consumed projects.
    - For `.ghlobes.toml`: skip if present.
    - For `CLAUDE.md`: if missing, copy `~/.claude/kit/modules/core/scaffold/CLAUDE.md` (the minimal one) into the project. If present, leave it alone — rules now load from `.claude/rules/` symlinks, so any existing `@`-ref list in CLAUDE.md becomes redundant but harmless; suggest cleaning it up only if the user asks.
    - For `mise.toml`: if missing, generate it from the chosen modules following the same per-template `[tools]` + `[tasks.dev]` rules as the `new` skill. If present, ask before touching `[tools]`; offer to add missing `[tasks.check]`/`[tasks.fmt]`/`[tasks."db:setup"]` if absent.

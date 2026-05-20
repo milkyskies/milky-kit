@@ -19,7 +19,7 @@ export const authMiddleware = createMiddleware<{
 	Variables: AuthVariables;
 }>(async (context, next) => {
 	const header = context.req.header("Authorization");
-	if (!header || !header.startsWith("Bearer ")) {
+	if (!header?.startsWith("Bearer ")) {
 		return context.json({ error: "Unauthorized" }, 401);
 	}
 	const idToken = header.slice("Bearer ".length);
