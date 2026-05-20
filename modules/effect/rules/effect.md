@@ -101,10 +101,49 @@ A presentation file with an `Effect.gen` block longer than 3 lines is a code sme
 - When the wire shape genuinely differs from the encoded domain (renamed fields, computed fields, omitted fields), express it as `Schema.transform(DomainSchema, WireSchema, { decode, encode })` in `presentation/<adapter>/dto/<resource>.ts`. Only then.
 - Use case Input/Output Schemas live next to the use case and are shared between adapters. One schema, every protocol.
 
-## Sums and discriminated unions
+## Sums, discriminated unions, and `_tag` discipline
 
-- `Data.taggedEnum<{ A: {...}; B: {...} }>()` gives you constructors, `$is`, `$match` for free.
-- For schema-backed sums use `Schema.Union(...)` of tagged structs and pair with `Match.tag` for handlers.
+- Define tagged unions with `Data.taggedEnum<{ A: {...}; B: {...} }>()`. The result gives you constructors, the `.$is` type-guard API, the `.$match` exhaustive-match API, and `Equal` + `Hash` instances — all for free.
+- For schema-backed sums use `Schema.Union(...)` of tagged structs. `Schema.Class` instances also implement `Equal` and `Hash` automatically.
+
+### Never inspect `_tag` manually
+
+**This is the load-bearing rule.** Do not write `if (x._tag === "Foo")`, `x._tag !== y._tag`, or any other hand-rolled `_tag` comparison anywhere in business code. Every such use has a typed alternative that cannot drift from the type definition:
+
+| You want to... | Use | NOT |
+|---|---|---|
+| Branch on which case `x` is | `Match.value(x).pipe(Match.tag("A", handlerA), Match.tag("B", handlerB), Match.exhaustive)` — or `MyType.$match(x, { A: handlerA, B: handlerB })` for `Data.taggedEnum` | `if (x._tag === "A") ... else if (x._tag === "B") ...` |
+| Check "is `x` the A case?" | `MyType.$is("A")(x)` (works as a type guard — narrows `x` to the A variant) | `x._tag === "A"` |
+| Filter / partition by case | `xs.filter(MyType.$is("A"))` | `xs.filter((x) => x._tag === "A")` |
+| Compare two tagged values for equality | `Equal.equals(a, b)` — structural, exhaustive, free with `Data.*` and `Schema.Class` | `a._tag === b._tag && a.foo === b.foo && ...` |
+| Use a tagged value as a key in a map / set | `HashMap` / `HashSet` from `effect` (uses `Hash` automatically) | `Map` / `Set` keyed by stringified `_tag` |
+
+If the value is a plain object with a `_tag` field (not built via `Data.taggedEnum`, `Data.case`, `Data.struct`, or `Schema.Class`), the upstream type definition is the bug. Convert the producer first; do not bridge with manual `_tag` checks.
+
+Anti-pattern in the wild:
+
+```ts
+// WRONG — manual ladder, drifts from the type, no exhaustiveness
+function authsEqual(a: AuthState, b: AuthState): boolean {
+  if (a._tag !== b._tag) return false
+  if (a._tag === "SignedOut") return true
+  return a.userId === (b as Extract<AuthState, { _tag: "SignedIn" }>).userId
+}
+```
+
+Right shape:
+
+```ts
+// Define with Data.taggedEnum so Equal/Hash come for free
+type AuthState = Data.TaggedEnum<{
+  SignedOut: {}
+  SignedIn: { userId: string }
+}>
+const AuthState = Data.taggedEnum<AuthState>()
+
+// Then equality is one call
+const authsEqual = (a: AuthState, b: AuthState) => Equal.equals(a, b)
+```
 
 ## Dependency injection via Layer / Context
 
