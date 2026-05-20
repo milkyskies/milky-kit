@@ -7,17 +7,24 @@
 At session start, before doing anything else, read the `.milky-kit-mode` file at project root:
 
 ```bash
-cat .milky-kit-mode  # → root  OR  worktrees
+cat .milky-kit-mode  # → main  OR  branch  OR  worktrees
 ```
 
-- **`root`** — work directly in the project root checkout. Commit to whichever branch is checked out (usually `main`). Push directly. No PRs, no worktrees. Best for solo work, small projects, the kit itself.
-- **`worktrees`** — each task runs in its own isolated `../<worktree-dir>/<num>/` directory on a feature branch. Ships via PR. Best for parallel multi-agent work, anywhere PR review is wanted.
+| Mode | Branch | Worktree | Ship via |
+|---|---|---|---|
+| `main` | no — commit on `main` | no | push to `main` directly |
+| `branch` | yes — feature branch in root checkout | no | PR to `main` |
+| `worktrees` | yes — feature branch | yes — `../<worktree-dir>/<num>/` | PR to `main` |
 
-If `.milky-kit-mode` is missing, default to `root` and tell the user — they probably want to flip to `worktrees` via `/milky-kit:mode worktrees` if that wasn't intentional.
+- **`main`** — direct on main. No branches, no worktrees, no PRs. Best for solo solo work, the kit itself, small personal projects where you trust yourself.
+- **`branch`** — feature branch in the root checkout. Ship via PR. No worktree directory. Best for typical solo work where you still want PR review.
+- **`worktrees`** — full isolation: one worktree per task, branch, PR. Best for parallel multi-agent work or anywhere worktree isolation matters.
 
-To switch modes between tasks, run `/milky-kit:mode root` or `/milky-kit:mode worktrees`. The flip applies to the next task — finish whatever you're doing in the current mode first.
+If `.milky-kit-mode` is missing, default to `branch` and tell the user — they should set it explicitly with `/milky-kit:mode <value>`.
 
-## glb (ghlobes) — Issue Tracking (both modes)
+To switch modes between tasks, run `/milky-kit:mode main | branch | worktrees`. The flip applies to the next task — finish whatever you're doing in the current mode first.
+
+## glb (ghlobes) — Issue Tracking (all modes)
 
 Use `glb` for ALL task tracking via GitHub Issues + Projects. Do NOT use TodoWrite, TaskCreate, or markdown TODOs.
 
@@ -61,7 +68,7 @@ glb sub remove <parent> <child> # Remove a sub-issue from a parent
 glb sub list <parent>           # List sub-issues with progress
 ```
 
-**Default: sub-issues branch off `main` and PR into `main`, just like any other issue.** The parent/child relationship is organizational only. Epic-branch workflow (sub-PRs into an epic branch) is `worktrees`-mode only, and only when the user explicitly asks for it.
+**Default: sub-issues branch off `main` and PR into `main`, just like any other issue.** The parent/child relationship is organizational only. The epic-branch workflow (sub-PRs into an epic branch) applies only in `branch` or `worktrees` mode, and only when the user explicitly asks for it.
 
 ### Rules
 
@@ -69,7 +76,7 @@ glb sub list <parent>           # List sub-issues with progress
 - Use `glb search "query"` to find existing issues
 - Do NOT create markdown TODO lists or use external trackers
 
-## Session Start — MANDATORY (both modes)
+## Session Start — MANDATORY (all modes)
 
 Sync before doing anything:
 
@@ -77,7 +84,7 @@ Sync before doing anything:
 git checkout main && git pull
 ```
 
-## Read the Docs — MANDATORY (both modes)
+## Read the Docs — MANDATORY (all modes)
 
 **Before touching any code**, check whether the feature or area you are working on has a doc.
 
@@ -88,9 +95,9 @@ Do not assume you know how something works — read the doc first.
 
 ---
 
-## Task Workflow — `root` mode
+## Task Workflow — `main` mode
 
-When `.milky-kit-mode` is `root`, follow this section. Skip the worktrees mode section below.
+When `.milky-kit-mode` is `main`, follow this section. Skip the others.
 
 ### 1. Claim the issue
 
@@ -98,17 +105,17 @@ When `.milky-kit-mode` is `root`, follow this section. Skip the worktrees mode s
 glb update <num> --claim
 ```
 
-### 2. Verify branch
-
-Confirm you are on the branch you intend to commit to (usually `main`):
+### 2. Verify branch is `main`
 
 ```bash
-git branch --show-current   # usually `main`
+git branch --show-current   # must be `main`
 ```
+
+If not on `main`, switch (`git checkout main`).
 
 ### 3. Work
 
-Edit, build, test directly in the project root. **Before writing new code, find a similar existing implementation in each layer you're about to touch and follow its patterns.**
+Edit, build, test directly in the project root, on `main`. **Before writing new code, find a similar existing implementation in each layer you're about to touch and follow its patterns.**
 
 Commit semi-frequently with `(#N)` issue refs in the message:
 
@@ -121,7 +128,7 @@ Never `git add -A` or `git add .` — stage specific files.
 
 ### 4. Push directly
 
-In `root` mode there are no PRs. Push to the branch you're on:
+No PRs in `main` mode. Push to `main` after each meaningful commit (or batched, your call):
 
 ```bash
 git push origin main
@@ -139,9 +146,55 @@ For commits that fix the issue completely, include `closes #<num>` in the commit
 
 ---
 
+## Task Workflow — `branch` mode
+
+When `.milky-kit-mode` is `branch`, follow this section. Skip the others.
+
+### 1. Sync + create branch (in root checkout)
+
+```bash
+git checkout main && git pull
+git checkout -b feature/#<num>.<summary>
+```
+
+Use the right branch prefix:
+- `feature/#<num>.<summary>` — new functionality
+- `fix/#<num>.<summary>` — bug fix
+- `chore/#<num>.<summary>` — maintenance
+
+No worktree directory. The branch lives in the same root checkout.
+
+### 2. Verify branch
+
+```bash
+git branch --show-current   # must be your issue branch, NOT main
+```
+
+If you're still on main, stop and switch.
+
+### 3. Claim & work
+
+```bash
+glb update <num> --claim
+```
+
+**Before writing new code, find a similar existing implementation in each layer you're about to touch and follow its patterns.**
+
+Commit semi-frequently — don't save everything for one giant commit. Stage specific files, never `git add -A`.
+
+### 4. Ship via PR
+
+**When implementation is done, run `/ship`.** It handles quality gates, code review, draft PR, CI loop, and mark-ready.
+
+After the user merges, say "merged" to trigger `/land`. `/land` switches back to `main`, pulls, and deletes the local branch.
+
+PR title format: `[#<num>] <issue title>`. Body starts with `closes #<num>`.
+
+---
+
 ## Task Workflow — `worktrees` mode
 
-When `.milky-kit-mode` is `worktrees`, follow this section. Skip the root mode section above.
+When `.milky-kit-mode` is `worktrees`, follow this section. Skip the others.
 
 ### Multi-Agent Environment (worktrees mode only)
 
@@ -181,21 +234,15 @@ glb update <num> --claim
 
 **Before writing new code, find a similar existing implementation in each layer you're about to touch and follow its patterns.**
 
-Commit semi-frequently — don't save everything for one giant commit.
+Commit semi-frequently.
 
 ### 4. Ship via PR
 
-**When implementation is done, run `/ship`.** It handles everything: quality gates, code review, draft PR, CI loop (including merge conflicts), and mark ready. After the user merges, say "merged" to trigger `/land`.
+**When implementation is done, run `/ship`.** Same as `branch` mode — quality gates, draft PR, CI loop, mark ready.
 
-### Pull Requests (worktrees mode only)
+PR title format: `[#<num>] <issue title>`. Body starts with `closes #<num>`.
 
-Every PR must link back to the issue it closes. This applies whether you open the PR via `/ship` or `gh pr create` directly.
-
-- **Title:** `[#<num>] <issue title>` — e.g. `[#22] Retire Cloudflare Pages branch previews`. Use the issue title from `glb show <num>`, not a conventional-commit summary.
-- **Sub-issue title** (epic-branch workflow only): `[#<epic-num>/#<num>] <issue title>`.
-- **Body:** must start with `closes #<num>` on the first line so GitHub auto-closes the issue on merge.
-
-Do NOT use conventional-commit titles for PRs — those belong on commits, not PRs. The `[#<num>]` prefix is what links the PR to the tracker.
+After the user merges, say "merged" to trigger `/land`. `/land` cleans up the worktree.
 
 ### Epic-branch workflow (worktrees mode, on request)
 
@@ -221,7 +268,19 @@ feature/#409.llm-infrastructure -> main            <- one final PR
 
 ---
 
-## Session Completion (both modes)
+## Pull Request format (`branch` and `worktrees` modes)
+
+Every PR must link back to the issue it closes. This applies whether you open the PR via `/ship` or `gh pr create` directly.
+
+- **Title:** `[#<num>] <issue title>` — e.g. `[#22] Retire Cloudflare Pages branch previews`. Use the issue title from `glb show <num>`, not a conventional-commit summary.
+- **Sub-issue title** (epic-branch workflow only): `[#<epic-num>/#<num>] <issue title>`.
+- **Body:** must start with `closes #<num>` on the first line so GitHub auto-closes the issue on merge.
+
+Do NOT use conventional-commit titles for PRs — those belong on commits, not PRs. The `[#<num>]` prefix is what links the PR to the tracker.
+
+---
+
+## Session Completion (all modes)
 
 - **NEVER stop before pushing** — that leaves work stranded locally. YOU must push; never say "ready to push when you are."
 - **File issues** for any remaining work — `glb create`

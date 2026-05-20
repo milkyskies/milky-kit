@@ -1,6 +1,6 @@
 # Git Worktree Workflow
 
-**This rule applies only when `.milky-kit-mode` is `worktrees`.** Read `.milky-kit-mode` at session start — if it says `root`, ignore this rule entirely and work directly in the project root checkout per `workflow.md`'s root-mode section.
+**This rule applies only when `.milky-kit-mode` is `worktrees`.** Read `.milky-kit-mode` at session start — if it says `main` or `branch`, ignore this rule entirely and follow the matching section of `workflow.md`.
 
 When in `worktrees` mode, each task runs in its own isolated worktree. This is how parallel multi-agent work stays safe — it structurally prevents agents from touching each other's files.
 

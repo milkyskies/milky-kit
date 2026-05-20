@@ -128,22 +128,26 @@ The skill detects the current stack, asks which modules to apply, copies in scaf
 
 The skill reads `.milky-kit-version`, walks milky-kit's git log since that SHA, and guides you through each change that affects your project's stack — with judgment, because every project diverges from the kit over time.
 
-## Workflow modes (`root` vs `worktrees`)
+## Workflow modes
 
 Each project picks one workflow mode via the `.milky-kit-mode` file at its root:
 
-- **`root`** (default) — work directly in the project root checkout. Push to main. No PRs, no worktrees. Best for solo work, small projects, the kit itself.
-- **`worktrees`** — each task runs in its own `../<worktree-dir>/<num>/` directory on a feature branch. Ships via PR. Best for parallel multi-agent work, or anywhere PR review is wanted.
+| Mode | Branch | Worktree | Ship via | Best for |
+|---|---|---|---|---|
+| `main` | no — on `main` | no | push to `main` | the kit itself, solo solo work, no review wanted |
+| `branch` (default) | yes — in root checkout | no | PR to `main` | typical solo work, GitHub-native flow |
+| `worktrees` | yes | yes — `../<worktree-dir>/<num>/` | PR to `main` | parallel multi-agent work, isolation matters |
 
 Flip per project at any time:
 
 ```
-/milky-kit:mode root         # switch to root
+/milky-kit:mode main         # switch to main
+/milky-kit:mode branch       # switch to branch
 /milky-kit:mode worktrees    # switch to worktrees
 /milky-kit:mode              # show current
 ```
 
-`workflow.md` reads `.milky-kit-mode` at session start and follows the matching task workflow.
+`workflow.md` reads `.milky-kit-mode` at session start and follows the matching task workflow section.
 
 ## Versioning
 
