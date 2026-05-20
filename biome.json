@@ -1,0 +1,25 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.4.15/schema.json",
+	"extends": ["@milkyskies/biome-config/biome.json"],
+	"plugins": ["./node_modules/@milkyskies/biome-config/plugins/no-as-cast.grit"],
+	"files": {
+		"includes": [
+			"!**/node_modules",
+			"!**/dist",
+			"!**/.output",
+			"!**/_generated",
+			"!**/*.gen.ts",
+			"!**/routeTree.gen.ts",
+			"!**/drizzle/migrations",
+			"!**/_biome.json",
+			"!**/*.html",
+			"!.github",
+			"!.claude",
+			"!.claude-plugin",
+			"!modules/*/rules",
+			"!templates/*/rules",
+			"!skills",
+			"!docs"
+		]
+	}
+}

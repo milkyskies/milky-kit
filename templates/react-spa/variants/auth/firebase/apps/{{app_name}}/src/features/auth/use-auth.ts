@@ -25,15 +25,15 @@ const toSnapshot = (user: FirebaseUser | null): AuthState =>
 // Compare by uid so transient Firebase events (token refresh, persistent
 // store rehydration, etc.) that hand us a NEW User object representing the
 // SAME logged-in human don't churn the snapshot. Without this, every fresh
-// `AuthState.SignedIn({ user })` is a new reference — Object.is says
+// `AuthState.SignedIn({ user })` is a new reference, Object.is says
 // "changed", `<App>` re-renders, `<RouterProvider>` gets a new context, and
 // in-flight beforeLoad fetches (e.g. /me) get aborted mid-flight.
-const sameAuthState = (a: AuthState, b: AuthState): boolean => {
-	if (a._tag !== b._tag) return false;
-	if (a._tag === "SignedOut") return true;
-	const bSignedIn = b as Extract<AuthState, { _tag: "SignedIn" }>;
-	return a.user.uid === bSignedIn.user.uid;
-};
+const sameAuthState = (a: AuthState, b: AuthState): boolean =>
+	AuthState.$match(a, {
+		SignedOut: () => AuthState.$is("SignedOut")(b),
+		SignedIn: (aSignedIn) =>
+			AuthState.$is("SignedIn")(b) && aSignedIn.user.uid === b.user.uid,
+	});
 
 let snapshot: AuthState = toSnapshot(firebaseAuth.currentUser);
 const subscribers = new Set<() => void>();

@@ -19,9 +19,7 @@ const queryClient = new QueryClient({
 
 const router = createRouter({
 	routeTree,
-	// Real auth value is supplied by <RouterProvider context={...} /> below.
-	// `undefined!` is safe because <App /> is gated behind Suspense — the
-	// router never renders until useAuth() has resolved the auth state.
+	// biome-ignore lint/style/noNonNullAssertion: Real auth value is supplied by <RouterProvider context={...} /> below. `undefined!` is safe because <App /> is gated behind Suspense; the router never renders until useAuth() has resolved the auth state.
 	context: { auth: undefined!, queryClient },
 });
 

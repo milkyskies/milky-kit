@@ -48,6 +48,8 @@ User says any of: "scaffold a new project", "set up an Effect API", "new milky-k
 
    The substitution applies to **every** file under `scaffold/`, including `files/mise-tasks/**` scripts that ship with `{{project_name}}` and `{{worktree_dir}}` embedded.
 
+   **Underscore-prefixed config files** ship in the scaffold as `_<name>` and must be renamed to `<name>` on copy. Today that covers `_biome.json` → `biome.json` (the underscore prefix prevents the kit's own biome CI from treating each scaffold's config as a nested root, per the vite/astro `_gitignore` pattern). When copying any file whose basename starts with `_`, strip the leading underscore at the destination.
+
 4. **Apply variant overlays.** For each chosen variant, copy `~/.claude/kit/templates/<template>/variants/<axis>/<choice>/` over the base scaffold (overlay, not merge). JSON files (`package.json`, `tsconfig.json`) merge by key when both exist; everything else overwrites the base.
 
 5. **Apply composable module scaffolds.** For each chosen module in `~/.claude/kit/modules/<name>/scaffold/`, copy files into the project root (or wherever the module's `module.toml` says). Same merge rules: JSON merge, others overwrite.

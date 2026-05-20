@@ -1,0 +1,15 @@
+{
+	"name": "milky-kit",
+	"version": "0.0.0",
+	"private": true,
+	"description": "Personal project kit. This package.json exists only to wire up tooling that lints the kit's own scaffold and rule content (biome). It is never published.",
+	"packageManager": "pnpm@9.15.0",
+	"scripts": {
+		"lint": "biome check",
+		"lint:fix": "biome check --write"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.4.15",
+		"@milkyskies/biome-config": "^0.1.2"
+	}
+}
