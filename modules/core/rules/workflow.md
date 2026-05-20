@@ -84,14 +84,14 @@ Sync before doing anything:
 git checkout main && git pull
 ```
 
-## Read the Docs — MANDATORY (all modes)
+## Read the Docs (all modes)
 
-**Before touching any code**, check whether the feature or area you are working on has a doc.
+Before touching code in a feature or area you don't already know, check whether the project ships a doc for it.
 
-1. Open `docs/README.md` — it is the index for all product and architecture docs.
+1. If `docs/README.md` exists, open it; it indexes the project's product and architecture docs.
 2. Find the relevant doc (feature, plugin, architecture topic) and read it before starting.
 
-Do not assume you know how something works — read the doc first.
+Most projects in this kit do not maintain a `docs/` directory; that is fine. The rule is "read the doc if there is one," not "every project must have docs."
 
 ---
 

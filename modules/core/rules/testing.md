@@ -51,9 +51,11 @@ For exact directory layout per template (where `domain/models/`, `domain/service
 - Effect (any inbound adapter) → `modules/effect/rules/effect.md` "Where things live" section
 - Axum API → `templates/axum-api/rules/clean-architecture.md`
 
-## Feature specs (Gherkin) for user-visible behavior
+## Feature specs (Gherkin) for user-visible behavior — optional
 
-For anything a stakeholder would describe as "the app should..." — anything that maps to a use case under `application/use-case/`, anything a product spec would mention — write a Gherkin-style scenario doc in `docs/test/<feature>.md`. Pure helpers don't get a spec doc; their unit tests are enough.
+**When this applies:** projects with multiple stakeholders tracking behavior, regulated domains, or anywhere the gain from durable scenario-code tracking (FEATURE-NNN) pays back the cost of maintaining a doc tier. Solo projects, scripts, and small services skip this section entirely; their use-case tests are the spec.
+
+For projects that do adopt this: anything a stakeholder would describe as "the app should..." — anything that maps to a use case under `application/use-case/`, anything a product spec would mention — gets a Gherkin-style scenario doc in `docs/test/<feature>.md`. Pure helpers don't get a spec doc; their unit tests are enough.
 
 Format:
 
