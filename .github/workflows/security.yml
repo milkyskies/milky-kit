@@ -33,3 +33,15 @@ jobs:
           persist-credentials: false
 
       - uses: zizmorcore/zizmor-action@b1d7e1fb5de872772f31590499237e7cce841e8e # v0.5.3
+        with:
+          # Scan the kit's own workflows plus every scaffolded workflow shipped
+          # by modules. Catches drift (e.g. an unpinned `uses:` slipping into a
+          # module's scaffold) before it propagates to consuming projects.
+          inputs: |
+            .github/workflows/
+            modules/bun/scaffold/.github/workflows/
+            modules/pnpm/scaffold/.github/workflows/
+            modules/release-please/scaffold/.github/workflows/
+            modules/release-please/variants/publish/none/.github/workflows/
+            modules/release-please/variants/publish/npm/.github/workflows/
+            modules/security/scaffold/.github/workflows/
