@@ -16,8 +16,8 @@ description: Scan a project against its currently-loaded milky-kit rules and pro
 
 ### Phase 1 — Read the active ruleset
 
-1. Read `./CLAUDE.md`. Extract every `@`-ref.
-2. Read each ref'd rule file (resolving `~`, `./`, `~/.claude/kit/...`).
+1. List `.claude/rules/*.md` entries. For each symlink whose target resolves into `~/.claude/kit/` (or any path containing `milky-kit`), read the kit-side target file. For real (non-symlink) files in `.claude/rules/`, read those as project-local rules.
+2. Resolve every target path (handling `~`, `./`, `~/.claude/kit/...` as needed).
 3. Build a checklist of concrete, mechanically-checkable rules. Examples:
    - "biome.json extends `@milkyskies/biome-config`"
    - "no `console.log` in Effect code (use `Effect.log*`)"
@@ -40,7 +40,7 @@ For each mechanically-checkable rule, grep / read across the project. Examples:
 - `find src/presentation -name '*.ts' -exec wc -l` and sample for inline `Effect.gen` blocks > 3 lines
 - Read each workspace `package.json` and verify scripts
 - Read `biome.json` and verify `extends`
-- Diff project's CLAUDE.md `@`-refs against what the kit currently offers — flag refs to deleted/renamed files
+- Diff `.claude/rules/` kit-pointed symlinks against what the kit currently offers — flag symlinks whose target file no longer exists or moved
 
 Collect findings. Group by file and by rule.
 
@@ -66,9 +66,9 @@ For each accepted change:
 2. Run `pnpm -r typecheck` / equivalent after each substantive change. If typecheck breaks, surface the error and ask before continuing.
 3. Commit with a focused message: `refactor(<scope>): realign to <rule>`. Reference the rule file (e.g. `closes` no issue but `refs modules/effect/rules/effect.md` in the body).
 
-### Phase 5 — Update CLAUDE.md if needed
+### Phase 5 — Fix broken kit symlinks if needed
 
-If the scan found `@`-refs to files that have moved or been deleted in the kit, fix those too in the same realign pass.
+If the scan found `.claude/rules/` symlinks whose kit target moved or was deleted, fix them in the same realign pass: `rm` the broken symlink and either re-create it pointing at the new path (if the rule was renamed) or leave it removed (if the rule was deleted). For substantial reshuffles, suggest running `/milky-kit:retrofit` instead — retrofit's idempotent reconciliation handles this case natively.
 
 ## Things realign refuses to do
 

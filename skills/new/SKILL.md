@@ -5,7 +5,7 @@ description: Scaffold a new project from a milky-kit template. Use when the user
 
 # Scaffold a new milky-kit project
 
-Use this skill to bootstrap a new project from one of the templates in `~/.claude/kit/templates/` (the milky-kit checkout, symlinked at `~/.claude/kit`). The project ends up with a working scaffold, a CLAUDE.md wired with `@`-refs into the kit, and a `.milky-kit-version` recording the kit SHA it was generated from.
+Use this skill to bootstrap a new project from one of the templates in `~/.claude/kit/templates/` (the milky-kit checkout, symlinked at `~/.claude/kit`). The project ends up with a working scaffold, a `.claude/rules/` directory of kit-pointed symlinks, a thin `CLAUDE.md`, and a `.milky-kit-version` recording the kit SHA it was generated from.
 
 ## When to invoke
 
@@ -33,7 +33,7 @@ User says any of: "scaffold a new project", "set up an Effect API", "new milky-k
 
 4. **Project name** — kebab-case, used for directory + workspace name + `{{app_name}}` substitution.
 
-5. **Project-specific rules (tsuika)** — free text, optional. Appended under `## Project-specific` in CLAUDE.md. The kit's `@`-refs stay above; this section is owned by the project forever.
+5. **Project-specific rules (tsuika)** — free text, optional. Appended under `## Project-specific` in CLAUDE.md. The kit's rules load from `.claude/rules/` symlinks automatically; this section is the only place the project owns rule content.
 
 ## Steps to execute
 
@@ -62,7 +62,7 @@ User says any of: "scaffold a new project", "set up an Effect API", "new milky-k
 
    For monorepo projects, leave the `directories` globs (`/apps/*`, `/packages/*`, `/crates/*`) as-is — they're harmless if the directory doesn't exist (Dependabot just skips empty matches).
 
-6. **Write `CLAUDE.md`.** Copy `~/.claude/kit/templates/<template>/CLAUDE.md` into the project. It has the project description and `## Project-specific` section. Don't add `@`-refs to it — rules load from `.claude/rules/` (next step) automatically. Append the user's tsuika text from step 5 under `## Project-specific`.
+6. **Write `CLAUDE.md`.** Copy `~/.claude/kit/templates/<template>/CLAUDE.md` into the project. It has the project description and `## Project-specific` section. Rules load from `.claude/rules/` (next step) automatically. Append the user's tsuika text from step 5 under `## Project-specific`.
 
 7. **Create `.claude/rules/` and symlink the chosen rules in.** Claude Code auto-loads every `.md` (and `.md` symlink) under `.claude/rules/`. For each rule the template + chosen modules need:
 

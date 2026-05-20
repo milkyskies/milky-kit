@@ -20,7 +20,7 @@ Before asking the user anything, scan the repo:
 - `biome.json` exists? → record current config (may need migrating to extends `@milkyskies/biome-config`).
 - `tsconfig.json` exists? → record path; may need extends bumping.
 - `.github/workflows/` exists? → list current workflows; ask before adding `ci.yml` / `security.yml` if those names are already taken.
-- `CLAUDE.md` exists? → read current `@`-refs; only append missing ones, don't duplicate.
+- `CLAUDE.md` exists? → leave it alone. The kit loads rules from `.claude/rules/` symlinks now, not from `@`-refs in CLAUDE.md. Any existing `@`-ref list in a project's CLAUDE.md is harmless leftover; suggest cleanup only if the user asks.
 - `.ghlobes.toml` exists? → ghlobes already wired; skip the ghlobes module's scaffold but still offer the rule ref.
 
 Report findings briefly. Then ask which modules to apply.
