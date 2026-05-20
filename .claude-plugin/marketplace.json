@@ -1,0 +1,13 @@
+{
+	"name": "milkyskies",
+	"owner": {
+		"name": "milkyskies"
+	},
+	"plugins": [
+		{
+			"name": "milky-kit",
+			"source": "./",
+			"description": "Personal project kit — templates, modules, and skills for scaffolding/retrofitting/upgrading TS and Rust projects."
+		}
+	]
+}
