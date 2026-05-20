@@ -1,96 +1,90 @@
 ---
 name: purge
-description: Uninstall milky-kit cleanly from this machine — removes the Claude Code plugin, the marketplace entry, and the ~/.claude/kit symlink. Use when reinstalling from scratch or fully removing the kit. Does NOT touch consuming projects' .claude/rules/ symlinks or the kit's git checkout itself; both are user-owned.
+description: Remove milky-kit's footprint from the CURRENT PROJECT so it can be re-retrofitted cleanly. Removes .claude/rules/ symlinks that point into the kit, and the .milky-kit-version file. Does NOT touch scaffold files (CI workflows, biome.json, etc.) or CLAUDE.md — those are project-owned. Does NOT touch the Claude Code plugin or the ~/.claude/kit symlink (those are machine-level — use /plugin uninstall for those).
 ---
 
-# Purge milky-kit from this machine
+# Purge milky-kit from this project
 
-Use this skill when the user wants to fully remove milky-kit so they can reinstall, or when they're done with the kit and want a clean machine.
+Use this skill when the user wants to clear the kit's per-project footprint so they can re-run `/milky-kit:retrofit` against a clean slate. Common reasons: the kit reshuffled modules (e.g. today's effect split moved `effect.md`), a project's module selection changed, or symlinks are pointing at stale paths.
+
+This is **per-project**, not machine-level. The kit's git checkout, the `~/.claude/kit` symlink, the Claude Code plugin, and the marketplace entry all remain — only the current project's kit-managed pointers are removed.
 
 ## When to invoke
 
-User says any of: "purge milky-kit", "remove milky-kit", "uninstall the kit", "reset milky-kit", "/milky-kit:purge", "I want to reinstall the kit from scratch".
+User says any of: "purge milky-kit from this project", "reset milky-kit here", "remove the kit's rules from this project", "/milky-kit:purge", "I want to re-retrofit from scratch".
 
 ## What gets removed
 
-- The Claude Code plugin (`milky-kit@milkyskies`).
-- The Claude Code marketplace entry (`milkyskies`).
-- The `~/.claude/kit` symlink (if it's a symlink — never a real directory).
+- Every symlink under `.claude/rules/` whose target resolves into `~/.claude/kit/` (or any path containing `milky-kit`).
+- `.milky-kit-version`.
 
 ## What does NOT get removed (and why)
 
-- **The kit's git checkout** (wherever the user cloned `milky-kit` to). That's user-owned, may have uncommitted work, and is needed for reinstall anyway. Tell the user the path; let them rm it if they want.
-- **Consuming projects' `.claude/rules/` symlinks.** Those break harmlessly once `~/.claude/kit` is gone, and the next `/milky-kit:retrofit` re-creates them. Auto-cleaning per-project state is too destructive for a machine-level purge.
-- **Consuming projects' scaffold files** (CI workflows, biome configs, etc.) — those were copied at scaffold time and are project-owned forever.
+- **Scaffold files** (`.github/workflows/*.yml`, `biome.json`, `mise.toml`, `.ghlobes.toml`, `docker-compose.yml`, etc.). These were copied at retrofit/scaffold time and are project-owned forever — the user has likely edited them. The user can delete any they don't want manually.
+- **`CLAUDE.md`.** Owned by the project, especially the `## Project-specific` section. The kit never touches this.
+- **`.claude/rules/` symlinks pointing OUTSIDE the kit** — e.g. project-local rules the user wrote that live in the same directory. Only kit-pointed symlinks get removed.
+- **Real files in `.claude/rules/`.** If the user committed actual files (not symlinks) there, leave them alone and surface their existence.
+- **The kit checkout, `~/.claude/kit`, the Claude Code plugin, the marketplace entry.** Machine-level. Removing those requires `/plugin uninstall` + `rm ~/.claude/kit` and is not this skill's job.
 
 ## Flow
 
-1. **Confirm with the user before doing anything.** This is destructive. Print:
-
-   ```
-   This will:
-   - Uninstall the milky-kit Claude Code plugin
-   - Remove the milkyskies marketplace entry
-   - Delete the ~/.claude/kit symlink
-
-   It will NOT touch:
-   - The kit's git checkout at <path>
-   - Any consuming project's .claude/rules/ or scaffold files
-
-   Proceed?
-   ```
-
-   Use `AskUserQuestion` with a Yes / No (Recommended: Yes).
-
-2. **Show the slash commands the user must run themselves** (Claude Code's `/plugin` commands aren't invokable from skills — the user types them in):
-
-   ```
-   /plugin uninstall milky-kit@milkyskies
-   /plugin marketplace remove milkyskies
-   ```
-
-   Tell them to run those two first, then come back so the skill can finish.
-
-3. **Once the user confirms the plugin commands ran**, remove the `~/.claude/kit` symlink:
+1. **Survey what would be removed.** Don't delete anything yet. Build the list:
 
    ```bash
-   if [ -L ~/.claude/kit ]; then
-     rm ~/.claude/kit
-     echo "Removed ~/.claude/kit symlink"
-   elif [ -e ~/.claude/kit ]; then
-     echo "ERROR: ~/.claude/kit is not a symlink — refusing to delete. Resolve manually."
-     ls -la ~/.claude/kit
-   else
-     echo "~/.claude/kit was not present"
-   fi
+   # Symlinks under .claude/rules/ pointing into the kit
+   find .claude/rules -maxdepth 1 -type l 2>/dev/null | while read link; do
+     target=$(readlink "$link")
+     case "$target" in
+       *.claude/kit/*|*milky-kit/*) echo "SYMLINK: $link -> $target" ;;
+     esac
+   done
+
+   # .milky-kit-version
+   [ -f .milky-kit-version ] && echo "FILE: .milky-kit-version ($(cat .milky-kit-version | head -1))"
+
+   # Warn about non-symlink files in .claude/rules/ (will be skipped)
+   find .claude/rules -maxdepth 1 -type f 2>/dev/null | while read file; do
+     echo "WILL SKIP (real file, not a symlink): $file"
+   done
    ```
 
-   **Never `rm -rf`** the path. If it's a real directory (someone moved the kit into `~/.claude/kit` directly instead of symlinking), refuse and let the user resolve.
+2. **Show the user the survey and ask to confirm.** Use `AskUserQuestion` with Yes / No (Recommended: Yes). If anything in `.claude/rules/` is a real file, list it explicitly so the user knows it stays.
 
-4. **Report what the kit checkout's path was** so the user can `rm -rf <path>` it themselves if they want. Do NOT delete it for them.
+3. **Remove the kit symlinks and `.milky-kit-version`.** One `rm` per item — never `rm -rf`:
 
    ```bash
-   readlink ~/.claude/kit 2>/dev/null || echo "(no symlink to read)"
+   # For each kit-pointed symlink from step 1:
+   rm "<link-path>"
+
+   # If .milky-kit-version exists:
+   rm .milky-kit-version
    ```
 
-5. **Print the reinstall command sequence** so the user can paste it back in when ready:
+4. **Leave `.claude/rules/` itself** even if it's now empty — `/milky-kit:retrofit` will repopulate it. If `.claude/` is now empty entirely, also leave it.
+
+5. **Report what happened**:
 
    ```
-   To reinstall:
+   Purged from <project-path>:
+   - <N> kit symlinks under .claude/rules/
+   - .milky-kit-version
 
-   git clone https://github.com/milkyskies/milky-kit <wherever-you-keep-projects>/milky-kit
-   ln -s <wherever-you-keep-projects>/milky-kit ~/.claude/kit
-   ls -la ~/.claude/kit  # verify it resolves
+   Left in place (project-owned):
+   - Scaffold files: <list, e.g. .github/workflows/ci.yml, biome.json, mise.toml, .ghlobes.toml>
+   - CLAUDE.md
+   - <any non-symlink files in .claude/rules/ if present>
 
-   Then, in any Claude Code session:
-     /plugin marketplace add milkyskies/milky-kit
-     /plugin install milky-kit@milkyskies
+   Re-retrofit with:  /milky-kit:retrofit
    ```
+
+   If the project still has scaffold files the user might want gone (CI workflows, biome.json with `extends @milkyskies/biome-config`, etc.), list them so the user can `rm` what they want manually.
 
 ## Guardrails
 
-- **Always confirm before any destructive step.** No silent removal.
-- **Never `rm -rf`** anything. Only `rm` on the symlink itself.
-- **Refuse to delete `~/.claude/kit` if it's a real directory**, not a symlink. Surface the situation; let the user resolve.
-- **Never touch consuming projects.** The skill operates only on plugin state + the one symlink.
-- **Never run the `/plugin` commands "via Bash" workaround.** Those are interactive Claude Code commands — hand off to the user per the "hand off interactive steps" rule.
+- **Always survey + confirm before deleting.** No silent removal.
+- **Never `rm -rf`.** Only `rm` on individual symlinks + `.milky-kit-version`.
+- **Never delete real files** under `.claude/rules/` (only symlinks pointing into the kit).
+- **Never touch scaffold files** (`.github/workflows/*.yml`, `biome.json`, `mise.toml`, `.ghlobes.toml`, `docker-compose.yml`, `package.json`, `tsconfig.json`, etc.). These are project-owned.
+- **Never touch `CLAUDE.md`.** Always project-owned.
+- **Never touch machine-level state** (`~/.claude/kit`, the plugin, the marketplace). That's outside this skill's scope — point the user at `/plugin uninstall milky-kit@milkyskies` + `rm ~/.claude/kit` if they want that.
+- **Never run `git` commands.** Removed files show up in `git status`; let the user commit when they're ready.
