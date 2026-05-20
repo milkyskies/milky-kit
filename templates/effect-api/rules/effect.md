@@ -203,13 +203,17 @@ Tests are colocated: `foo.ts` next to `foo.test.ts`. No mirrored `test/` tree.
 
 ## Testing: `@effect/vitest`
 
+The 3-tier model + Gherkin spec convention lives in `modules/core/rules/testing.md`. Below is the Effect-flavor tool layer.
+
 - Tests use `@effect/vitest`. Replace `it`/`test` with `it.effect`, `it.scoped`, or `it.live` — test bodies are Effects, assertions compose with the system under test.
-- Time-dependent code: `TestClock.adjust(Duration.seconds(5))` advances time deterministically. Don't reach for `vi.useFakeTimers` or `sinon`.
+- **Unit tier** (domain models, domain services): plain `it` or `it.effect` against the pure code. No Layers needed beyond what the value being tested requires.
+- **Use-case tier** (`application/use-case/*.test.ts`): build a `Layer.mergeAll(StubPostRepository, StubIdGenerator, ...)` per test or per `describe` block. Provide it via `Effect.provide(TestLive)` on the test body. Required for every use case — non-negotiable.
+- **Integration tier** (`tests/integration/`): provide the real `SqlLive` Layer against a fresh test database. `@effect/sql`'s testing helpers spin up + tear down. E2E goes in `tests/e2e/` and runs an actual `HttpServer.layer` + makes requests through `HttpApiClient`.
+- Time-dependent code: `TestClock.adjust(Duration.seconds(5))` advances time deterministically. Never `vi.useFakeTimers` or `sinon`.
 - Random-dependent code: `TestRandom` provides reproducible seeds.
-- Service mocking: provide a stub `Layer.succeed(MyService, mockImpl)` via `Effect.provide` in the test. Real implementations stay in the production `Layer`.
-- Use-case tests run the Effect directly. No HTTP server, no DB needed for business logic.
-- Integration tests provide the real `SqlLive` Layer against a fresh test database — `@effect/sql` helpers handle setup/teardown.
-- Test files colocated next to the code (`createPost.ts` + `createPost.test.ts`).
+- Service mocking: `Layer.succeed(MyService, mockImpl)` always, never `vi.mock` for Effect services.
+- Test files colocated for unit + use-case (`createPost.ts` + `createPost.test.ts`). Integration + E2E live under `tests/`.
+- **Scenario codes in test names** when a `docs/test/<feature>.md` spec exists: `it.effect("POST-001 rejects empty title", () => ...)`. `grep POST-001` finds the test from the spec or the spec from the test.
 
 ## Run at the edge
 
