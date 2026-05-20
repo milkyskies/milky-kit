@@ -36,7 +36,7 @@ jobs:
         run: bunx --bun @aikidosec/safe-chain@1.5.1 setup-ci
 
       - name: Install dependencies
-        # --frozen-lockfile fails the build if bun.lockb is out of sync
+        # --frozen-lockfile fails the build if bun.lock is out of sync
         # with package.json instead of silently re-resolving (which would
         # defeat the trust controls applied locally).
         run: bun install --frozen-lockfile

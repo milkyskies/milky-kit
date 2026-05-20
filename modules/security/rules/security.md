@@ -10,7 +10,7 @@ Rules that apply regardless of language or package manager. Package-manager-spec
 
 ## OSV-Scanner
 
-`.github/workflows/security.yml` runs OSV-Scanner against committed lockfiles on every push, PR, and weekly cron. Catches vulnerabilities disclosed **after** a dependency was installed (cooldown alone does not help with those). Auto-detects `pnpm-lock.yaml`, `package-lock.json`, `bun.lockb`, `Cargo.lock`, `go.sum`, `requirements.txt`, etc.
+`.github/workflows/security.yml` runs OSV-Scanner against committed lockfiles on every push, PR, and weekly cron. Catches vulnerabilities disclosed **after** a dependency was installed (cooldown alone does not help with those). Auto-detects `pnpm-lock.yaml`, `package-lock.json`, `bun.lock`, `bun.lockb`, `Cargo.lock`, `go.sum`, `requirements.txt`, etc.
 
 ## zizmor
 

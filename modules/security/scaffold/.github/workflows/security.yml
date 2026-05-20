@@ -24,8 +24,8 @@ jobs:
       contents: read
       security-events: write
       actions: read
-    # Reusable workflow auto-detects lockfiles (pnpm-lock.yaml, bun.lockb,
-    # Cargo.lock, package-lock.json, go.sum, requirements.txt, etc.).
+    # Reusable workflow auto-detects lockfiles (pnpm-lock.yaml, bun.lock,
+    # bun.lockb, Cargo.lock, package-lock.json, go.sum, requirements.txt, etc.).
     uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@c51854704019a247608d928f370c98740469d4b5 # v2.3.5
     with:
       # `upload-sarif: false` skips the Security tab integration, which

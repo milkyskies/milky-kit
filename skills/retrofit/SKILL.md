@@ -15,7 +15,7 @@ User says any of: "add milky-kit to this project", "set up CI like milky-kit", "
 
 Before asking the user anything, scan the repo:
 
-- `package.json` exists? → TS project. Which package manager? (`pnpm-lock.yaml`, `bun.lockb`, `package-lock.json`)
+- `package.json` exists? → TS project. Which package manager? (`pnpm-lock.yaml`, `bun.lock`, `bun.lockb`, `package-lock.json`)
 - `Cargo.toml` exists? → Rust project.
 - `biome.json` exists? → record current config (may need migrating to extends `@milkyskies/biome-config`).
 - `tsconfig.json` exists? → record path; may need extends bumping.

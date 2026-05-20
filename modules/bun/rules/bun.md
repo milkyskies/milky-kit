@@ -2,6 +2,7 @@
 paths:
   - "package.json"
   - "bunfig.toml"
+  - "bun.lock"
   - "bun.lockb"
 ---
 
@@ -13,7 +14,7 @@ For projects where Bun is the runtime AND the package manager (typical for Bun-r
 
 - `bun add <package>` to add deps. Never edit `package.json` by hand.
 - `bun install --frozen-lockfile` in CI.
-- `bun.lockb` is committed (binary lockfile — that's the Bun convention).
+- `bun.lock` (text) is committed. This is the default since Bun 1.2 (Feb 2025) — text lockfiles are PR-reviewable, GitHub renders the diff, and merge conflicts are resolvable. Older projects on `bun.lockb` (binary) should migrate via `bun install --save-text-lockfile --frozen-lockfile --lockfile-only` and delete `bun.lockb`.
 - Workspace packages declared via `workspaces` in root `package.json`. Run a script across all: `bun --filter '*' run typecheck`.
 
 ## Runtime conventions
@@ -25,7 +26,7 @@ For projects where Bun is the runtime AND the package manager (typical for Bun-r
 
 ## Worktrees
 
-Bun's lockfile is binary, so worktrees may share `node_modules` only if they're at the same lockfile state. Run `bun install` after switching worktrees if anything in `package.json` has changed.
+Worktrees may share `node_modules` only if they're at the same lockfile state. Run `bun install` after switching worktrees if anything in `package.json` has changed.
 
 ## Bun vs Node compatibility
 

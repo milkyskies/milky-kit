@@ -2,6 +2,7 @@
 paths:
   - "package.json"
   - "bunfig.toml"
+  - "bun.lock"
   - "bun.lockb"
 ---
 
@@ -25,15 +26,11 @@ Adding to this list requires a PR. Same caveat as pnpm: bumping an already-trust
 
 ### Frozen lockfile
 
-`bun install --frozen-lockfile` in CI fails the build if `bun.lockb` is out of sync with `package.json`. Same property as pnpm's frozen install.
+`bun install --frozen-lockfile` in CI fails the build if `bun.lock` is out of sync with `package.json`. Same property as pnpm's frozen install.
 
 ### Lockfile is committed
 
-`bun.lockb` (binary) goes in git. Bun also writes `bun.lock` (text) optionally — prefer the binary form for stable diffs.
-
-### `--save-text-lockfile`
-
-When investigating a lockfile diff, regenerate `bun.lock` (text) via `bun install --save-text-lockfile` for review. Don't commit it; it's a debugging aid.
+`bun.lock` (text) goes in git. Since Bun 1.2 (Feb 2025), text is the default — it's PR-reviewable, GitHub renders the diff, and merge conflicts can actually be resolved by humans. Legacy projects may still have `bun.lockb` (binary); migrate via `bun install --save-text-lockfile --frozen-lockfile --lockfile-only` and delete `bun.lockb`. If both files exist, Bun ignores `bun.lockb`.
 
 ## What Bun does NOT offer (gaps)
 
@@ -55,7 +52,7 @@ No equivalent of pnpm's `no-downgrade` trust policy. If a package switches from 
 
 A transitive dep can resolve from a git URL or local tarball if a direct dep declares it that way. pnpm blocks this; Bun does not.
 
-**Mitigation:** audit `bun.lockb` periodically (or use the text form via `--save-text-lockfile`) for non-registry sources.
+**Mitigation:** audit `bun.lock` periodically for non-registry sources — the text form is directly reviewable.
 
 ### Weaker overrides
 
