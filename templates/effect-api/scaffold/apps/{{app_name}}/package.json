@@ -27,7 +27,7 @@
 	"devDependencies": {
 		"@biomejs/biome": "^2.4.15",
 		"@effect/vitest": "^0.27.0",
-		"@milkyskies/biome-config": "^0.1.1",
+		"@milkyskies/biome-config": "^0.1.2",
 		"@types/bun": "^1.1.14",
 		"drizzle-kit": "^0.30.0",
 		"typescript": "^5.7.0",
