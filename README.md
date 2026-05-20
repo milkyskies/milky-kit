@@ -26,6 +26,10 @@ A **module** is one orthogonal concern that composes cleanly with any template. 
 |---|---|
 | `modules/core` | General rules, comments, config/env conventions, worktree mise tasks |
 | `modules/ts` | Paradigm-neutral TypeScript conventions, blank-lines style |
+| `modules/effect` | Effect-TS paradigm + universal clean architecture (domain/application/infrastructure/presentation). Use for any Effect project regardless of inbound protocol. |
+| `modules/effect-http` | `@effect/platform` HttpApi + Swagger + typed client + outbound HttpClient. Composes with `effect`. |
+| `modules/effect-mcp` | `@effect/ai` McpServer adapter. Composes with `effect`. |
+| `modules/effect-sql` | `@effect/sql-drizzle` + `@effect/sql-pg` repository pattern. Composes with `effect` + a DB module. |
 | `modules/ci` | GitHub Actions workflow + per-package script enforcement |
 | `modules/security` | OSV-Scanner, zizmor, pinned actions, GitHub-context shell-injection prevention |
 | `modules/pnpm` | pnpm workspace config + pnpm-specific supply-chain controls (cooldown, safe-chain, trust policy, onlyBuiltDependencies) |
@@ -45,7 +49,9 @@ Rules are **symlinked**, not copied. Each project's `.claude/rules/` directory h
 my-project/.claude/rules/
 ├── general.md           -> ~/.claude/kit/modules/core/rules/general.md
 ├── comments.md          -> ~/.claude/kit/modules/core/rules/comments.md
-├── effect.md            -> ~/.claude/kit/templates/effect-api/rules/effect.md
+├── effect.md            -> ~/.claude/kit/modules/effect/rules/effect.md
+├── effect-http.md       -> ~/.claude/kit/modules/effect-http/rules/effect-http.md
+├── effect-sql.md        -> ~/.claude/kit/modules/effect-sql/rules/effect-sql.md
 ├── postgres.md          -> ~/.claude/kit/modules/postgres/rules/postgres.md
 └── ...
 ```

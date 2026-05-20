@@ -36,7 +36,15 @@ Report findings briefly. Then ask which modules to apply.
    - `postgres` — docker-compose + rules
    - `biome` — switch to `@milkyskies/biome-config` extends
 
-2. **Which template-level rule, if any**, applies. If the project is clearly an Effect-TS API, offer `templates/effect-api/rules/effect.md` as a CLAUDE.md ref. If clearly Hono / React / Axum, offer those. Don't prescribe a template if the project doesn't match cleanly — leave the template ref empty and the project owns its CLAUDE.md.
+2. **Which paradigm/adapter rules apply**. Offer per detected stack:
+   - **Effect-TS projects**: always offer `modules/effect/rules/effect.md` (paradigm + clean architecture). Additionally offer the adapter rules that match what the project does:
+     - `modules/effect-http/rules/effect-http.md` if the project uses `@effect/platform` HttpApi (or plans to).
+     - `modules/effect-mcp/rules/effect-mcp.md` if the project exposes MCP tools (or plans to).
+     - `modules/effect-sql/rules/effect-sql.md` if the project uses `@effect/sql-drizzle` / `@effect/sql-pg` (or plans to).
+     - A Matrix bot, CLI, or worker that uses Effect picks `effect` + whichever infrastructure modules apply. Project-specific presentation adapters (e.g. `presentation/matrix/`) are owned by the project, not the kit.
+   - **Hono projects**: offer the `hono-api` template's rules.
+   - **React / Axum / Bun-scripts**: offer those templates' rules.
+   - Don't prescribe a paradigm if the project doesn't match cleanly — leave the rules empty and the project owns its CLAUDE.md.
 
 3. **Project-specific rules (tsuika)** — free text. Appended under `## Project-specific` in CLAUDE.md after the kit refs.
 

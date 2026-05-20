@@ -48,7 +48,7 @@ Tests fall into one of three tiers, distinguished by **what is real and what is 
 
 For exact directory layout per template (where `domain/models/`, `domain/services/`, `domain/repositories/`, `application/use-case/` live and how they're shaped):
 
-- Effect API → `templates/effect-api/rules/effect.md` "Where things live" section
+- Effect (any inbound adapter) → `modules/effect/rules/effect.md` "Where things live" section
 - Axum API → `templates/axum-api/rules/clean-architecture.md`
 
 ## Feature specs (Gherkin) for user-visible behavior

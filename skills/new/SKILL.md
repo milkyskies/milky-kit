@@ -67,6 +67,14 @@ User says any of: "scaffold a new project", "set up an Effect API", "new milky-k
 
    Template-specific rules (read the template's `rules/` directory).
 
+   **Effect-stack composition** — the `effect-api` template no longer ships its own `rules/effect.md`. Instead, when this template is chosen, symlink **all four** of:
+   - `~/.claude/kit/modules/effect/rules/effect.md` (paradigm + clean architecture; required)
+   - `~/.claude/kit/modules/effect-http/rules/effect-http.md` (HTTP adapter)
+   - `~/.claude/kit/modules/effect-mcp/rules/effect-mcp.md` (MCP adapter)
+   - `~/.claude/kit/modules/effect-sql/rules/effect-sql.md` (SQL infrastructure)
+
+   For a non-API Effect project (e.g. Matrix bot, MCP-only server, worker), the user picks `effect` plus only the adapter modules that actually apply. The retrofit skill exposes these as independent selections.
+
    Composable-module rules (per the user's selections in step 2): `ghlobes/rules/glb.md`, `ci/rules/ci.md`, `security/rules/security.md`, `release-please/rules/release-please.md`, `pnpm/rules/pnpm-security.md`, `bun/rules/bun.md`, `postgres/rules/postgres.md`, etc.
 
    The symlinks point through `~/.claude/kit/` (absolute), so they survive the user moving project directories but require `~/.claude/kit/` to be set up on each machine (see kit README — `ln -s ~/Code/Projects/milky-kit ~/.claude/kit`).

@@ -1,0 +1,4 @@
+# The effect-sql infrastructure module ships rules only. It assumes the
+# project already has the effect module's rules in place — paradigm + clean
+# architecture skeleton come from there. Pair with a database module
+# (postgres, sqlite) for the actual docker-compose / driver scaffold.

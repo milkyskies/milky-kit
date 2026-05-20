@@ -1,0 +1,3 @@
+# The effect module is paradigm + universal clean architecture. It ships
+# no scaffold files of its own — rules only. Compose with adapter modules
+# (effect-http, effect-mcp) and infrastructure modules (effect-sql) as needed.

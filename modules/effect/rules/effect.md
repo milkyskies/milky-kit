@@ -1,6 +1,6 @@
 # Effect-TS paradigm
 
-This file is the complete paradigm rule for projects scaffolded from `templates/effect-api`. Effect-TS is the programming model; vanilla TypeScript conventions in `modules/ts/rules/` do not apply. Pick one or the other per project — never both.
+This rule is the paradigm core + the universal clean-architecture layout for every Effect-TS project. Compose with adapter modules (`effect-http`, `effect-mcp`) and infrastructure modules (`effect-sql`) as the project needs them. Effect-TS supersedes the paradigm-neutral TypeScript rules in `modules/ts/rules/`; pick one paradigm per project, never both.
 
 ## Strong typing baseline
 
@@ -21,44 +21,46 @@ Every fallible or effectful operation returns `Effect<A, E, R>`:
 
 Compose with `Effect.gen` (sequential, generator style) or `pipe(...)` (transformation style). Run at the edge with `Effect.runPromise` / `Effect.runFork` once, at the top of `main.ts`, with every `Layer` provided.
 
+## Where things live
+
+Every Effect project uses the same four-layer clean-architecture split. Each layer depends only on inner layers.
+
+```
+src/                                  (flat — single-app project)
+apps/<app>/src/                       (monorepo — multi-app project)
+├── domain/                           Pure types and rules. No I/O.
+│   ├── models/<resource>.ts          Schema.Class for the domain entity. Encode/decode in one place.
+│   ├── services/<concept>.ts         Multi-entity / pure-business algorithms. Context.Tag + Layer.
+│   └── repositories/<resource>.ts    Repository interface as Context.Tag.
+├── application/
+│   └── use-case/<verb>-<resource>.ts The Effect + its Input/Output Schemas, colocated.
+│                                     Every adapter (http, mcp, matrix, cli) imports these.
+├── infrastructure/                   Adapters out. Knows about external systems.
+│   ├── config.ts                     Config-based env (Config.string, Config.redacted).
+│   └── logger.ts                     Logger Layer.
+│   (effect-sql adds db/schema.ts + db/<resource>-repository.ts)
+└── presentation/                     Adapters in. One subdirectory per inbound protocol.
+    └── <adapter>/                    http, mcp, matrix, cli, worker, ... — filled in by adapter rules.
+```
+
+- `domain/` imports nothing from `application/`, `infrastructure/`, or `presentation/`.
+- `application/use-case/` imports `domain/` only. No knowledge of HTTP, MCP, SQL, or any protocol.
+- `infrastructure/` implements domain interfaces and knows about external systems (DB, HTTP clients, queues).
+- `presentation/<adapter>/` is the only place each inbound protocol lives. Handlers are 3-line shims that call use cases.
+
+Tests are colocated: `foo.ts` next to `foo.test.ts`. No mirrored `test/` tree.
+
 ## Use cases are mandatory
 
-**Every operation the system performs is a use case in `application/use-case/<verb>-<resource>.ts`.** This is the load-bearing discipline of the template — break it and the whole layout falls apart.
+**Every operation the system performs is a use case in `application/use-case/<verb>-<resource>.ts`.** This is the load-bearing discipline of the paradigm — break it and the layout falls apart.
 
-- **Never** write business logic inline in a presentation handler (HTTP route, MCP tool, CLI command). The handler is a 3-line shim: parse input → call use case → return result.
+- **Never** write business logic inline in a presentation handler (HTTP route, MCP tool, Matrix event handler, CLI command). The handler is a 3-line shim: parse input → call use case → return result.
 - **Never** call repositories or services directly from presentation. Presentation only knows the use case.
 - **If a handler needs to do two things in sequence, that's a new use case.** Don't compose use cases inline at the handler. Make a `checkoutAndNotify` use case that calls both, then call the new one from the handler.
-- **Use cases are the unit of MCP exposure too.** An MCP tool is a use case picked for agent ergonomics. New agent-shaped operation → new use case, not a special handler.
+- **Use cases are the unit of adapter exposure for every protocol.** An MCP tool, an HTTP endpoint, a Matrix bot command — each is a use case picked for that protocol's ergonomics. Same building blocks, different selection per adapter.
 - The exception is genuinely zero-logic endpoints (health check, schema introspection). Those can be inline. Anything with branching, state, or side effects becomes a use case.
 
 A presentation file with an `Effect.gen` block longer than 3 lines is a code smell. Extract.
-
-## Where things live
-
-```
-apps/api/src/
-├── domain/
-│   ├── models/<resource>.ts         Schema.Class for the domain entity. Encode/decode in one place.
-│   ├── services/<concept>.ts        Multi-entity / pure-business algorithms. Context.Tag + Layer.
-│   └── repositories/<resource>.ts   Repository interface as Context.Tag.
-├── application/
-│   └── use-case/<verb>-<resource>.ts
-│                                    The Effect + its Input/Output Schemas, colocated.
-│                                    Both HTTP and MCP adapters import these.
-├── infrastructure/
-│   ├── db/schema.ts                 Drizzle pg tables. Row shape derived via $inferSelect.
-│   ├── db/<resource>-repository.ts  Layer.effect implementing the repository Tag.
-│   ├── config.ts                    Config-based env (Config.string, Config.redacted).
-│   └── logger.ts                    Logger Layer.
-└── presentation/
-    ├── http/<resource>.ts           HttpApi endpoints. Reference use-case Input Schemas.
-    ├── http/server.ts               HttpApiBuilder + HttpApiSwagger + HttpServer composition.
-    ├── mcp/<resource>.ts            McpServer tools wired to the same use cases.
-    ├── mcp/server.ts                McpServer + stdio transport composition.
-    └── dto/<resource>.ts            ONLY when wire shape != encode(domain). Schema.transform.
-```
-
-Tests are colocated: `foo.ts` next to `foo.test.ts`. No mirrored `test/` tree.
 
 ## Effects, not promises
 
@@ -77,7 +79,7 @@ Tests are colocated: `foo.ts` next to `foo.test.ts`. No mirrored `test/` tree.
 - `Effect.fail(new PostNotFound({ id }))` to fail. Never `throw` in business logic. A thrown value is a defect (bug), not an application error.
 - Handle expected errors with `Effect.catchTag("PostNotFound", (err) => ...)` or `Effect.catchTags({ PostNotFound: ..., DbError: ... })` near where the error becomes meaningful — not at the top.
 - Never swallow errors silently (`Effect.catchAll(() => Effect.void)` is almost always wrong). If you cannot act on a failure, propagate it with context via `Effect.mapError`.
-- At boundaries (HTTP handler, MCP tool, CLI main), format for the consumer: human messages to users, structured JSON to machines, full traces to logs. `HttpApiEndpoint.addError(MyError, { status: 404 })` maps a typed error to an HTTP response automatically.
+- At each adapter boundary, format errors for the consumer: human messages to users, structured JSON to machines, full traces to logs. Each adapter module describes its own error-mapping mechanism.
 - Don't catch errors you cannot handle. Let them reach a boundary that can.
 
 ## Optionals
@@ -95,9 +97,9 @@ Tests are colocated: `foo.ts` next to `foo.test.ts`. No mirrored `test/` tree.
 ## Schema everywhere at boundaries
 
 - Define domain types with `Schema.Class` (or `Schema.Struct`). The same schema drives decode (wire → domain) and encode (domain → wire) — there is no separate "DTO type" in the common case.
-- All boundary parsing (HTTP body, env vars, file contents, LLM output, DB row when the row shape is untrusted) goes through `Schema.decodeUnknown` so you get a typed value or a typed `ParseError`, never `any`.
-- When the wire shape genuinely differs from the encoded domain (renamed fields, computed fields, omitted fields), express it as `Schema.transform(DomainSchema, WireSchema, { decode, encode })` in `presentation/dto/<resource>.ts`. Only then.
-- Use case Input/Output Schemas live next to the use case and are shared between adapters (HTTP, MCP, CLI). One schema, every protocol.
+- All boundary parsing (HTTP body, env vars, file contents, LLM output, external event, DB row when the row shape is untrusted) goes through `Schema.decodeUnknown` so you get a typed value or a typed `ParseError`, never `any`.
+- When the wire shape genuinely differs from the encoded domain (renamed fields, computed fields, omitted fields), express it as `Schema.transform(DomainSchema, WireSchema, { decode, encode })` in `presentation/<adapter>/dto/<resource>.ts`. Only then.
+- Use case Input/Output Schemas live next to the use case and are shared between adapters. One schema, every protocol.
 
 ## Sums and discriminated unions
 
@@ -139,48 +141,6 @@ Tests are colocated: `foo.ts` next to `foo.test.ts`. No mirrored `test/` tree.
 - Secrets go through `Config.redacted` so they cannot be printed or logged by accident. Unwrap with `Redacted.value(secret)` only at the exact call site that needs the raw value.
 - Config reads are Effects; failures are typed `ConfigError`s and surface at app boot.
 
-## SQL: `@effect/sql-drizzle` + `@effect/sql-pg`
-
-- Drizzle queries return Effects directly — never `Effect.tryPromise(() => db.select()...)`.
-
-  ```ts
-  const findById = (id: string) =>
-    db.select().from(postsTable).where(eq(postsTable.id, id)).pipe(
-      Effect.map((rows) => Option.fromNullable(rows[0])),
-      Effect.map(Option.map(fromRow)),
-    )
-  ```
-
-- Multi-statement writes go through `SqlClient.withTransaction`. Never `db.transaction(...)` directly.
-- Row → domain conversion (`fromRow`) is private to the repository Layer. The domain layer must never see `SqlError`, row shapes, or Drizzle types.
-- Provide one `PgClient.layer({ url })` at app composition. Connection pool lifecycle is `Layer.scoped` under the hood; per-request acquire/release is automatic.
-- Migrations stay on `drizzle-kit` (CLI, runtime-agnostic). Only the query runtime changes.
-
-## HTTP: `@effect/platform`
-
-- One `HttpApi` per service. Endpoints are fully Schema-driven (payload, success, errors). The same definition produces the runtime decode, the encoded response, the OpenAPI document, the typed `HttpApiClient`, and (with `@effect/ai`) the MCP tool surface.
-
-  ```ts
-  const Posts = HttpApiGroup.make("posts")
-    .add(HttpApiEndpoint.get("getPost")`/posts/${HttpApiSchema.param("id", Schema.String)}`
-      .addSuccess(PostSchema)
-      .addError(PostNotFound, { status: 404 }))
-  ```
-
-- Handlers return Effects. Errors declared on the endpoint map automatically to HTTP responses — no `error-handler.ts` middleware.
-- No DI through middleware. Services come from `R` via Layers. Per-request scoping is the platform's job, not the framework's.
-- Expose Swagger UI in dev with `HttpApiSwagger.layer({ path: "/docs" })`. The OpenAPI document is generated, not hand-written.
-
-## MCP: `@effect/ai` `McpServer`
-
-- One MCP tool per use case the agent should be able to invoke. The tool's `parameters` Schema is the use-case Input Schema — the same one the HTTP endpoint uses.
-- Curate the MCP surface separately from the HTTP surface. Agents benefit from coarser, intention-shaped tools (`summarizeAndUpdatePost`) than HTTP needs (`getPost` + `updatePost`). Same use cases as building blocks, different selection.
-- The MCP server is a `Layer` like everything else. Compose into `AppLive` alongside the HTTP server.
-
-## HTTP client: `@effect/platform`'s `HttpClient`
-
-- Inside service Layers, build requests with `HttpClient` + `HttpClientRequest`. Parse responses through `Schema` decoders. Never raw `fetch` + manual JSON parsing — that breaks the "Schema at every boundary" rule.
-
 ## Concurrency
 
 - `Effect.all` with explicit `{ concurrency }` — never `Promise.all`. Pick a number, `"unbounded"`, or `"inherit"` deliberately.
@@ -203,21 +163,20 @@ Tests are colocated: `foo.ts` next to `foo.test.ts`. No mirrored `test/` tree.
 
 ## Testing: `@effect/vitest`
 
-The 3-tier model + Gherkin spec convention lives in `modules/core/rules/testing.md`. Below is the Effect-flavor tool layer.
+The 3-tier model + Gherkin spec convention lives in `modules/core/rules/testing.md`. Below is the Effect-flavor tool layer for the universal tiers; adapter modules (`effect-http`, `effect-mcp`) add their own E2E patterns.
 
-- Tests use `@effect/vitest`. Replace `it`/`test` with `it.effect`, `it.scoped`, or `it.live` — test bodies are Effects, assertions compose with the system under test.
-- **Unit tier** (domain models, domain services): plain `it` or `it.effect` against the pure code. No Layers needed beyond what the value being tested requires.
-- **Use-case tier** (`application/use-case/*.test.ts`): build a `Layer.mergeAll(StubPostRepository, StubIdGenerator, ...)` per test or per `describe` block. Provide it via `Effect.provide(TestLive)` on the test body. Required for every use case — non-negotiable.
-- **Integration tier** (`tests/integration/`): provide the real `SqlLive` Layer against a fresh test database. `@effect/sql`'s testing helpers spin up + tear down. E2E goes in `tests/e2e/` and runs an actual `HttpServer.layer` + makes requests through `HttpApiClient`.
+- Tests use `@effect/vitest`. Replace `it` / `test` with `it.effect`, `it.scoped`, or `it.live` — test bodies are Effects, assertions compose with the system under test.
+- **Domain tier** (`domain/models/*.test.ts`, `domain/services/*.test.ts`, `application/use-case/*.test.ts`): no real I/O. Build a `Layer.mergeAll(StubPostRepository, StubIdGenerator, ...)` per test or per `describe` block. Provide it via `Effect.provide(TestLive)` on the test body. Required for every use case — non-negotiable.
+- **Integration tier** (`tests/integration/`): provide the real infrastructure Layer (e.g. `SqlLive` against a fresh test database) and exercise use cases through it. Each infrastructure module describes its own setup.
 - Time-dependent code: `TestClock.adjust(Duration.seconds(5))` advances time deterministically. Never `vi.useFakeTimers` or `sinon`.
 - Random-dependent code: `TestRandom` provides reproducible seeds.
 - Service mocking: `Layer.succeed(MyService, mockImpl)` always, never `vi.mock` for Effect services.
-- Test files colocated for unit + use-case (`createPost.ts` + `createPost.test.ts`). Integration + E2E live under `tests/`.
+- Test files colocated for domain tier (`createPost.ts` + `createPost.test.ts`). Integration + E2E live under `tests/`.
 - **Scenario codes in test names** when a `docs/test/<feature>.md` spec exists: `it.effect("POST-001 rejects empty title", () => ...)`. `grep POST-001` finds the test from the spec or the spec from the test.
 
 ## Run at the edge
 
-- Compose all Effects into one pipeline. Provide every Layer via `Layer.provide`/`Layer.mergeAll` into `AppLive`. Call `Effect.runPromise` or `Effect.runFork` exactly once, in `main.ts`, with `AppLive` provided.
+- Compose all Effects into one pipeline. Provide every Layer via `Layer.provide` / `Layer.mergeAll` into `AppLive`. Call `Effect.runPromise` or `Effect.runFork` exactly once, in `main.ts`, with `AppLive` provided.
 
 ## If you do not know how to express something in Effect
 

@@ -23,7 +23,7 @@ Use this skill when the user is working in a project and decides a kit-level con
 1. **Locate the kit checkout.** Read `~/.claude/kit` (symlink target) or `~/Code/Projects/milky-kit`. If neither exists, abort and tell the user the kit needs to be on this machine first.
 
 2. **Confirm the scope of the change.** Ask:
-   - Which file in the kit? (`templates/effect-api/rules/effect.md`, `modules/core/rules/general.md`, etc.)
+   - Which file in the kit? (`modules/effect/rules/effect.md`, `modules/core/rules/general.md`, etc.)
    - What's the new content? (full sentence, not a fragment)
    - Why does it belong in the kit (not just this project)?
 

@@ -1,0 +1,3 @@
+# The effect-mcp adapter module ships rules only. It assumes the project
+# already has the effect module's rules in place — paradigm + clean
+# architecture skeleton come from there.

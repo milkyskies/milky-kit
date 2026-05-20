@@ -6,7 +6,7 @@ paths:
 
 # TypeScript conventions
 
-Paradigm-neutral rules that apply to every TS file. Projects using Effect-TS additionally follow `templates/effect-api/rules/effect.md`, which supersedes the optionals / pattern-matching / sum-type choices below with Effect equivalents.
+Paradigm-neutral rules that apply to every TS file. Projects using Effect-TS additionally follow `modules/effect/rules/effect.md`, which supersedes the optionals / pattern-matching / sum-type choices below with Effect equivalents.
 
 ## Strong typing
 

@@ -64,7 +64,7 @@ For each accepted change:
 
 1. Edit the file using the `Edit` tool. One change per edit (no batching across rules unless the user explicitly says "apply all of these").
 2. Run `pnpm -r typecheck` / equivalent after each substantive change. If typecheck breaks, surface the error and ask before continuing.
-3. Commit with a focused message: `refactor(<scope>): realign to <rule>`. Reference the rule file (e.g. `closes` no issue but `refs templates/effect-api/rules/effect.md` in the body).
+3. Commit with a focused message: `refactor(<scope>): realign to <rule>`. Reference the rule file (e.g. `closes` no issue but `refs modules/effect/rules/effect.md` in the body).
 
 ### Phase 5 — Update CLAUDE.md if needed
 

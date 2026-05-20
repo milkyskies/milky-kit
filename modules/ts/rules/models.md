@@ -5,7 +5,7 @@ paths:
 
 # Domain models
 
-Architectural placement, paradigm-neutral. Projects using Effect-TS additionally follow `templates/effect-api/rules/effect.md`, which prescribes `Schema.Class` and Effect-flavored conversion (one schema decodes/encodes both directions).
+Architectural placement, paradigm-neutral. Projects using Effect-TS additionally follow `modules/effect/rules/effect.md`, which prescribes `Schema.Class` and Effect-flavored conversion (one schema decodes/encodes both directions).
 
 - **Pure.** A domain model knows about itself only. No DB row shape, no wire shape, no DTO type, no converters in the model file.
 - **Readonly fields.** The model is data; constructed once, never mutated. Use `readonly` on every field.
