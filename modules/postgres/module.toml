@@ -5,3 +5,7 @@ dest = ".mise/tasks/db/up"
 [[files]]
 src = "mise-tasks/db/reset"
 dest = ".mise/tasks/db/reset"
+
+[[files]]
+src = "mise-tasks/db/migrate"
+dest = ".mise/tasks/db/migrate"
