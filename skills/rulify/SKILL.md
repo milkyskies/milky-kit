@@ -1,13 +1,15 @@
 ---
 name: rulify
 description: >
-  Cross-check modified code against each rule in .claude/rules/, detect violations, and auto-fix them. Use as a self-check before code review.
+  Diff-scoped check — inspect the lines you just added/modified (since origin/main, or a specific PR) against each rule in .claude/rules/, surface violations, and propose fixes. Pre-PR self-check; called by /ship.
   TRIGGER when: the user wants to check rule compliance, asks for a self-review, or says "rulify".
-  DO NOT TRIGGER when: the user is asking for a general code review unrelated to .claude/rules/.
+  DO NOT TRIGGER when: the user is asking for a general code review unrelated to .claude/rules/, or wants a whole-repo drift sweep (use /realign for that).
 argument-hint: "[PR number or focus area (optional)]"
 ---
 
-Inspect whether modified code complies with the rules defined in `.claude/rules/`, and automatically fix clear violations.
+**Designed for**: tight feedback loop on a feature branch — what did I just break? Diff-scoped (only `+` lines since `origin/main`), runs N parallel haiku agents (one per applicable rule). Fast. For a whole-repo drift sweep against the kit's current rules, use `/realign` instead.
+
+Inspect whether modified code complies with the rules defined in `.claude/rules/`, and surface violations with proposed fixes.
 
 ## User-specified focus
 
@@ -116,28 +118,29 @@ Agent settings:
 (Display results from rules with violations here)
 ```
 
-### Step 5: Auto-fix
+### Step 5: Propose fixes (don't auto-apply)
 
-If 🔴 clear violations exist:
-1. Review the fix details
-2. Apply fixes to each file using the Edit tool
-3. Run formatters/tests/builds as needed
+For each 🔴 clear violation, propose the fix and ask the user to accept or skip via `AskUserQuestion`. **Don't auto-apply** — even clear violations get one round-trip of user confirmation. Surfacing the violation lets the user choose whether to apply now or defer; the user is faster than the wrong fix. (See `modules/core/rules/general.md`'s "be sunao" rule.)
 
-🟡 Gray area violations are reported only — no fixes applied.
+When the user accepts a fix:
+1. Apply via the `Edit` tool, one file at a time.
+2. Run typecheck after each substantive change. If broken, surface the error and ask before continuing.
 
-### Step 6: Report fix results
+🟡 Gray-area violations are reported only — no fix proposed.
+
+### Step 6: Report results
 
 ```
 ## Rulify Complete
 
-### Auto-fixed
+### Applied (with user consent)
 - {file_path}: {fix summary}
 
-### Needs review (gray area)
+### Skipped (user declined or gray area)
 - {file_path}: {issue description}
 
-### No fixes needed
-All rules passed! No violations found.
+### No violations
+All rules passed!
 ```
 
 ## Important Rules
@@ -148,5 +151,5 @@ All rules passed! No violations found.
 4. **Parallel execution**: All applicable rule agents must be launched in parallel.
 5. **Strict scoping**: Only inspect changed lines (+ lines in the diff).
 6. **Avoid false positives**: Do not flag anything not explicitly stated in the rules.
-7. **Auto-fix safety**: Only auto-fix 🔴 clear violations. 🟡 items are reported only.
+7. **Ask before applying**: Even 🔴 clear violations get proposed for user confirmation via `AskUserQuestion`. Be sunao — surface the violation, let the user decide. See `modules/core/rules/general.md`.
 8. **Separation from formatters**: Leave formatting issues to formatters.

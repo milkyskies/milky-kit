@@ -5,7 +5,7 @@ description: Scan a project against its currently-loaded milky-kit rules and pro
 
 # Realign a project to its milky-kit rules
 
-This is the core "make the project conform to the rules" skill. Other skills (`upgrade`, `retrofit`, `edit`, `kit-modify`) all call this as their last step. It can also be invoked directly when a user wants to know what's drifted.
+**Designed for**: whole-repo drift sweep after kit-side or project-side change — what's drifted from the kit's current rules? Scans the entire codebase, not just changed lines. Slower than `/rulify` (which is diff-scoped for tight pre-PR feedback) but broader. Other skills (`upgrade`, `retrofit`, `edit`, `kit-modify`) call this as their last step. It can also be invoked directly when a user wants to know what's drifted.
 
 ## When to invoke
 

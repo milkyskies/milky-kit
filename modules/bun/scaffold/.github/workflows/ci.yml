@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Lint + typecheck + test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76 # v2.0.2
+        with:
+          bun-version: latest
+
+      - name: Setup Aikido safe-chain
+        # Installs PATH shims that intercept pnpm/npm/yarn/npx (and now
+        # bun via its bun-add shim, if supported) to check every package
+        # against Aikido's feed of known-malicious releases before the
+        # install runs. Bun coverage is partial — see
+        # modules/bun/rules/bun-security.md for the honest gaps. The
+        # shims still run for any pnpm/npm fallbacks.
+        env:
+          npm_config_minimum_release_age: "0"
+        run: bunx --bun @aikidosec/safe-chain@1.5.1 setup-ci
+
+      - name: Install dependencies
+        # --frozen-lockfile fails the build if bun.lockb is out of sync
+        # with package.json instead of silently re-resolving (which would
+        # defeat the trust controls applied locally).
+        run: bun install --frozen-lockfile
+
+      - name: Check every package defines typecheck/lint/test
+        # Catches "added a package but forgot to wire up the test runner"
+        # at PR time. See modules/ci/rules/ci.md.
+        run: bash .github/scripts/check-package-scripts.sh
+
+      - name: Lint
+        run: bun --filter '*' run lint
+
+      - name: Typecheck
+        run: bun --filter '*' run typecheck
+
+      - name: Test
+        # No --if-present — every package must define `test`. The
+        # check-package-scripts step above enforces that.
+        run: bun --filter '*' run test
