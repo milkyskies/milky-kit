@@ -1,8 +1,24 @@
 #!/bin/bash
-#MISE description="Apply pending database migrations (drizzle-kit migrate via pnpm workspaces)"
+#MISE description="Apply pending database migrations across the workspace"
 set -euo pipefail
 
-# Run db:migrate in any workspace package that defines it. --if-present
-# skips packages without the script (frontends, scripts, etc.) instead of
-# failing.
-pnpm -r db:migrate --if-present
+if [ -f "pnpm-lock.yaml" ]; then
+	pnpm -r db:migrate --if-present
+elif [ -f "bun.lock" ] || [ -f "bun.lockb" ]; then
+	# bun lacks a clean --if-present; probe each apps/* and packages/*
+	# package.json for a db:migrate script and run only the matches.
+	found=0
+	for pkg in $(find apps packages -mindepth 2 -maxdepth 2 -name package.json -not -path '*/node_modules/*' 2>/dev/null); do
+		if grep -q '"db:migrate"' "$pkg"; then
+			found=1
+			(cd "$(dirname "$pkg")" && bun run db:migrate)
+		fi
+	done
+	if [ "$found" -eq 0 ]; then
+		echo "No workspace package defines a db:migrate script." >&2
+		exit 1
+	fi
+else
+	echo "Could not find pnpm-lock.yaml or bun.lock at project root. Run from the project root with pnpm or bun installed." >&2
+	exit 1
+fi
