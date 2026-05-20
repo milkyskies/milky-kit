@@ -33,8 +33,9 @@ A **module** is one orthogonal concern that composes cleanly with any template. 
 | `modules/ghlobes` | `.ghlobes.toml` scaffold + the glb agent rule file |
 | `modules/postgres` | docker-compose Postgres + Effect-flavored `@effect/sql-pg` notes |
 | `modules/sqlite` | local SQLite scaffold |
+| `modules/release-please` | GitHub Actions release pipeline + Trusted Publishing OIDC (variants: npm publish / tag-only) |
 
-A project's `CLAUDE.md` picks one template's rules and as many module rules as it needs, all via `@`-refs into milky-kit.
+A project's `.claude/rules/` directory symlinks one rule per file into the chosen template + modules. Claude Code auto-loads every `.md` (including symlinks) under `.claude/rules/` at session start.
 
 ## How a project consumes the kit
 
@@ -90,7 +91,7 @@ Then it copies the template + module scaffolds, creates `.claude/rules/` symlink
 /milky-kit:retrofit
 ```
 
-The skill detects the current stack, asks which modules to apply, and copies in scaffold files while merging (not overwriting) anything the project already has. `CLAUDE.md` gets `@`-refs appended; existing project-specific content stays.
+The skill detects the current stack, asks which modules to apply, copies in scaffold files (merging, not overwriting), creates `.claude/rules/` symlinks for the new rules, and writes a thin `CLAUDE.md` if none exists. Existing project-specific content stays untouched.
 
 ## Upgrade an existing project
 
@@ -112,7 +113,7 @@ Tagged releases may come later as the kit stabilizes; the skills will prefer tag
 milky-kit/
 ├── README.md
 ├── .claude-plugin/             Claude Code plugin manifest
-├── skills/                     Plugin skills (new, retrofit, upgrade, check-version)
+├── skills/                     Plugin skills (new, retrofit, upgrade, realign, edit, kit-modify, check-version, ship, land, rulify, simplify, retrospective, and template-specific helpers)
 ├── templates/                  Stack templates (alternatives — pick one per project)
 │   ├── effect-api/
 │   │   ├── rules/
@@ -131,7 +132,8 @@ milky-kit/
     ├── bun/
     ├── ghlobes/
     ├── postgres/
-    └── sqlite/
+    ├── sqlite/
+    └── release-please/
 ```
 
 ## Why templates vs modules
