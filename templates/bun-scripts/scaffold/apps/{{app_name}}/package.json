@@ -3,12 +3,15 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"check": "biome check .",
-		"fix": "biome check --write ."
+		"lint": "biome check .",
+		"lint:fix": "biome check --write .",
+		"typecheck": "tsc --noEmit",
+		"test": "bun test",
+		"check": "bun run lint && bun run typecheck && bun run test"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^1.9.4",
+		"@biomejs/biome": "^2.4.15",
 		"@types/bun": "latest",
-		"typescript": "^5.6.0"
+		"typescript": "^5.7.0"
 	}
 }
