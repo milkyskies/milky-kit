@@ -98,6 +98,7 @@ Report findings briefly. Then ask which modules to apply.
    - For `.ghlobes.toml`: skip if present.
    - For `CLAUDE.md`: if missing, copy `~/.claude/kit/modules/core/scaffold/CLAUDE.md` (the minimal one) into the project. If present, leave it alone — rules now load from `.claude/rules/` symlinks, so any existing `@`-ref list in CLAUDE.md becomes redundant but harmless; suggest cleaning it up only if the user asks.
    - For `mise.toml`: if missing, generate it from the chosen modules following the same per-template `[tools]` + `[tasks.dev]` rules as the `new` skill. If present, ask before touching `[tools]`; offer to add missing `[tasks.check]`/`[tasks.fmt]`/`[tasks."db:setup"]` if absent.
+   - For `AGENTS.md`: if the file ships with a literal `{{rule_refs}}` placeholder under '## Rules library', substitute it with the project's actual rule list (one `@.claude/rules/<rule>.md` per line, plus a one-line description). Reflects what was symlinked in step 1. Same format as the `new` skill's step 7a.
    - For `.mise/tasks/worktree/{setup,cleanup,sync-env}`: render with placeholders substituted AND with the DB block conditional on whether `postgres` was applied. If `postgres` not in the applied set, strip `createdb`, the `DATABASE_URL` patch, and `mise run db:migrate` from worktree/setup; strip `dropdb` from cleanup. Same install-step logic as the `new` skill (pnpm/bun/none).
 
 3. **Add `.milky-kit-version`** if missing. Same format as the `new` skill — kit SHA + timestamp + applied-modules list.
