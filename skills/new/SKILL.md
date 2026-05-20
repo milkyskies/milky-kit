@@ -20,15 +20,16 @@ User says any of: "scaffold a new project", "set up an Effect API", "new milky-k
    - `axum-api` — Rust + Axum + SeaORM + Postgres
    - `bun-scripts` — Bun + TS scripts
 
-2. **Composable modules** (multi-select): `ghlobes`, `security`, `ci`, `postgres`, `sqlite`, `pnpm` or `bun`. Default selections per template (`security` is always default; it ships the supply-chain workflows + dependabot):
-   - `effect-api` / `hono-api`: `ghlobes`, `security`, `ci`, `pnpm`, `postgres`
-   - `react-spa`: `ghlobes`, `security`, `ci`, `pnpm`
-   - `axum-api`: `ghlobes`, `security`, `ci`, `postgres`
-   - `bun-scripts`: `ghlobes`, `security`, `bun`
+2. **Composable modules** (multi-select): `ghlobes`, `security`, `ci`, `release-please`, `postgres`, `sqlite`, `pnpm` or `bun`. Default selections per template (`security` and `release-please` are always default — supply-chain workflows + dependabot + tagged releases):
+   - `effect-api` / `hono-api`: `ghlobes`, `security`, `release-please`, `ci`, `pnpm`, `postgres`
+   - `react-spa`: `ghlobes`, `security`, `release-please`, `ci`, `pnpm`
+   - `axum-api`: `ghlobes`, `security`, `release-please`, `ci`, `postgres`
+   - `bun-scripts`: `ghlobes`, `security`, `release-please`, `bun`
 
 3. **Variants** (only when the chosen template has them). Read `~/.claude/kit/templates/<template>/variants/` to discover axes. Examples:
    - `hono-api`: `db` (d1/neon/supabase), `api_style` (rpc/openapi), `auth` (firebase/none)
    - `react-spa`: `mobile` (none/tauri/capacitor), `ui` (none/shadcn/heroui/base-ui), `auth` (firebase/none)
+   - `release-please`: `publish` (`none` / `npm`). Default `none` — tag-only releases. Pick `npm` only when the project will publish to npm; that variant requires the Trusted Publisher setup step in the post-scaffold instructions.
 
 4. **Project name** — kebab-case, used for directory + workspace name + `{{app_name}}` substitution.
 
