@@ -1,0 +1,14 @@
+[tools]
+node = "24"
+
+[tasks.lint]
+description = "Lint scaffold + variant TS with biome"
+run = "pnpm biome lint"
+
+[tasks.fmt]
+description = "Format scaffold + variant TS with biome"
+run = "pnpm biome check --write"
+
+[tasks.check]
+description = "Run all checks before push"
+depends = ["lint"]
