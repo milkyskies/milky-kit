@@ -58,15 +58,36 @@ Scaffold files (gitignore, biome.json, tsconfig, CI workflows, .ghlobes.toml) ar
 
 ## Setup
 
-Symlink milky-kit at a stable path so the `.claude/rules/` symlinks resolve on every machine:
+One-time, per machine. Two parts: a symlink for rule resolution, and a plugin install for the skills.
+
+### 1. Symlink the kit at `~/.claude/kit`
+
+Clone milky-kit anywhere stable on your machine (not Downloads or anywhere your OS may clean), then symlink:
 
 ```bash
-ln -s ~/Code/Projects/milky-kit ~/.claude/kit
+git clone https://github.com/milkyskies/milky-kit <wherever-you-keep-projects>/milky-kit
+ln -s <wherever-you-keep-projects>/milky-kit ~/.claude/kit
+ls -la ~/.claude/kit  # verify it resolves
 ```
 
-Do this once per machine; the kit can live anywhere as long as `~/.claude/kit` points to it. The kit's own `.claude/rules/` uses *relative* symlinks back into `modules/`, so cloning the kit on a new machine works without any setup — it eats its own dog food.
+The kit can live at any path as long as `~/.claude/kit` points to it. The symlink is what consuming projects' `.claude/rules/` symlinks resolve through. The kit's own `.claude/rules/` uses *relative* symlinks back into its `modules/`, so cloning on a new machine works without any setup — it eats its own dog food.
 
-Install the milky-kit Claude Code plugin (provides the `milky-kit:new`, `milky-kit:retrofit`, `milky-kit:upgrade`, `milky-kit:realign`, `milky-kit:edit`, `milky-kit:kit-modify`, `milky-kit:check-version` skills).
+### 2. Install the Claude Code plugin
+
+In any Claude Code session (project doesn't matter for the install):
+
+```
+/plugin marketplace add milkyskies/milky-kit
+/plugin install milky-kit@milkyskies
+```
+
+Claude clones the repo to its own plugin cache and registers the skills. Run `/help` to confirm `/milky-kit:new`, `:retrofit`, `:upgrade`, `:realign`, `:edit`, `:kit-modify`, `:check-version`, plus the pre-existing `:ship`, `:land`, `:rulify`, `:simplify`, etc. all appear.
+
+To pull future kit changes:
+
+```
+/plugin marketplace update milkyskies
+```
 
 ## Scaffold a new project
 
