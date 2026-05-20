@@ -89,6 +89,18 @@ User says any of: "scaffold a new project", "set up an Effect API", "new milky-k
 
    The symlinks point through `~/.claude/kit/` (absolute), so they survive the user moving project directories but require `~/.claude/kit/` to be set up on each machine (see kit README — `ln -s ~/Code/Projects/milky-kit ~/.claude/kit`).
 
+7a. **Populate `AGENTS.md`'s `{{rule_refs}}` placeholder.** The `modules/core/files/AGENTS.md` scaffold ships with a literal `{{rule_refs}}` token under '## Rules library' that this skill must substitute with a topical Markdown list of `@.claude/rules/<rule>.md` references plus a one-line description per rule. The list reflects every rule the project just symlinked in (always-on + template + chosen modules). Example shape after substitution:
+
+   ```md
+   - `@.claude/rules/general.md` — general practices (libraries, formatting, commit conventions)
+   - `@.claude/rules/comments.md` — when to write a comment (default: no)
+   - `@.claude/rules/effect.md` — Effect-TS paradigm + universal clean architecture
+   - `@.claude/rules/effect-http.md` — `@effect/platform` HttpApi adapter
+   - …
+   ```
+
+   Without this substitution, OpenCode-and-similar agents loading AGENTS.md would see the literal `{{rule_refs}}` and fail to discover the project's rules.
+
 8. **Generate `mise.toml`** at the project root (don't ship a stale shared one — emit the file based on what was chosen).
 
    **`[tools]` block** — only list runtimes the project actually uses:
