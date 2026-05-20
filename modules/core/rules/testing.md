@@ -7,38 +7,49 @@ Write tests for any logic you add or change. If a function makes decisions, tran
 - A function that decides, transforms, or enforces invariants → test it.
 - A function that calls one external API and passes through the result → don't test it; you'd be testing your mock.
 
-## Three tiers
+## Three tiers (E2E optional)
 
 Tests fall into one of three tiers, distinguished by **what is real and what is stubbed**. The naming is universal; tools differ per stack (see the template's own rules for the runner + mocking style — `@effect/vitest`, `cargo test`, `vitest`, etc.).
 
-### Unit
+### Domain
 
-- **Pure code, no I/O.** Domain models, domain services, value objects, parsers, ranking/scoring logic, state machines.
-- **Nothing stubbed because nothing depends on external state.**
+- **Tests with no real I/O.** Covers ALL stub-able tests in one tier:
+  - Pure functions on domain models (`Post.isPublished`, `Money.add`).
+  - Pure domain services (`PricingService.computeOrderTotal`).
+  - Use-case Effects with repositories and external services stubbed (`Layer.succeed(PostRepository, mockImpl)` in Effect; `vi.mock` in vanilla TS; hand-rolled trait impls in Rust).
+- **Stub the boundary, exercise the logic.**
 - **Live next to the source.** `foo.ts` + `foo.test.ts`. Rust: `#[cfg(test)] mod tests` at the bottom of the file.
-- **Required for**: any function with non-trivial behavior. Skip trivial getters, single-line delegations, serde-derived round-trips.
-
-### Use-case
-
-- **An `application/use-case/` orchestration with repositories and external services stubbed.** The unit of "what the app can do."
-- Stub the boundary, exercise the logic: in Effect, `Layer.succeed(PostRepository, mockImpl)`; in vanilla TS, `vi.mock`; in Rust, hand-rolled trait impls.
-- **Live next to the use-case file.** `application/use-case/create-post.ts` + `create-post.test.ts`.
-- **Required for**: every use case. Non-negotiable — this is what enforces the "use cases are mandatory" discipline.
+- **Required for**: every domain model method with non-trivial logic, every domain service, every use case (mandatory — this is what backs the "use cases are mandatory" discipline).
 
 ### Integration
 
-- **Real I/O.** Repository tests against a real test database, multi-module flows, pipeline composition.
-- **E2E is a sub-flavor**: HTTP request → handler → use case → DB → response, against the actual server. Add when you need it; not every endpoint earns one.
-- **Live in `tests/integration/` (or `tests/e2e/` for the HTTP-boundary flavor)**, not next to the source.
-- **Required for**: repositories with non-trivial queries (joins, transactions, computed columns), schema constraints (UNIQUE indexes, CHECK constraints, DEFAULT values), critical user-visible flows at the HTTP boundary.
+- **Use cases against a real test database.** Catches SQL + orchestration bugs in one test. No separate repository-method tier — testing the use case transitively exercises the repo, and that's enough.
+- **Live in `tests/integration/`**, not next to the source.
+- **Required for**: critical user-visible flows where DB state matters. Not every use case earns one; pick the ones where a bug at the SQL layer would be expensive.
 - **Use a dedicated test database.** Wipe between tests or use transactions that roll back. Never against the dev DB.
+
+### E2E (opt-in)
+
+- **Full HTTP/MCP boundary**: request → handler → use case → DB → response, against the actual server.
+- **Live in `tests/e2e/`**.
+- **Add when you have user-critical flows that must be verified at the wire** (auth, checkout, signup). Skip if you don't — not every project needs E2E.
 
 ## Coverage per tier
 
-- **Unit**: every domain model method with logic + every domain service.
-- **Use-case**: every use case (mandatory).
-- **Integration**: every repository method with non-trivial query, every schema constraint.
-- **E2E**: critical user-visible flows (auth, checkout, signup). Not every endpoint.
+- **Domain**: every domain model method with logic + every domain service + every use case.
+- **Integration**: every critical user-visible flow where DB state matters.
+- **E2E**: optional. Only when the wire matters separately from the use case.
+
+## What counts as "domain" for the Domain tier
+
+"Domain logic" = the part of the code with **no I/O** (no DB, no HTTP, no time, no external services). Testable with stubs only.
+
+**Decision rule — domain service vs use case**: does it touch I/O (repo, external API, clock, randomness, logger)? Then it's a use case in `application/use-case/`, not a domain service. Pure logic → domain service. The use case orchestrates domain services + repositories + side effects; the domain service is the pure algorithm the use case calls.
+
+For exact directory layout per template (where `domain/models/`, `domain/services/`, `domain/repositories/`, `application/use-case/` live and how they're shaped):
+
+- Effect API → `templates/effect-api/rules/effect.md` "Where things live" section
+- Axum API → `templates/axum-api/rules/clean-architecture.md`
 
 ## Feature specs (Gherkin) for user-visible behavior
 
@@ -77,10 +88,10 @@ Format:
 
 ## What doesn't need a spec doc
 
-- Pure helpers, value objects (`Money.add`, `Post.isPublished`) — inline unit test only.
-- Repository implementations — integration test next to it; CRUD doesn't need a Gherkin scenario.
+- Pure helpers, value objects (`Money.add`, `Post.isPublished`) — inline domain-tier test only.
+- Repository implementations — no isolated test required (use cases at the integration tier transitively exercise them); CRUD doesn't need a Gherkin scenario either.
 - HTTP handlers / MCP tools — no spec at the handler level. The use-case spec covers the behavior; the handler is a 3-line shim that just dispatches.
-- Domain services with non-obvious business rules → spec doc warranted.
+- Domain services with non-obvious business rules → spec doc warranted (and a domain-tier test for the algorithm).
 
 ## Test naming
 
