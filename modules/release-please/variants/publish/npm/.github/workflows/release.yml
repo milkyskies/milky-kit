@@ -31,14 +31,14 @@ jobs:
           node-version: 22
           registry-url: https://registry.npmjs.org
 
-      - name: Upgrade npm to a Trusted-Publisher-capable version
-        # Trusted Publishing requires npm CLI >= 11.5.1. Node 22 LTS
-        # ships with npm 10.x by default, so we bump explicitly.
-        run: npm install -g npm@latest
-
       - name: Publish
-        # No --provenance flag needed: with Trusted Publishing, npm
-        # auto-generates and publishes the provenance attestation
-        # from the GitHub OIDC context. --access public stays
-        # required for free-tier scoped packages.
-        run: npm publish --access public
+        # Trusted Publishing requires npm CLI >= 11.5.1. Node 22 LTS
+        # bundles npm 10.x, but `npm install -g npm@latest` hits a
+        # known self-update bug (can't atomically replace the running
+        # npm — fails with MODULE_NOT_FOUND for promise-retry). Side-
+        # step it via `npx --yes npm@latest publish`: a fresh npm is
+        # downloaded for this single invocation, leaving the runner's
+        # bundled npm untouched. No --provenance flag needed under
+        # Trusted Publishing; provenance attestations are automatic.
+        # --access public required for free-tier scoped packages.
+        run: npx --yes npm@latest publish --access public
