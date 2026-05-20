@@ -47,7 +47,7 @@ Use this skill when the user is working in a project and decides a kit-level con
 ## Guardrails
 
 - **Confirm the kit edit before pushing.** Show the user the exact diff that will land in milky-kit. They can amend the wording before the commit.
-- **Never `--force` push.** The kit may be referenced by other machines/projects via the `@`-ref symlink; force-pushing rewrites their dependency.
+- **Never `--force` push.** The kit may be referenced by other machines/projects via the `~/.claude/kit` symlink and the `.claude/rules/` symlinks that resolve through it; force-pushing rewrites their dependency.
 - **Don't bundle unrelated changes.** One conceptual change per kit commit. If the user describes two ideas, ask whether to do them as separate commits.
 - **Don't modify the kit's own `.git/` state** (config, hooks, etc.) without explicit instruction.
 

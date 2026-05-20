@@ -48,4 +48,4 @@ User says: "what version of milky-kit am I on?", "is the kit up to date?", "/mil
 
 ## If `~/.claude/kit` doesn't exist
 
-Tell the user: "milky-kit is expected to be symlinked at `~/.claude/kit`. Run `ln -s ~/Code/Projects/milky-kit ~/.claude/kit` (or wherever your milky-kit checkout lives) so the `@`-refs in CLAUDE.md resolve. See milky-kit's README for setup."
+Tell the user: "milky-kit is expected to be symlinked at `~/.claude/kit`. Run `ln -s ~/Code/Projects/milky-kit ~/.claude/kit` (or wherever your milky-kit checkout lives) so the `.claude/rules/` symlinks resolve to live kit files. See milky-kit's README for setup."

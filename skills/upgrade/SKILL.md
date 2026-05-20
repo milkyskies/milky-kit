@@ -30,7 +30,7 @@ Run `git -C ~/.claude/kit log --oneline <base>..HEAD -- <paths>` filtered to the
 Group the commits into themes. For each, decide whether it's:
 
 - **Mechanical** — a rule file changed, a scaffold file got a small tweak. Show diff; user accepts or skips.
-- **Structural** — a module was renamed, a paradigm rule was added that will fail lint. Walk through implications: "module X is now Y; we'd need to update the `@`-ref. Continue?"
+- **Structural** — a module was renamed, a paradigm rule was added that will fail lint. Walk through implications: "module X is now Y; we'd need to retarget the `.claude/rules/<rule>.md` symlink. Continue?"
 - **Optional** — a new module was added. Ask if the user wants to apply it (same flow as `retrofit` for that module).
 - **Breaking** — paths moved, a dep was upgraded with breaking changes. Explain what will break and ask before touching anything.
 
@@ -38,13 +38,13 @@ Group the commits into themes. For each, decide whether it's:
 
 For each change the user accepts:
 
-1. **Apply the diff** to the project. For scaffold files, copy the new version from `~/.claude/kit/...` over the project's copy — but only after showing the diff. For rule `@`-refs (path changes), edit `CLAUDE.md` to point at the new path.
+1. **Apply the diff** to the project. For scaffold files, copy the new version from `~/.claude/kit/...` over the project's copy — but only after showing the diff. For rule symlinks whose kit target moved, retarget `.claude/rules/<rule>.md` to the new path (or run `/milky-kit:retrofit`, which reconciles symlinks idempotently).
 2. **Run lint + typecheck** after each substantive change. New rules will surface new violations — let the user decide which to fix now vs file as TODOs.
 3. **Commit** with a clear scope: `chore: upgrade milky-kit <description>` referencing the kit commit SHA in the body.
 
 After all changes are applied (or skipped):
 
-1. **Scan the project's CLAUDE.md for drift.** Now that the kit has moved, some `@`-refs may point to files that were renamed or deleted. Detect by reading each `@`-ref path and checking it resolves to a real file. Propose fixes (rename `@-ref` to new path, or remove if the rule was deleted). Walk one at a time.
+1. **Scan `.claude/rules/` for broken symlinks.** Now that the kit has moved, some kit-pointed symlinks may point at files that were renamed or deleted. Detect by reading each symlink's target and checking it resolves to a real file. Propose fixes (retarget to new path, or remove if the rule was deleted) — or invoke `/milky-kit:retrofit` which reconciles automatically. Walk one at a time.
 2. **Invoke the `realign` skill.** Pass it the list of rules that changed in this upgrade so realign focuses on those rather than scanning everything. The user accepts/skips each violation realign finds.
 3. **Update `.milky-kit-version`** to the new kit SHA + new timestamp. Preserve the template + modules list.
 4. **Final summary** — applied N, skipped M, what's still TODO, plus manual setup steps the user must complete (with direct links). Substitute `{{owner}}`, `{{repo}}`, `{{package}}`.
@@ -60,7 +60,7 @@ After all changes are applied (or skipped):
 
 - **User-customized scaffold files** — `biome.json` may have project-specific ignores, `package.json` may have unrelated deps. Always diff before overwriting.
 - **CLAUDE.md project-specific section** — the `## Project-specific` section is owned by the project. Never touch it.
-- **`@`-ref path changes** — when a kit module gets renamed (e.g. `modules/hono` → `templates/hono-api`), the project's `CLAUDE.md` refs break silently. Catch and update.
+- **Symlink target moves** — when a kit module gets renamed (e.g. `modules/hono` → `templates/hono-api`), the project's `.claude/rules/` symlinks point at the old path and break silently. Catch and retarget (or re-retrofit).
 - **Deps with breaking changes** — when the kit bumps a major version of a shared dep (`@effect/platform 0.x` → `0.x+1` with API changes), don't just run `pnpm update`. Tell the user, link to the upstream migration notes, let them schedule the work.
 
 ## Refuse to do
