@@ -1,0 +1,8 @@
+#!/bin/bash
+#MISE description="Apply pending database migrations (drizzle-kit migrate via pnpm workspaces)"
+set -euo pipefail
+
+# Run db:migrate in any workspace package that defines it. --if-present
+# skips packages without the script (frontends, scripts, etc.) instead of
+# failing.
+pnpm -r db:migrate --if-present
