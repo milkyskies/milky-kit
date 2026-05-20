@@ -50,16 +50,42 @@ Report findings briefly. Then ask which modules to apply.
 
 ## Steps to execute
 
-1. **Create `.claude/rules/` symlinks** for the chosen rules. Claude Code auto-loads every `.md` (incl. symlinks) under `.claude/rules/`, so this replaces the older `@`-refs-in-CLAUDE.md mechanism:
+1. **Reconcile `.claude/rules/` symlinks idempotently.** Re-running retrofit must converge: it adds new rules, removes ones from de-selected modules, and retargets ones whose source path moved in the kit. Sequence:
+
+   1. **Compute the desired set.** Walk the user's chosen modules + the detected template (if any) + the always-on core rules. The desired set is a map of `<symlink-name>.md → <absolute-target-in-kit>` covering every rule that should exist after this run.
+
+      Always-on rules (every project): `~/.claude/kit/modules/core/rules/{general,comments,config-and-env,workflow,worktrees,testing}.md`.
+
+      Per chosen module: its `rules/*.md` files. Per detected template: its `rules/*.md` files (e.g. `effect-api` composes `effect`, `effect-http`, `effect-mcp`, `effect-sql`).
+
+   2. **Read the current state** of `.claude/rules/`. For each entry, classify:
+      - **kit-pointed symlink** — target resolves into `~/.claude/kit/` (or any path containing `milky-kit`). The retrofit owns these.
+      - **other symlink** — points elsewhere (project-local rule, third-party). Leave alone.
+      - **real file** — user-written. Leave alone; surface its existence.
+
+   3. **Apply the diff:**
+      - **Add** symlinks for entries in the desired set with no current symlink. `ln -s <target> .claude/rules/<name>.md`.
+      - **Retarget** kit-pointed symlinks whose current target differs from the desired target (e.g. a rule moved in the kit, like today's effect split). `rm .claude/rules/<name>.md && ln -s <new-target> .claude/rules/<name>.md`.
+      - **Remove** kit-pointed symlinks not in the desired set (module de-selected, rule deleted upstream). `rm .claude/rules/<name>.md`. **Never** rm a non-symlink or a non-kit-pointed symlink — ask first.
+      - **Skip** symlinks that already point at the correct target. No-op.
+
+   4. **Report** what was added / retargeted / removed before doing it. For removals, list each path so the user can object if it's not actually theirs to lose.
 
    ```bash
+   # Example shape — the skill walks this for each desired rule
    mkdir -p .claude/rules
-   ln -s ~/.claude/kit/modules/core/rules/general.md .claude/rules/general.md
-   ln -s ~/.claude/kit/modules/<module>/rules/<rule>.md .claude/rules/<rule>.md
-   # ... one symlink per rule
+
+   # Add or retarget
+   target=~/.claude/kit/modules/core/rules/general.md
+   link=.claude/rules/general.md
+   current=$(readlink "$link" 2>/dev/null || true)
+   if [ "$current" != "$target" ]; then
+     [ -L "$link" ] && rm "$link"
+     ln -s "$target" "$link"
+   fi
    ```
 
-   Always-on rules: `core/rules/{general,comments,config-and-env,workflow,worktrees,testing}.md`. Per chosen module: its `rules/*.md` files. Skip symlinks that already exist; if a regular file with the same name exists, ask before replacing.
+   For files that are real (non-symlink) at a path the desired set wants to claim, ask before replacing.
 
 2. **Merge scaffold files** for each chosen module. Substitute all placeholders (`{{project_name}}`, `{{worktree_dir}}`, `{{app_name}}`, etc.) when copying:
    - For `package.json`: deep-merge — add new deps + scripts without touching existing keys. If a script name collides (e.g. `lint` already defined), ask which to keep.
