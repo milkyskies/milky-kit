@@ -14,22 +14,22 @@
 		"db:studio": "drizzle-kit studio"
 	},
 	"dependencies": {
-		"effect": "^3.18.0",
-		"@effect/platform": "^0.95.0",
+		"effect": "^3.21.0",
+		"@effect/platform": "^0.96.0",
 		"@effect/platform-bun": "^0.94.0",
-		"@effect/sql": "^0.49.0",
-		"@effect/sql-drizzle": "^0.49.0",
-		"@effect/sql-pg": "^0.49.0",
-		"@effect/ai": "^0.30.0",
-		"drizzle-orm": "^0.38.0",
+		"@effect/sql": "^0.51.0",
+		"@effect/sql-drizzle": "^0.50.0",
+		"@effect/sql-pg": "^0.52.0",
+		"@effect/ai": "^0.35.0",
+		"drizzle-orm": "^0.45.0",
 		"postgres": "^3.4.5"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.4.15",
-		"@effect/vitest": "^0.27.0",
+		"@effect/vitest": "^0.29.0",
 		"@milkyskies/biome-config": "^0.1.2",
-		"@types/bun": "^1.1.14",
-		"drizzle-kit": "^0.30.0",
+		"@types/bun": "^1.3.0",
+		"drizzle-kit": "^0.31.0",
 		"typescript": "^5.7.0",
 		"vitest": "^2.1.0"
 	}
