@@ -1,17 +1,21 @@
 ---
 name: purge
-description: Remove milky-kit's footprint from the CURRENT PROJECT so it can be re-retrofitted cleanly. Removes .claude/rules/ symlinks that point into the kit, and the .milky-kit-version file. Does NOT touch scaffold files (CI workflows, biome.json, etc.) or CLAUDE.md — those are project-owned. Does NOT touch the Claude Code plugin or the ~/.claude/kit symlink (those are machine-level — use /plugin uninstall for those).
+description: Escape hatch — fully remove milky-kit's per-project footprint when a project is abandoning the kit. Removes .claude/rules/ symlinks that point into the kit, and the .milky-kit-version file. Does NOT touch scaffold files (CI workflows, biome.json, etc.) or CLAUDE.md — those are project-owned. Does NOT touch the Claude Code plugin or the ~/.claude/kit symlink (those are machine-level — use /plugin uninstall for those). For the common case of pulling updated kit content into an existing project, use /milky-kit:retrofit, which is idempotent.
 ---
 
 # Purge milky-kit from this project
 
-Use this skill when the user wants to clear the kit's per-project footprint so they can re-run `/milky-kit:retrofit` against a clean slate. Common reasons: the kit reshuffled modules (e.g. today's effect split moved `effect.md`), a project's module selection changed, or symlinks are pointing at stale paths.
+Use this skill when the user wants to fully clear the kit's per-project footprint — typically when a project is abandoning the kit, or when something has gone wrong enough that a full reset is the cleanest fix.
+
+For the common case — "the kit moved a rule and my symlinks are stale" or "I want to add/remove a module" — use `/milky-kit:retrofit` instead. Retrofit is idempotent (see PR #74); re-running it adds new symlinks, retargets ones whose source moved, and removes ones for de-selected modules. Purge is the escape hatch, not the standard pre-retrofit step.
 
 This is **per-project**, not machine-level. The kit's git checkout, the `~/.claude/kit` symlink, the Claude Code plugin, and the marketplace entry all remain — only the current project's kit-managed pointers are removed.
 
 ## When to invoke
 
-User says any of: "purge milky-kit from this project", "reset milky-kit here", "remove the kit's rules from this project", "/milky-kit:purge", "I want to re-retrofit from scratch".
+User says any of: "abandon milky-kit", "remove all the kit's content from this project", "full reset of milky-kit here", "purge milky-kit", "/milky-kit:purge".
+
+**Do NOT invoke for:** "pull updated kit content" / "the kit moved something and my symlinks broke" / "I want to add module X" — those are retrofit's job (it handles all three idempotently).
 
 ## What gets removed
 
