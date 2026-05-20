@@ -1,0 +1,79 @@
+version: 2
+updates:
+  # Kit's own GitHub Actions workflows
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    labels:
+      - "dependencies"
+    cooldown:
+      # Mirrors the cooldown convention in modules/pnpm/scaffold/.github/dependabot.yml.
+      # zizmor flags <7d as dependabot-cooldown; intentional mismatch documented in
+      # modules/security/rules/security.md.
+      default-days: 1 # zizmor: ignore[dependabot-cooldown]
+      semver-major-days: 1
+      semver-minor-days: 1
+      semver-patch-days: 1
+
+  # Every scaffold package.json across templates + variants + modules.
+  # Globs catch the literal `{{app_name}}` directory in the kit's tree.
+  - package-ecosystem: "npm"
+    directories:
+      - "/templates/*/scaffold/apps/*"
+      - "/templates/*/variants/*/*/apps/*"
+      - "/modules/*/scaffold"
+      - "/modules/*/scaffold/packages/*"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "scaffold"
+    open-pull-requests-limit: 5
+    groups:
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
+      tanstack:
+        patterns:
+          - "@tanstack/*"
+      effect:
+        patterns:
+          - "effect"
+          - "@effect/*"
+      biome:
+        patterns:
+          - "@biomejs/*"
+          - "@milkyskies/biome-config"
+      tailwind:
+        patterns:
+          - "tailwindcss"
+          - "@tailwindcss/*"
+          - "tailwind-merge"
+      drizzle:
+        patterns:
+          - "drizzle-orm"
+          - "drizzle-kit"
+          - "drizzle-zod"
+      vite:
+        patterns:
+          - "vite"
+          - "@vitejs/*"
+      hono:
+        patterns:
+          - "hono"
+          - "@hono/*"
+    cooldown:
+      default-days: 1 # zizmor: ignore[dependabot-cooldown]
+      semver-major-days: 1
+      semver-minor-days: 1
+      semver-patch-days: 1
