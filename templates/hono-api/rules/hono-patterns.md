@@ -5,7 +5,7 @@ paths:
 
 # Hono Patterns
 
-## Layer layout
+## Where things live
 
 Clean-architecture DDD split. Each layer depends only on inner layers.
 

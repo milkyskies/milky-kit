@@ -1,16 +1,30 @@
 # Clean Architecture (Rust)
 
-## Layer structure
+## Where things live
 
 ```
 packages/
-├── domain/          # Models, value objects, repository traits, pure services
-├── application/     # Use cases — orchestrate domain logic
-└── infrastructure/  # DB, external APIs, implementations
+├── domain/
+│   └── src/
+│       ├── models/<resource>.rs         entities + pure methods on the struct
+│       ├── services/<concept>.rs        multi-entity pure algorithms (when needed)
+│       └── repositories/<resource>_repository.rs   traits only, no impl
+├── application/
+│   └── src/
+│       └── use_case/<verb>_<resource>.rs  orchestration; the Effect-equivalent
+│                                          for Rust: Result<A, E> async fns
+└── infrastructure/
+    └── src/
+        └── db/<resource>_repository.rs  SeaORM/sqlx impl of the domain trait
 apps/
-└── api/src/
-    └── presentation/  # HTTP handlers (axum) — thin layer
+├── api/
+│   └── src/
+│       ├── presentation/<resource>_handler.rs   thin Axum handlers, 3-line shims
+│       └── main.rs                              composition root
+└── db/                                          drizzle-kit equivalent: migrator
 ```
+
+**Decision rule for domain service vs use case**: does it touch I/O (repo, external API, clock, randomness, logger)? Then it's a use case in `application/`, not a domain service. Pure logic → domain service. The use case orchestrates domain services + repositories + side effects; the domain service is the pure algorithm the use case calls.
 
 ## Dependency rule
 
