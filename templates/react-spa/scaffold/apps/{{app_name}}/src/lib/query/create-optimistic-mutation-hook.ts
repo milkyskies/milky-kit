@@ -41,11 +41,7 @@ export function createOptimisticMutationHook<
 				}
 
 				if (config.optimistic.cancelQueries) {
-					const keys = Array.isArray(config.optimistic.cancelQueries[0])
-						? (config.optimistic.cancelQueries as readonly unknown[][])
-						: [config.optimistic.cancelQueries];
-
-					for (const queryKey of keys) {
+					for (const queryKey of config.optimistic.cancelQueries) {
 						await queryClient.cancelQueries({ queryKey });
 					}
 				}

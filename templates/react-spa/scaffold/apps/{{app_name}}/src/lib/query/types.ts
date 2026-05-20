@@ -34,7 +34,7 @@ export type OptimisticConfig<TVariables, TSavedData = unknown> = {
 		current: TSavedData,
 	) => TSavedData;
 	rollbackCache: (queryClient: QueryClient, saved: TSavedData) => void;
-	cancelQueries?: QueryKey | QueryKey[];
+	cancelQueries?: QueryKey[];
 };
 
 export type MutationConfig<TData, TVariables> = {

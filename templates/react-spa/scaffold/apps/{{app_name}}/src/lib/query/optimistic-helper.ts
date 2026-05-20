@@ -10,7 +10,7 @@ export function optimisticUpdate<TItem, TVariables>({
 	queryKey: QueryKey;
 	matcher: (item: TItem, variables: TVariables) => boolean;
 	merge: (item: TItem, variables: TVariables) => TItem;
-	cancelQueries?: QueryKey | QueryKey[];
+	cancelQueries?: QueryKey[];
 }): OptimisticConfig<TVariables, TItem[]> {
 	return {
 		cancelQueries,
@@ -35,7 +35,7 @@ export function optimisticCreate<TItem, TVariables>({
 	queryKey: QueryKey;
 	buildItem: (variables: TVariables) => TItem;
 	position?: "start" | "end";
-	cancelQueries?: QueryKey | QueryKey[];
+	cancelQueries?: QueryKey[];
 }): OptimisticConfig<TVariables, TItem[]> {
 	return {
 		cancelQueries,
@@ -58,7 +58,7 @@ export function optimisticDelete<TItem, TVariables>({
 }: {
 	queryKey: QueryKey;
 	matcher: (item: TItem, variables: TVariables) => boolean;
-	cancelQueries?: QueryKey | QueryKey[];
+	cancelQueries?: QueryKey[];
 }): OptimisticConfig<TVariables, TItem[]> {
 	return {
 		cancelQueries,
@@ -81,7 +81,7 @@ export function optimisticToggle<TItem, TVariables>({
 	queryKey: QueryKey;
 	matcher: (item: TItem, variables: TVariables) => boolean;
 	toggle: (item: TItem, variables: TVariables) => TItem;
-	cancelQueries?: QueryKey | QueryKey[];
+	cancelQueries?: QueryKey[];
 }): OptimisticConfig<TVariables, TItem[]> {
 	return {
 		cancelQueries,
@@ -104,7 +104,7 @@ export function optimisticReplaceDetail<TItem, TVariables>({
 }: {
 	queryKey: QueryKey;
 	merge: (current: TItem, variables: TVariables) => TItem;
-	cancelQueries?: QueryKey | QueryKey[];
+	cancelQueries?: QueryKey[];
 }): OptimisticConfig<TVariables, TItem | undefined> {
 	return {
 		cancelQueries,

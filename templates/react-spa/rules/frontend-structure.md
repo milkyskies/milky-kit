@@ -20,7 +20,7 @@ src/
 │   │   └── {resource}/        Service layers per resource (query options, mutation hooks, keys)
 │   └── {service-name}/        Other SDK-backed services (firebase, mapbox, posthog, etc.)
 ├── lib/                       Generic utilities
-│   └── query/                 TanStack Query helpers (createQueryOptions, createMutationHook, etc.)
+│   └── query/                 TanStack Query helpers (queryClient, createMutationHook, createOptimisticMutationHook, optimistic-helper factories). Query options use TanStack's native `queryOptions()`.
 ├── models/                    Shared domain types
 ├── config/                    Environment variables + app config
 └── assets/                    Static assets (CSS, images, etc.)
