@@ -1,21 +1,18 @@
-import type { api } from "@/services/api/client";
-import { Data } from "effect";
-import type { InferResponseType } from "hono/client";
+import { Data } from "effect"
+import type { InferResponseType } from "hono/client"
+import type { api } from "@/services/api/client"
 
-type GetPostResponse = InferResponseType<
-	(typeof api.api.posts)[":id"]["$get"],
-	200
->;
+type GetPostResponse = InferResponseType<(typeof api.api.posts)[":id"]["$get"], 200>
 
-export type PostApi = GetPostResponse;
+export type PostApi = GetPostResponse
 
 export interface Post {
-	readonly id: string;
-	readonly title: string;
-	readonly body: string;
-	readonly publishedAt: Date | null;
-	readonly createdAt: Date;
-	readonly updatedAt: Date;
+	readonly id: string
+	readonly title: string
+	readonly body: string
+	readonly publishedAt: Date | null
+	readonly createdAt: Date
+	readonly updatedAt: Date
 }
 
 export const Post = {
@@ -30,4 +27,4 @@ export const Post = {
 			createdAt: new Date(dto.createdAt),
 			updatedAt: new Date(dto.updatedAt),
 		}),
-};
+}

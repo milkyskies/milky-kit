@@ -10,7 +10,7 @@ import {
 	type PostPatch,
 	PostRepository,
 } from "@/domain/repositories/post-repository"
-import { postsTable, type PostRow } from "@/infrastructure/db/schema"
+import { type PostRow, postsTable } from "@/infrastructure/db/schema"
 
 const fromRow = (row: PostRow): Post =>
 	new Post({
@@ -85,11 +85,7 @@ export const PostRepositoryLive = Layer.effect(
 						return row ? fromRow(row) : post
 					}),
 				)
-				.pipe(
-					Effect.catchTag("SqlError", (cause) =>
-						Effect.fail(new DbError({ cause })),
-					),
-				)
+				.pipe(Effect.catchTag("SqlError", (cause) => Effect.fail(new DbError({ cause }))))
 
 		const del = (id: string) =>
 			wrapDbError(db.delete(postsTable).where(eq(postsTable.id, id)).returning()).pipe(

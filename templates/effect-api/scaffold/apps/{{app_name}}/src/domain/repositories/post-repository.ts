@@ -27,10 +27,7 @@ export class PostRepository extends Context.Tag("PostRepository")<
 		readonly findAll: () => Effect.Effect<ReadonlyArray<Post>, DbError>
 		readonly findById: (id: string) => Effect.Effect<Option.Option<Post>, DbError>
 		readonly create: (input: NewPost) => Effect.Effect<Post, DbError>
-		readonly update: (
-			id: string,
-			patch: PostPatch,
-		) => Effect.Effect<Post, DbError | PostNotFound>
+		readonly update: (id: string, patch: PostPatch) => Effect.Effect<Post, DbError | PostNotFound>
 		readonly delete: (id: string) => Effect.Effect<void, DbError | PostNotFound>
 	}
 >() {}

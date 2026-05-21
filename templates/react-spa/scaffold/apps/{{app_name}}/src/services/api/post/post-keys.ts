@@ -4,4 +4,4 @@ export const postKeys = {
 	list: () => [...postKeys.lists()] as const,
 	details: () => [...postKeys.all, "detail"] as const,
 	detail: (id: string) => [...postKeys.details(), id] as const,
-};
+}

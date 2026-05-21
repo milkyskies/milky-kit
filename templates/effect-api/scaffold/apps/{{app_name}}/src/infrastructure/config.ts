@@ -8,12 +8,16 @@ import { Config, Redacted } from "effect"
 export const AppConfig = Config.all({
 	databaseUrl: Config.redacted("DATABASE_URL"),
 	port: Config.integer("PORT").pipe(Config.withDefault(3000)),
-	logLevel: Config.literal("debug", "info", "warn", "error")("LOG_LEVEL").pipe(
-		Config.withDefault("info" as const),
-	),
-	logFormat: Config.literal("pretty", "json")("LOG_FORMAT").pipe(
-		Config.withDefault("pretty" as const),
-	),
+	logLevel: Config.literal(
+		"debug",
+		"info",
+		"warn",
+		"error",
+	)("LOG_LEVEL").pipe(Config.withDefault("info" as const)),
+	logFormat: Config.literal(
+		"pretty",
+		"json",
+	)("LOG_FORMAT").pipe(Config.withDefault("pretty" as const)),
 })
 
 export type AppConfig = Config.Config.Success<typeof AppConfig>

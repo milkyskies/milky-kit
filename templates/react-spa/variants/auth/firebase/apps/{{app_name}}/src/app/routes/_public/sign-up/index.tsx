@@ -1,38 +1,34 @@
-import { firebaseAuth } from "@/services/firebase/firebase";
-import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { FirebaseError } from "firebase/app";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { useState } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
+import { FirebaseError } from "firebase/app"
+import { createUserWithEmailAndPassword } from "firebase/auth"
+import { useState } from "react"
+import { firebaseAuth } from "@/services/firebase/firebase"
 
 export const Route = createFileRoute("/_public/sign-up/")({
 	component: SignUpPage,
-});
+})
 
 function SignUpPage() {
-	const navigate = useNavigate();
-	const [email, setEmail] = useState("");
-	const [password, setPassword] = useState("");
-	const [error, setError] = useState<string | null>(null);
-	const [isPending, setPending] = useState(false);
+	const navigate = useNavigate()
+	const [email, setEmail] = useState("")
+	const [password, setPassword] = useState("")
+	const [error, setError] = useState<string | null>(null)
+	const [isPending, setPending] = useState(false)
 
 	const handleSubmit = async (formEvent: React.FormEvent) => {
-		formEvent.preventDefault();
-		setError(null);
-		setPending(true);
+		formEvent.preventDefault()
+		setError(null)
+		setPending(true)
 
 		try {
-			await createUserWithEmailAndPassword(firebaseAuth, email, password);
-			navigate({ to: "/onboarding" });
+			await createUserWithEmailAndPassword(firebaseAuth, email, password)
+			navigate({ to: "/onboarding" })
 		} catch (caught) {
-			setError(
-				caught instanceof FirebaseError
-					? caught.message
-					: "Sign-up failed",
-			);
+			setError(caught instanceof FirebaseError ? caught.message : "Sign-up failed")
 		} finally {
-			setPending(false);
+			setPending(false)
 		}
-	};
+	}
 
 	return (
 		<form onSubmit={handleSubmit} className="space-y-4">
@@ -69,5 +65,5 @@ function SignUpPage() {
 				</Link>
 			</p>
 		</form>
-	);
+	)
 }

@@ -1,5 +1,5 @@
-import { Option } from "effect"
 import { describe, expect, it } from "@effect/vitest"
+import { Option } from "effect"
 import { Post } from "./post"
 
 describe("Post", () => {

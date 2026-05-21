@@ -3,14 +3,14 @@ import type {
 	QueryKey,
 	UseMutationOptions,
 	UseSuspenseQueryOptions,
-} from "@tanstack/react-query";
+} from "@tanstack/react-query"
 
 export type MutationOptions<
 	TData = unknown,
 	TError = Error,
 	TVariables = void,
 	TContext = unknown,
-> = UseMutationOptions<TData, TError, TVariables, TContext>;
+> = UseMutationOptions<TData, TError, TVariables, TContext>
 
 export type OptimisticMutationOptions<
 	TData = unknown,
@@ -18,34 +18,26 @@ export type OptimisticMutationOptions<
 	TVariables = void,
 	TContext = unknown,
 > = UseMutationOptions<TData, TError, TVariables, TContext> & {
-	optimistic?: boolean;
-};
+	optimistic?: boolean
+}
 
-export type QueryOptions<TData> = Omit<
-	UseSuspenseQueryOptions<TData>,
-	"queryKey" | "queryFn"
->;
+export type QueryOptions<TData> = Omit<UseSuspenseQueryOptions<TData>, "queryKey" | "queryFn">
 
 export type OptimisticConfig<TVariables, TSavedData = unknown> = {
-	getCacheData: (queryClient: QueryClient) => TSavedData;
-	updateCache: (
-		queryClient: QueryClient,
-		variables: TVariables,
-		current: TSavedData,
-	) => TSavedData;
-	rollbackCache: (queryClient: QueryClient, saved: TSavedData) => void;
-	cancelQueries?: QueryKey[];
-};
+	getCacheData: (queryClient: QueryClient) => TSavedData
+	updateCache: (queryClient: QueryClient, variables: TVariables, current: TSavedData) => TSavedData
+	rollbackCache: (queryClient: QueryClient, saved: TSavedData) => void
+	cancelQueries?: QueryKey[]
+}
 
 export type MutationConfig<TData, TVariables> = {
-	mutationFn: (variables: TVariables) => Promise<TData>;
-	invalidateKeys?: (variables: TVariables) => Array<QueryKey>;
-};
+	mutationFn: (variables: TVariables) => Promise<TData>
+	invalidateKeys?: (variables: TVariables) => Array<QueryKey>
+}
 
-export type OptimisticMutationConfig<
+export type OptimisticMutationConfig<TData, TVariables, TSavedData = unknown> = MutationConfig<
 	TData,
-	TVariables,
-	TSavedData = unknown,
-> = MutationConfig<TData, TVariables> & {
-	optimistic: OptimisticConfig<TVariables, TSavedData>;
-};
+	TVariables
+> & {
+	optimistic: OptimisticConfig<TVariables, TSavedData>
+}

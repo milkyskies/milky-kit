@@ -1,8 +1,5 @@
-import type { PostRepository } from "../../domain/repositories/post-repository";
+import type { PostRepository } from "../../domain/repositories/post-repository"
 
-export async function deletePost(
-	repo: PostRepository,
-	id: string,
-): Promise<boolean> {
-	return repo.delete(id);
+export async function deletePost(repo: PostRepository, id: string): Promise<boolean> {
+	return repo.delete(id)
 }

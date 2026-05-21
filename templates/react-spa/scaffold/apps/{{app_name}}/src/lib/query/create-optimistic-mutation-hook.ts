@@ -1,8 +1,5 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type {
-	OptimisticMutationConfig,
-	OptimisticMutationOptions,
-} from "./types";
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import type { OptimisticMutationConfig, OptimisticMutationOptions } from "./types"
 
 export function createOptimisticMutationHook<
 	TData = void,
@@ -10,10 +7,8 @@ export function createOptimisticMutationHook<
 	TContext = unknown,
 	TSavedData = unknown,
 >(config: OptimisticMutationConfig<TData, TVariables, TSavedData>) {
-	return (
-		options?: OptimisticMutationOptions<TData, Error, TVariables, TContext>,
-	) => {
-		const queryClient = useQueryClient();
+	return (options?: OptimisticMutationOptions<TData, Error, TVariables, TContext>) => {
+		const queryClient = useQueryClient()
 
 		const {
 			optimistic: enableOptimistic = false,
@@ -22,74 +17,58 @@ export function createOptimisticMutationHook<
 			onSuccess: userOnSuccess,
 			onSettled: userOnSettled,
 			...baseOptions
-		} = options ?? {};
+		} = options ?? {}
 
 		type InternalContext = {
-			userContext?: TContext;
-			savedData?: TSavedData;
-		};
+			userContext?: TContext
+			savedData?: TSavedData
+		}
 
 		return useMutation<TData, Error, TVariables, InternalContext>({
 			...baseOptions,
 			mutationFn: config.mutationFn,
 
 			onMutate: async (variables, mutationContext) => {
-				const userContext = await userOnMutate?.(variables, mutationContext);
+				const userContext = await userOnMutate?.(variables, mutationContext)
 
 				if (!enableOptimistic) {
-					return { userContext };
+					return { userContext }
 				}
 
 				if (config.optimistic.cancelQueries) {
 					for (const queryKey of config.optimistic.cancelQueries) {
-						await queryClient.cancelQueries({ queryKey });
+						await queryClient.cancelQueries({ queryKey })
 					}
 				}
 
-				const savedData = config.optimistic.getCacheData(queryClient);
-				config.optimistic.updateCache(queryClient, variables, savedData);
+				const savedData = config.optimistic.getCacheData(queryClient)
+				config.optimistic.updateCache(queryClient, variables, savedData)
 
-				return { userContext, savedData };
+				return { userContext, savedData }
 			},
 
 			onError: (error, variables, context, mutationContext) => {
 				if (context?.savedData) {
-					config.optimistic.rollbackCache(queryClient, context.savedData);
+					config.optimistic.rollbackCache(queryClient, context.savedData)
 				}
 
-				userOnError?.(
-					error,
-					variables,
-					context?.userContext,
-					mutationContext,
-				);
+				userOnError?.(error, variables, context?.userContext, mutationContext)
 			},
 
 			onSuccess: (data, variables, context, mutationContext) => {
-				userOnSuccess?.(
-					data,
-					variables,
-					context?.userContext,
-					mutationContext,
-				);
+				userOnSuccess?.(data, variables, context?.userContext, mutationContext)
 			},
 
 			onSettled: (data, error, variables, context, mutationContext) => {
 				if (config.invalidateKeys) {
-					const keys = config.invalidateKeys(variables);
+					const keys = config.invalidateKeys(variables)
 					for (const key of keys) {
-						queryClient.invalidateQueries({ queryKey: key });
+						queryClient.invalidateQueries({ queryKey: key })
 					}
 				}
 
-				userOnSettled?.(
-					data,
-					error,
-					variables,
-					context?.userContext,
-					mutationContext,
-				);
+				userOnSettled?.(data, error, variables, context?.userContext, mutationContext)
 			},
-		});
-	};
+		})
+	}
 }

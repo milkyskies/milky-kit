@@ -1,10 +1,10 @@
-import "@/assets/styles.css";
+import "@/assets/styles.css"
 
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { RouterProvider, createRouter } from "@tanstack/react-router";
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import { routeTree } from "./app/routeTree.gen";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { createRouter, RouterProvider } from "@tanstack/react-router"
+import { StrictMode } from "react"
+import { createRoot } from "react-dom/client"
+import { routeTree } from "./app/routeTree.gen"
 
 const queryClient = new QueryClient({
 	defaultOptions: {
@@ -13,20 +13,20 @@ const queryClient = new QueryClient({
 			retry: 1,
 		},
 	},
-});
+})
 
-const router = createRouter({ routeTree });
+const router = createRouter({ routeTree })
 
 declare module "@tanstack/react-router" {
 	interface Register {
-		router: typeof router;
+		router: typeof router
 	}
 }
 
-const rootElement = document.getElementById("app");
+const rootElement = document.getElementById("app")
 
 if (!rootElement) {
-	throw new Error("Root element #app not found");
+	throw new Error("Root element #app not found")
 }
 
 createRoot(rootElement).render(
@@ -35,4 +35,4 @@ createRoot(rootElement).render(
 			<RouterProvider router={router} />
 		</QueryClientProvider>
 	</StrictMode>,
-);
+)

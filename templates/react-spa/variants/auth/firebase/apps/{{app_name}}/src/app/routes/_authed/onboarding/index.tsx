@@ -1,40 +1,34 @@
-import { useCreateMe } from "@/services/api/me/use-create-me";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router"
+import { useState } from "react"
+import { useCreateMe } from "@/services/api/me/use-create-me"
 
 export const Route = createFileRoute("/_authed/onboarding/")({
 	component: OnboardingPage,
-});
+})
 
 function OnboardingPage() {
-	const navigate = useNavigate();
-	const createMe = useCreateMe();
-	const [displayName, setDisplayName] = useState("");
-	const [error, setError] = useState<string | null>(null);
+	const navigate = useNavigate()
+	const createMe = useCreateMe()
+	const [displayName, setDisplayName] = useState("")
+	const [error, setError] = useState<string | null>(null)
 
 	const handleSubmit = async (formEvent: React.FormEvent) => {
-		formEvent.preventDefault();
-		setError(null);
+		formEvent.preventDefault()
+		setError(null)
 
 		try {
-			await createMe.mutateAsync({ displayName: displayName.trim() });
-			navigate({ to: "/" });
+			await createMe.mutateAsync({ displayName: displayName.trim() })
+			navigate({ to: "/" })
 		} catch (caught) {
-			setError(
-				caught instanceof Error
-					? caught.message
-					: "Failed to create profile",
-			);
+			setError(caught instanceof Error ? caught.message : "Failed to create profile")
 		}
-	};
+	}
 
 	return (
 		<div className="flex min-h-screen items-center justify-center p-6">
 			<form onSubmit={handleSubmit} className="w-full max-w-sm space-y-4">
 				<h1 className="text-2xl font-bold">Pick a display name</h1>
-				<p className="text-sm text-gray-600">
-					This is how you'll appear to others.
-				</p>
+				<p className="text-sm text-gray-600">This is how you'll appear to others.</p>
 				<input
 					type="text"
 					placeholder="Display name"
@@ -55,5 +49,5 @@ function OnboardingPage() {
 				</button>
 			</form>
 		</div>
-	);
+	)
 }

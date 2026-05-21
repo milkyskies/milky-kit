@@ -1,5 +1,5 @@
-import { app } from "./presentation/app";
+import { app } from "./presentation/app"
 
-export type AppType = typeof app;
+export type AppType = typeof app
 
-export default app;
+export default app

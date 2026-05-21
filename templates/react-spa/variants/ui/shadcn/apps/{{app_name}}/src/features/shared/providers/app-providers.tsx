@@ -1,9 +1,9 @@
-import type { ReactNode } from "react";
+import type { ReactNode } from "react"
 
 interface AppProvidersProps {
-	children: ReactNode;
+	children: ReactNode
 }
 
 export function AppProviders(props: AppProvidersProps) {
-	return <>{props.children}</>;
+	return <>{props.children}</>
 }

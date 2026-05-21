@@ -1,5 +1,5 @@
-import { Effect } from "effect"
 import { describe, expect, it } from "@effect/vitest"
+import { Effect } from "effect"
 
 describe("health", () => {
 	it.effect("the test runtime works", () =>

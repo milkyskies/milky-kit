@@ -1,6 +1,6 @@
 import { McpServer } from "@effect/ai"
 import { Layer } from "effect"
-import { PostsToolkit, PostsToolHandlersLive } from "./post-tools"
+import { PostsToolHandlersLive, PostsToolkit } from "./post-tools"
 
 /**
  * MCP server Layer. Same use cases as HTTP, different transport.
@@ -12,6 +12,4 @@ export const McpServerLive = McpServer.layerStdio({
 	version: "0.0.0",
 	stdin: process.stdin,
 	stdout: process.stdout,
-}).pipe(
-	Layer.provide(PostsToolkit.toLayer(PostsToolHandlersLive)),
-)
+}).pipe(Layer.provide(PostsToolkit.toLayer(PostsToolHandlersLive)))

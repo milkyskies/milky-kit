@@ -1,10 +1,6 @@
 import { Effect, Option, Schema } from "effect"
 import type { Post } from "@/domain/models/post"
-import {
-	type DbError,
-	PostNotFound,
-	PostRepository,
-} from "@/domain/repositories/post-repository"
+import { type DbError, PostNotFound, PostRepository } from "@/domain/repositories/post-repository"
 
 export const GetPostInput = Schema.Struct({
 	id: Schema.String,

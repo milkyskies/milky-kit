@@ -1,8 +1,8 @@
-import { Effect, Layer, Option } from "effect"
 import { describe, expect, it } from "@effect/vitest"
+import { Effect, Layer, Option } from "effect"
 import { Post } from "@/domain/models/post"
-import { IdGenerator } from "@/domain/services/id-generator"
 import { PostRepository } from "@/domain/repositories/post-repository"
+import { IdGenerator } from "@/domain/services/id-generator"
 import { createPost } from "./create-post"
 
 const StubIdGenerator = Layer.succeed(IdGenerator, {

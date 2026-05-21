@@ -1,5 +1,5 @@
-import type { QueryKey } from "@tanstack/react-query";
-import type { OptimisticConfig } from "./types";
+import type { QueryKey } from "@tanstack/react-query"
+import type { OptimisticConfig } from "./types"
 
 export function optimisticUpdate<TItem, TVariables>({
 	queryKey,
@@ -7,10 +7,10 @@ export function optimisticUpdate<TItem, TVariables>({
 	merge,
 	cancelQueries,
 }: {
-	queryKey: QueryKey;
-	matcher: (item: TItem, variables: TVariables) => boolean;
-	merge: (item: TItem, variables: TVariables) => TItem;
-	cancelQueries?: QueryKey[];
+	queryKey: QueryKey
+	matcher: (item: TItem, variables: TVariables) => boolean
+	merge: (item: TItem, variables: TVariables) => TItem
+	cancelQueries?: QueryKey[]
 }): OptimisticConfig<TVariables, TItem[]> {
 	return {
 		cancelQueries,
@@ -18,12 +18,12 @@ export function optimisticUpdate<TItem, TVariables>({
 		updateCache: (client, variables, current) => {
 			const updated = current.map((item) =>
 				matcher(item, variables) ? merge(item, variables) : item,
-			);
-			client.setQueryData(queryKey, updated);
-			return current;
+			)
+			client.setQueryData(queryKey, updated)
+			return current
 		},
 		rollbackCache: (client, saved) => client.setQueryData(queryKey, saved),
-	};
+	}
 }
 
 export function optimisticCreate<TItem, TVariables>({
@@ -32,23 +32,22 @@ export function optimisticCreate<TItem, TVariables>({
 	position = "end",
 	cancelQueries,
 }: {
-	queryKey: QueryKey;
-	buildItem: (variables: TVariables) => TItem;
-	position?: "start" | "end";
-	cancelQueries?: QueryKey[];
+	queryKey: QueryKey
+	buildItem: (variables: TVariables) => TItem
+	position?: "start" | "end"
+	cancelQueries?: QueryKey[]
 }): OptimisticConfig<TVariables, TItem[]> {
 	return {
 		cancelQueries,
 		getCacheData: (client) => client.getQueryData<TItem[]>(queryKey) ?? [],
 		updateCache: (client, variables, current) => {
-			const tempItem = buildItem(variables);
-			const updated =
-				position === "start" ? [tempItem, ...current] : [...current, tempItem];
-			client.setQueryData(queryKey, updated);
-			return current;
+			const tempItem = buildItem(variables)
+			const updated = position === "start" ? [tempItem, ...current] : [...current, tempItem]
+			client.setQueryData(queryKey, updated)
+			return current
 		},
 		rollbackCache: (client, saved) => client.setQueryData(queryKey, saved),
-	};
+	}
 }
 
 export function optimisticDelete<TItem, TVariables>({
@@ -56,20 +55,20 @@ export function optimisticDelete<TItem, TVariables>({
 	matcher,
 	cancelQueries,
 }: {
-	queryKey: QueryKey;
-	matcher: (item: TItem, variables: TVariables) => boolean;
-	cancelQueries?: QueryKey[];
+	queryKey: QueryKey
+	matcher: (item: TItem, variables: TVariables) => boolean
+	cancelQueries?: QueryKey[]
 }): OptimisticConfig<TVariables, TItem[]> {
 	return {
 		cancelQueries,
 		getCacheData: (client) => client.getQueryData<TItem[]>(queryKey) ?? [],
 		updateCache: (client, variables, current) => {
-			const updated = current.filter((item) => !matcher(item, variables));
-			client.setQueryData(queryKey, updated);
-			return current;
+			const updated = current.filter((item) => !matcher(item, variables))
+			client.setQueryData(queryKey, updated)
+			return current
 		},
 		rollbackCache: (client, saved) => client.setQueryData(queryKey, saved),
-	};
+	}
 }
 
 export function optimisticToggle<TItem, TVariables>({
@@ -78,10 +77,10 @@ export function optimisticToggle<TItem, TVariables>({
 	toggle,
 	cancelQueries,
 }: {
-	queryKey: QueryKey;
-	matcher: (item: TItem, variables: TVariables) => boolean;
-	toggle: (item: TItem, variables: TVariables) => TItem;
-	cancelQueries?: QueryKey[];
+	queryKey: QueryKey
+	matcher: (item: TItem, variables: TVariables) => boolean
+	toggle: (item: TItem, variables: TVariables) => TItem
+	cancelQueries?: QueryKey[]
 }): OptimisticConfig<TVariables, TItem[]> {
 	return {
 		cancelQueries,
@@ -89,12 +88,12 @@ export function optimisticToggle<TItem, TVariables>({
 		updateCache: (client, variables, current) => {
 			const updated = current.map((item) =>
 				matcher(item, variables) ? toggle(item, variables) : item,
-			);
-			client.setQueryData(queryKey, updated);
-			return current;
+			)
+			client.setQueryData(queryKey, updated)
+			return current
 		},
 		rollbackCache: (client, saved) => client.setQueryData(queryKey, saved),
-	};
+	}
 }
 
 export function optimisticReplaceDetail<TItem, TVariables>({
@@ -102,19 +101,19 @@ export function optimisticReplaceDetail<TItem, TVariables>({
 	merge,
 	cancelQueries,
 }: {
-	queryKey: QueryKey;
-	merge: (current: TItem, variables: TVariables) => TItem;
-	cancelQueries?: QueryKey[];
+	queryKey: QueryKey
+	merge: (current: TItem, variables: TVariables) => TItem
+	cancelQueries?: QueryKey[]
 }): OptimisticConfig<TVariables, TItem | undefined> {
 	return {
 		cancelQueries,
 		getCacheData: (client) => client.getQueryData<TItem>(queryKey),
 		updateCache: (client, variables, current) => {
-			if (!current) return current;
-			const updated = merge(current, variables);
-			client.setQueryData(queryKey, updated);
-			return current;
+			if (!current) return current
+			const updated = merge(current, variables)
+			client.setQueryData(queryKey, updated)
+			return current
 		},
 		rollbackCache: (client, saved) => client.setQueryData(queryKey, saved),
-	};
+	}
 }
