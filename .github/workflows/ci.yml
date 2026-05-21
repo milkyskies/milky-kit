@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   lint:
-    name: Lint scaffold + variant TS with biome
+    name: Lint + format scaffold + variant TS with biome
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -27,5 +27,5 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
-      - name: Lint
-        run: pnpm biome lint
+      - name: Check
+        run: pnpm biome check
