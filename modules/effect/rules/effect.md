@@ -87,6 +87,12 @@ A presentation file with an `Effect.gen` block longer than 3 lines is a code sme
 - `Option.Option<T>` for absent values in domain code. Never `T | null` or `T | undefined`.
 - At decode boundaries land directly in `Option<T>` using `Schema.OptionFromNullOr(...)`, `Schema.OptionFromUndefinedOr(...)`, or `Schema.OptionFromNullishOr(...)`. Don't decode to nullable and then `Option.fromNullable` it.
 - Convert to nullable at the wire boundary by encoding the domain Schema — never hand-massage Options.
+- Function parameters where omission means "default behavior" use `?: T`, not `Option<T>` — the Option rule is for stored fields and return types.
+
+## Value objects
+
+- Domain primitives are branded, never raw `string` / `number`. IDs use `Brand.nominal<UserId>()`; constrained primitives (Email, Title, Air, etc.) use `Schema.brand` with the validation rule baked in. Multi-field values (Location, Money) use `Schema.Class`.
+- Brand at the inbound boundary (HTTP body, DB row) via `Schema.decodeUnknown`; encode back to primitive at the outbound boundary. The middle of the codebase never sees the raw primitive.
 
 ## Pattern matching
 
