@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 
-import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { initializeApp } from "firebase/app"
+import { getAuth } from "firebase/auth"
 
 // Reads VITE_FIREBASE_* directly from import.meta.env so we don't have to
 // overlay the base config/env.ts file (which would collide on non-firebase
@@ -14,7 +14,7 @@ const firebaseConfig = {
 	storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
 	messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
 	appId: import.meta.env.VITE_FIREBASE_APP_ID,
-};
+}
 
-export const firebaseApp = initializeApp(firebaseConfig);
-export const firebaseAuth = getAuth(firebaseApp);
+export const firebaseApp = initializeApp(firebaseConfig)
+export const firebaseAuth = getAuth(firebaseApp)

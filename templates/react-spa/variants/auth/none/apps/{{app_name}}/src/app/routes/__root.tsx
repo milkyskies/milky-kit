@@ -1,5 +1,5 @@
-import { AppProviders } from "@/features/shared/providers/app-providers";
-import { Outlet, createRootRoute } from "@tanstack/react-router";
+import { createRootRoute, Outlet } from "@tanstack/react-router"
+import { AppProviders } from "@/features/shared/providers/app-providers"
 
 export const Route = createRootRoute({
 	component: () => (
@@ -25,9 +25,7 @@ export const Route = createRootRoute({
 	notFoundComponent: () => (
 		<div className="max-w-2xl mx-auto p-6 space-y-4">
 			<h1 className="text-2xl font-bold">Not found</h1>
-			<p className="text-gray-600">
-				The page you're looking for doesn't exist.
-			</p>
+			<p className="text-gray-600">The page you're looking for doesn't exist.</p>
 		</div>
 	),
-});
+})

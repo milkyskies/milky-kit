@@ -1,23 +1,23 @@
-import { Option } from "effect";
-import { nanoid } from "nanoid";
-import type { User } from "../../domain/models/user";
-import type { UserRepository } from "../../domain/repositories/user-repository";
-import { UserAlreadyExists } from "../errors";
+import { Option } from "effect"
+import { nanoid } from "nanoid"
+import type { User } from "../../domain/models/user"
+import type { UserRepository } from "../../domain/repositories/user-repository"
+import { UserAlreadyExists } from "../errors"
 
 export type CreateUserFromFirebaseInput = {
-	firebaseUid: string;
-	email: Option.Option<string>;
-	displayName: string;
-	avatarUrl: Option.Option<string>;
-};
+	firebaseUid: string
+	email: Option.Option<string>
+	displayName: string
+	avatarUrl: Option.Option<string>
+}
 
 export async function createUserFromFirebase(
 	users: UserRepository,
 	input: CreateUserFromFirebaseInput,
 ): Promise<User> {
-	const existing = await users.findByFirebaseUid(input.firebaseUid);
+	const existing = await users.findByFirebaseUid(input.firebaseUid)
 	if (Option.isSome(existing)) {
-		throw new UserAlreadyExists({ firebaseUid: input.firebaseUid });
+		throw new UserAlreadyExists({ firebaseUid: input.firebaseUid })
 	}
 
 	return users.create({
@@ -26,5 +26,5 @@ export async function createUserFromFirebase(
 		email: input.email,
 		displayName: input.displayName,
 		avatarUrl: input.avatarUrl,
-	});
+	})
 }

@@ -1,38 +1,34 @@
-import { firebaseAuth } from "@/services/firebase/firebase";
-import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { FirebaseError } from "firebase/app";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { useState } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
+import { FirebaseError } from "firebase/app"
+import { signInWithEmailAndPassword } from "firebase/auth"
+import { useState } from "react"
+import { firebaseAuth } from "@/services/firebase/firebase"
 
 export const Route = createFileRoute("/_public/sign-in/")({
 	component: SignInPage,
-});
+})
 
 function SignInPage() {
-	const navigate = useNavigate();
-	const [email, setEmail] = useState("");
-	const [password, setPassword] = useState("");
-	const [error, setError] = useState<string | null>(null);
-	const [isPending, setPending] = useState(false);
+	const navigate = useNavigate()
+	const [email, setEmail] = useState("")
+	const [password, setPassword] = useState("")
+	const [error, setError] = useState<string | null>(null)
+	const [isPending, setPending] = useState(false)
 
 	const handleSubmit = async (formEvent: React.FormEvent) => {
-		formEvent.preventDefault();
-		setError(null);
-		setPending(true);
+		formEvent.preventDefault()
+		setError(null)
+		setPending(true)
 
 		try {
-			await signInWithEmailAndPassword(firebaseAuth, email, password);
-			navigate({ to: "/" });
+			await signInWithEmailAndPassword(firebaseAuth, email, password)
+			navigate({ to: "/" })
 		} catch (caught) {
-			setError(
-				caught instanceof FirebaseError
-					? caught.message
-					: "Sign-in failed",
-			);
+			setError(caught instanceof FirebaseError ? caught.message : "Sign-in failed")
 		} finally {
-			setPending(false);
+			setPending(false)
 		}
-	};
+	}
 
 	return (
 		<form onSubmit={handleSubmit} className="space-y-4">
@@ -68,5 +64,5 @@ function SignInPage() {
 				</Link>
 			</p>
 		</form>
-	);
+	)
 }

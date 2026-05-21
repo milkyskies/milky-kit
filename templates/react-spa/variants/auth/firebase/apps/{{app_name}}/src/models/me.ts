@@ -1,22 +1,22 @@
-import { Data, Option } from "effect";
+import { Data, Option } from "effect"
 
 export interface Me {
-	readonly id: string;
-	readonly email: Option.Option<string>;
-	readonly displayName: string;
-	readonly avatarUrl: Option.Option<string>;
-	readonly createdAt: Date;
-	readonly updatedAt: Date;
+	readonly id: string
+	readonly email: Option.Option<string>
+	readonly displayName: string
+	readonly avatarUrl: Option.Option<string>
+	readonly createdAt: Date
+	readonly updatedAt: Date
 }
 
 export type MeApiDto = {
-	id: string;
-	email: string | null;
-	displayName: string;
-	avatarUrl: string | null;
-	createdAt: string;
-	updatedAt: string;
-};
+	id: string
+	email: string | null
+	displayName: string
+	avatarUrl: string | null
+	createdAt: string
+	updatedAt: string
+}
 
 export const Me = {
 	make: Data.case<Me>(),
@@ -30,4 +30,4 @@ export const Me = {
 			createdAt: new Date(dto.createdAt),
 			updatedAt: new Date(dto.updatedAt),
 		}),
-};
+}

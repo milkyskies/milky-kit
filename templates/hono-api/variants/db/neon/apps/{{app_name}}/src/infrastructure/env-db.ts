@@ -1,3 +1,3 @@
 export type DbBindings = {
-	DATABASE_URL: string;
-};
+	DATABASE_URL: string
+}

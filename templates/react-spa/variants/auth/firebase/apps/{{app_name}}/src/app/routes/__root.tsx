@@ -1,11 +1,11 @@
-import { AppProviders } from "@/features/shared/providers/app-providers";
-import type { AuthState } from "@/features/auth/use-auth";
-import type { QueryClient } from "@tanstack/react-query";
-import { Outlet, createRootRouteWithContext } from "@tanstack/react-router";
+import type { QueryClient } from "@tanstack/react-query"
+import { createRootRouteWithContext, Outlet } from "@tanstack/react-router"
+import type { AuthState } from "@/features/auth/use-auth"
+import { AppProviders } from "@/features/shared/providers/app-providers"
 
 export interface RouterContext {
-	auth: AuthState;
-	queryClient: QueryClient;
+	auth: AuthState
+	queryClient: QueryClient
 }
 
 export const Route = createRootRouteWithContext<RouterContext>()({
@@ -32,9 +32,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 	notFoundComponent: () => (
 		<div className="max-w-2xl mx-auto p-6 space-y-4">
 			<h1 className="text-2xl font-bold">Not found</h1>
-			<p className="text-gray-600">
-				The page you're looking for doesn't exist.
-			</p>
+			<p className="text-gray-600">The page you're looking for doesn't exist.</p>
 		</div>
 	),
-});
+})

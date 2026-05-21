@@ -5,12 +5,8 @@ export const postsTable = pgTable("posts", {
 	title: text("title").notNull(),
 	body: text("body").notNull(),
 	publishedAt: timestamp("published_at", { withTimezone: true, mode: "date" }),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
-		.notNull()
-		.defaultNow(),
-	updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
-		.notNull()
-		.defaultNow(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
 })
 
 export type PostRow = typeof postsTable.$inferSelect

@@ -1,11 +1,11 @@
-import { type PostgresJsDatabase, drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
-import type { Bindings } from "../env";
+import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js"
+import postgres from "postgres"
+import type { Bindings } from "../env"
 
 // Single Drizzle handle every repository takes. Built once per request
 // (in `presentation/middleware/repositories.ts`) and shared across all repos
 // so we don't spin up multiple postgres-js clients per Workers invocation.
-export type Database = PostgresJsDatabase;
+export type Database = PostgresJsDatabase
 
 export const makeDatabase = (env: Bindings): Database => {
 	const sql = postgres(env.HYPERDRIVE.connectionString, {
@@ -22,6 +22,6 @@ export const makeDatabase = (env: Bindings): Database => {
 		// `prepare: false` sends every query via the simple protocol, which
 		// transaction-mode pgbouncer handles fine.
 		prepare: false,
-	});
-	return drizzle(sql);
-};
+	})
+	return drizzle(sql)
+}

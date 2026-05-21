@@ -1,5 +1,5 @@
-import { Outlet, createFileRoute, redirect } from "@tanstack/react-router";
-import { Match } from "effect";
+import { createFileRoute, Outlet, redirect } from "@tanstack/react-router"
+import { Match } from "effect"
 
 // Public routes (sign-in, sign-up). Signed-in users are redirected home.
 // `useAuth()` suspends in main.tsx, so by the time beforeLoad runs the
@@ -8,14 +8,14 @@ export const Route = createFileRoute("/_public")({
 	beforeLoad: ({ context }) => {
 		Match.value(context.auth).pipe(
 			Match.tag("SignedIn", () => {
-				throw redirect({ to: "/" });
+				throw redirect({ to: "/" })
 			}),
 			Match.tag("SignedOut", () => {}),
 			Match.exhaustive,
-		);
+		)
 	},
 	component: PublicLayout,
-});
+})
 
 function PublicLayout() {
 	return (
@@ -24,5 +24,5 @@ function PublicLayout() {
 				<Outlet />
 			</div>
 		</div>
-	);
+	)
 }

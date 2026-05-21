@@ -1,13 +1,11 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { MutationConfig, MutationOptions } from "./types";
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import type { MutationConfig, MutationOptions } from "./types"
 
-export function createMutationHook<
-	TData = void,
-	TVariables = void,
-	TContext = unknown,
->(config: MutationConfig<TData, TVariables>) {
+export function createMutationHook<TData = void, TVariables = void, TContext = unknown>(
+	config: MutationConfig<TData, TVariables>,
+) {
 	return (options?: MutationOptions<TData, Error, TVariables, TContext>) => {
-		const queryClient = useQueryClient();
+		const queryClient = useQueryClient()
 
 		return useMutation<TData, Error, TVariables, TContext>({
 			...options,
@@ -15,14 +13,14 @@ export function createMutationHook<
 
 			onSettled: (data, error, variables, context, mutationContext) => {
 				if (config.invalidateKeys) {
-					const keys = config.invalidateKeys(variables);
+					const keys = config.invalidateKeys(variables)
 					for (const key of keys) {
-						queryClient.invalidateQueries({ queryKey: key });
+						queryClient.invalidateQueries({ queryKey: key })
 					}
 				}
 
-				options?.onSettled?.(data, error, variables, context, mutationContext);
+				options?.onSettled?.(data, error, variables, context, mutationContext)
 			},
-		});
-	};
+		})
+	}
 }

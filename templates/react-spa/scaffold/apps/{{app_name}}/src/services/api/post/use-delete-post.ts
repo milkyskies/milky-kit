@@ -1,17 +1,17 @@
-import { createMutationHook } from "@/lib/query/create-mutation-hook";
-import { api } from "@/services/api/client";
-import { postKeys } from "./post-keys";
+import { createMutationHook } from "@/lib/query/create-mutation-hook"
+import { api } from "@/services/api/client"
+import { postKeys } from "./post-keys"
 
 interface DeletePostVariables {
-	id: string;
+	id: string
 }
 
 export const useDeletePost = createMutationHook<void, DeletePostVariables>({
 	mutationFn: async (variables) => {
 		const res = await api.api.posts[":id"].$delete({
 			param: { id: variables.id },
-		});
-		if (!res.ok) throw new Error(`Failed to delete post: ${res.status}`);
+		})
+		if (!res.ok) throw new Error(`Failed to delete post: ${res.status}`)
 	},
 	invalidateKeys: () => [postKeys.lists()],
-});
+})
