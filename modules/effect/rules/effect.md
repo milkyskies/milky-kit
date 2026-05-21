@@ -92,7 +92,9 @@ A presentation file with an `Effect.gen` block longer than 3 lines is a code sme
 
 - Use `Match.value(x).pipe(Match.tag(...), Match.exhaustive)` (or `Match.when` for value predicates) over `if/else if` chains. Let exhaustiveness flag missing cases.
 - For tagged unions defined with `Data.taggedEnum`, use the generated `.$match` API.
-- `if` is fine for guard clauses with early return. Avoid `else`; invert the condition and return.
+- For boolean → value mapping bound to a `const`, prefer `Match.value(bool).pipe(Match.when(true, () => a), Match.when(false, () => b), Match.exhaustive)` over `const x = cond ? a : b`. Inline ternaries inside an expression stay fine.
+- Inside `Effect.gen`, fail conditionally with `yield* Effect.when(condition, () => Effect.fail(new E(...)))`, not `if (condition) return yield* Effect.fail(...)`.
+- `if` is fine for guard clauses with early return *outside* `Effect.gen`. Avoid `else`; invert the condition and return.
 
 ## Schema everywhere at boundaries
 
