@@ -210,7 +210,12 @@ Each task gets its own isolated worktree. See `worktrees.md` for the full workfl
 
 ```bash
 mise run worktree:setup <num> feature/#<num>.<summary>
-cd ../{{worktree_dir}}/<num>
+```
+
+Then enter the worktree via the `EnterWorktree` tool — do **not** `cd`. Manual `cd` desynchronizes the harness from the shell.
+
+```
+EnterWorktree(path: "../{{worktree_dir}}/<num>")
 ```
 
 Do all work — editing, building, testing, committing — from inside this directory.
@@ -224,7 +229,7 @@ pwd                       # must be .../{{worktree_dir}}/<num>
 git branch --show-current # must be your issue branch
 ```
 
-If either is wrong, stop and fix it before proceeding.
+If either is wrong, stop and re-enter the correct worktree with `EnterWorktree(path: ...)` — do not use `cd`.
 
 ### 3. Claim & Work
 
