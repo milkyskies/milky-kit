@@ -1,9 +1,10 @@
-import { Context, Data, type Effect, type Option } from "effect"
+import { Context, Data, type Effect, type Option, Schema } from "effect"
 import type { Post } from "@/domain/models/post"
 
-export class PostNotFound extends Data.TaggedError("PostNotFound")<{
-	readonly id: string
-}> {}
+// Schema.TaggedError (not Data.TaggedError) so it doubles as the HttpApi error schema (404).
+export class PostNotFound extends Schema.TaggedError<PostNotFound>()("PostNotFound", {
+	id: Schema.String,
+}) {}
 
 export class DbError extends Data.TaggedError("DbError")<{
 	readonly cause: unknown

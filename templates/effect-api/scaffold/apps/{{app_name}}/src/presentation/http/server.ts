@@ -18,6 +18,7 @@ const ApiLive = HttpApiBuilder.api(PostsApi).pipe(Layer.provide(PostsHandlersLiv
 export const HttpServerLive = HttpApiBuilder.serve(HttpMiddleware.logger).pipe(
 	Layer.provide(HttpApiSwagger.layer({ path: "/docs" })),
 	Layer.provide(ApiLive),
+	HttpServer.withLogAddress,
 	Layer.provide(
 		Layer.unwrapEffect(
 			Effect.gen(function* () {
@@ -26,5 +27,4 @@ export const HttpServerLive = HttpApiBuilder.serve(HttpMiddleware.logger).pipe(
 			}),
 		),
 	),
-	HttpServer.withLogAddress,
 )

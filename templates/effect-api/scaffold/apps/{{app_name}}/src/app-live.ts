@@ -1,4 +1,4 @@
-import { PgDrizzle } from "@effect/sql-drizzle/Pg"
+import * as PgDrizzle from "@effect/sql-drizzle/Pg"
 import { Layer } from "effect"
 import { IdGeneratorLive } from "@/domain/services/id-generator"
 import { PostRepositoryLive } from "@/infrastructure/db/post-repository"
