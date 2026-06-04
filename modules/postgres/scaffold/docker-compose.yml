@@ -6,9 +6,9 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-{{project_name}}}
       POSTGRES_DB: ${POSTGRES_DB:-{{project_name}}}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-{{project_name}}}"]
