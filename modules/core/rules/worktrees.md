@@ -2,7 +2,7 @@
 
 **This rule applies only when `.milky-kit-mode` is `worktrees`.** Read `.milky-kit-mode` at session start — if it says `main` or `branch`, ignore this rule entirely and follow the matching section of `workflow.md`.
 
-In `worktrees` mode a **lead** agent develops on a feature branch in the root checkout, and **delegated** tasks each run in their own isolated worktree. This rule covers the delegated worktree side; the lead follows the `branch` mode workflow in `workflow.md`.
+In `worktrees` mode, a task defaults to running in its own isolated **worktree**; a **lead** works on a feature branch in the root checkout only when explicitly told "do it here" / "in root." This rule covers the delegated worktree side; the lead follows the `branch` mode workflow in `workflow.md`.
 
 **Iron rule:** a worktree task must NEVER switch, pull, reset, or rebase the branch checked out in the **root**. The root holds the lead's in-progress branch. Base worktrees on fresh main with `git fetch origin` + `origin/main` — never `git checkout main` in the root. Worktree isolation is what keeps parallel agents (and the lead) from touching each other's files.
 
@@ -117,7 +117,7 @@ If the project has `mise run worktree:cleanup`, prefer that — it may also clea
 ## Rules
 
 - **Never touch the root's branch from a worktree.** No `git checkout`/`pull`/`reset`/`rebase` against the root checkout. Base worktrees on `origin/main` after `git fetch origin`.
-- **The lead works in the root checkout; delegated tasks get worktrees.** If you were told to do a task in a worktree (or you're a spawned parallel agent), create the worktree first — never do delegated work in the root tree. The lead's own development happens in root on a feature branch, per the `branch` workflow.
+- **Default to a worktree; work in the root only when told "do it here" / "in root."** If the user didn't say where, create a worktree for the task. The lead works in the root checkout only on an explicit instruction, developing on a feature branch per the `branch` workflow.
 - **Always enter via `EnterWorktree(path: ...)`, never `cd`.** Manual `cd` desynchronizes the harness from the shell.
 - **Never enter another agent's worktree directory.** If `../{{worktree_dir}}/<num>` already exists, another agent owns that issue — pick something else.
 - **One worktree per issue.** Name it `<num>` to match the issue number.

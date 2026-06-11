@@ -204,18 +204,20 @@ PR title format: `[#<num>] <issue title>`. Body starts with `closes #<num>`.
 
 When `.milky-kit-mode` is `worktrees`, follow this section. Skip the others.
 
-Worktrees mode has two roles:
+Worktrees mode has two roles. **The default is the worktree:**
 
-- **Lead** — the primary session, working in the **root checkout**. The lead develops on a feature branch in root exactly like `branch` mode: create the branch, claim, work, `/ship`, `/land`. This is the default — when you start a task and nobody told you to use a worktree, you are the lead and you work in root.
-- **Delegated worktree task** — when the user says "do this in a worktree," or you are a spawned sub-agent assigned a parallel task, you create an isolated worktree and work there. See `worktrees.md`.
+- **Delegated worktree task (default)** — unless the user explicitly says otherwise, create an isolated worktree for the task and work there. See `worktrees.md`. Spawned sub-agents on parallel tasks do this too.
+- **Lead, in the root checkout** — only when the user explicitly says "do it here," "in root," or "in the root checkout." Then develop on a feature branch in the root exactly like `branch` mode: create the branch, claim, work, `/ship`, `/land`.
+
+**Routing rule:** if the user did not say where to do the task, do it in a **worktree**. Work in the root checkout only on an explicit "do it here" / "in root."
 
 **Iron rule (both roles):** a worktree task must NEVER switch, pull, reset, or rebase the branch checked out in the **root**. No `git checkout <branch>` in root, no `git checkout main && git pull` in root from a worktree flow. To base a worktree on fresh main, `git fetch origin` and branch off `origin/main` — fetch updates refs without touching any working tree. The lead's root branch is sacred.
 
-### As the lead (default — work in root)
+### Lead — only when told "do it here" / "in root"
 
-Follow the **`branch` mode** workflow above verbatim: sync (`git fetch origin`, plus `git pull` if on `main`), create `feature/#<num>.<summary>` in the root checkout, `glb update <num> --claim`, work, `/ship`, `/land`. The only thing worktrees mode adds over `branch` mode is that you may delegate parallel tasks to worktrees.
+Follow the **`branch` mode** workflow above verbatim: sync (`git fetch origin`, plus `git pull` if on `main`), create `feature/#<num>.<summary>` in the root checkout, `glb update <num> --claim`, work, `/ship`, `/land`.
 
-### As a delegated worktree task
+### Delegated worktree task (default)
 
 #### Multi-Agent Environment
 
