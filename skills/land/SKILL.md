@@ -13,7 +13,7 @@ Clean up after a merged PR. What "clean up" means depends on the workflow mode (
 
 - **`main` mode**: no-op for git state (already on main). Just confirm the issue is closed.
 - **`branch` mode**: switch back to main, pull, delete the local feature branch.
-- **`worktrees` mode**: cleanup the worktree directory via `mise run worktree:cleanup`, sync main.
+- **`worktrees` mode**: if you're landing a delegated worktree task, remove the worktree via `mise run worktree:cleanup` and **do not touch the root's branch** (the lead may be mid-task there). If you're the lead landing your own root-checkout branch, land it like `branch` mode (switch to main, pull, delete the branch).
 
 **Only run this after the user confirms the PR has been merged.** In `main` mode there is no PR; `/ship` already closed the issue and `/land` is rarely needed.
 
@@ -63,18 +63,27 @@ Use `-d` (safe delete — fails if the branch isn't merged) rather than `-D`. If
 
 ### `worktrees` mode
 
-Run the project's worktree cleanup task:
+First determine which role you're landing. Check whether the current checkout is a worktree or the root:
 
 ```bash
-cd ~/Code/Projects/{{project_name}}
-mise run worktree:cleanup <num>
+git rev-parse --show-toplevel   # if this path is under the worktree dir, you're in a delegated worktree
 ```
 
-Then sync main in the project root:
+**Landing a delegated worktree task** — remove the worktree and its database, and update refs **without switching the root's branch** (the lead may be mid-task there):
+
+```bash
+mise run worktree:cleanup <num>
+git fetch origin
+```
+
+Do NOT `cd` to the root and `git checkout main` — that would yank the lead off their branch.
+
+**Landing the lead's own root branch** — you finished a feature branch in the root checkout. Land it exactly like `branch` mode:
 
 ```bash
 git checkout main
 git pull
+git branch -d <feature-branch>
 ```
 
 ## Step 4: Epic check (branch and worktrees modes)
@@ -92,6 +101,7 @@ If all sub-issues are done, tell the user the epic is ready to be finalized. (Su
 Tell the user:
 - Issue #<num> closed
 - (branch mode) Local feature branch deleted, main synced
-- (worktrees mode) Worktree removed, main synced
+- (worktrees mode, delegated task) Worktree removed; root branch left untouched
+- (worktrees mode, lead branch) Local feature branch deleted, main synced
 - (main mode) Already on main; no git cleanup needed
 - If epic: whether the epic is ready to finalize

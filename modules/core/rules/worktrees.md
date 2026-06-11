@@ -2,7 +2,9 @@
 
 **This rule applies only when `.milky-kit-mode` is `worktrees`.** Read `.milky-kit-mode` at session start — if it says `main` or `branch`, ignore this rule entirely and follow the matching section of `workflow.md`.
 
-When in `worktrees` mode, each task runs in its own isolated worktree. This is how parallel multi-agent work stays safe — it structurally prevents agents from touching each other's files.
+In `worktrees` mode, a task defaults to running in its own isolated **worktree**; a **lead** works on a feature branch in the root checkout only when explicitly told "do it here" / "in root." This rule covers the delegated worktree side; the lead follows the `branch` mode workflow in `workflow.md`.
+
+**Iron rule:** a worktree task must NEVER switch, pull, reset, or rebase the branch checked out in the **root**. The root holds the lead's in-progress branch. Base worktrees on fresh main with `git fetch origin` + `origin/main` — never `git checkout main` in the root. Worktree isolation is what keeps parallel agents (and the lead) from touching each other's files.
 
 ## Location
 
@@ -10,7 +12,7 @@ Worktrees live at `../{{worktree_dir}}/<issue-num>/` relative to the repo root.
 
 ```
 ~/Code/Projects/
-├── {{project_name}}/                # main repo (stay on main here)
+├── {{project_name}}/                # lead checkout — on a feature branch or main; never switched by a worktree task
 └── {{worktree_dir}}/
     ├── 74/                  # agent working on issue #74
     ├── 77/                  # agent working on issue #77
@@ -22,11 +24,11 @@ Worktrees live at `../{{worktree_dir}}/<issue-num>/` relative to the repo root.
 Create the worktree with `git worktree add` (or the mise task), then **enter it with the `EnterWorktree` tool, not `cd`.** `EnterWorktree(path: ...)` switches the session's working directory into the worktree the same way `cd` would, but the harness tracks it — so the cwd, memory, and plan state all stay coherent. Manual `cd` into a worktree leaves the harness pointing at the main repo while your shell points somewhere else, which leads to tool calls running in the wrong place.
 
 ```bash
-# From the main repo, ensure main is up to date
-git checkout main && git pull
+# Update remote refs WITHOUT touching the root's checked-out branch
+git fetch origin
 
-# Create worktree with a new branch
-git worktree add ../{{worktree_dir}}/<num> -b feature/#<num>.<summary> main
+# Create the worktree, branching off fresh main
+git worktree add ../{{worktree_dir}}/<num> -b feature/#<num>.<summary> origin/main
 ```
 
 Then enter it via the tool:
@@ -56,8 +58,9 @@ chore/#<num>.<summary>     # maintenance, deps, tooling
 Epics use `feature/` prefix — same as standalone issues. Sub-tasks nest under the epic number to show the relationship.
 
 ```bash
-# Epic: create worktree from main
-git worktree add ../{{worktree_dir}}/<epic-num> -b feature/#<epic-num>.<summary> main
+# Epic: create worktree from fresh main (fetch first, never checkout main in root)
+git fetch origin
+git worktree add ../{{worktree_dir}}/<epic-num> -b feature/#<epic-num>.<summary> origin/main
 ```
 ```
 EnterWorktree(path: "../{{worktree_dir}}/<epic-num>")
@@ -71,7 +74,7 @@ git worktree add ../{{worktree_dir}}/<sub-num> -b feature/#<epic-num>/#<sub-num>
 EnterWorktree(path: "../{{worktree_dir}}/<sub-num>")
 ```
 
-Check `glb show <num>` — if the issue has a parent, it's a sub-issue and should branch off the epic branch. If no parent, branch off main.
+Check `glb show <num>` — if the issue has a parent, it's a sub-issue and should branch off the epic branch. If no parent, branch off `origin/main`.
 
 ## Verify Before Doing Anything
 
@@ -90,6 +93,7 @@ Do everything — edit, build, test, commit, push — from inside the worktree. 
 
 ### Things you must NEVER do in a worktree
 
+- **Never run a git command that changes the root's checked-out branch.** No `git checkout main`, no `git pull` in the root, no `git checkout <other-branch>` in the root. The lead is mid-task on the root branch, and switching it from a worktree flow destroys their state. Use `git fetch origin` if you need fresh refs.
 - **Never run `docker compose` from a worktree directory.** The worktree may have its own `docker-compose.yml` copy which will create a separate container and port-conflict with the shared database.
 - **Never run destructive SQL** (`DROP SCHEMA`, `DROP TABLE`, etc.) against the shared database. Other agents depend on it.
 - **Never run `git add -A` or `git add .`** — this can stage unintended changes. Always add specific files by name.
@@ -112,7 +116,8 @@ If the project has `mise run worktree:cleanup`, prefer that — it may also clea
 
 ## Rules
 
-- **Always create a worktree before starting work** — never work directly in the main repo's working tree (in `worktrees` mode).
+- **Never touch the root's branch from a worktree.** No `git checkout`/`pull`/`reset`/`rebase` against the root checkout. Base worktrees on `origin/main` after `git fetch origin`.
+- **Default to a worktree; work in the root only when told "do it here" / "in root."** If the user didn't say where, create a worktree for the task. The lead works in the root checkout only on an explicit instruction, developing on a feature branch per the `branch` workflow.
 - **Always enter via `EnterWorktree(path: ...)`, never `cd`.** Manual `cd` desynchronizes the harness from the shell.
 - **Never enter another agent's worktree directory.** If `../{{worktree_dir}}/<num>` already exists, another agent owns that issue — pick something else.
 - **One worktree per issue.** Name it `<num>` to match the issue number.

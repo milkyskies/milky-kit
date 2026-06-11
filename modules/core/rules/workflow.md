@@ -14,11 +14,11 @@ cat .milky-kit-mode  # → main  OR  branch  OR  worktrees
 |---|---|---|---|
 | `main` | no — commit on `main` | no | push to `main` directly |
 | `branch` | yes — feature branch in root checkout | no | PR to `main` |
-| `worktrees` | yes — feature branch | yes — `../<worktree-dir>/<num>/` | PR to `main` |
+| `worktrees` | yes — lead on a branch in root | yes — delegated tasks in `../<worktree-dir>/<num>/` | PR to `main` |
 
 - **`main`** — direct on main. No branches, no worktrees, no PRs. Best for solo solo work, the kit itself, small personal projects where you trust yourself.
 - **`branch`** — feature branch in the root checkout. Ship via PR. No worktree directory. Best for typical solo work where you still want PR review.
-- **`worktrees`** — full isolation: one worktree per task, branch, PR. Best for parallel multi-agent work or anywhere worktree isolation matters.
+- **`worktrees`** — a lead agent develops on a feature branch in the root checkout (exactly like `branch` mode) and delegates parallel tasks to isolated worktrees. A worktree task must never switch the root's checked-out branch. Best for one driving agent that spawns sub-agents, or any parallel multi-agent work.
 
 If `.milky-kit-mode` is missing, default to `branch` and tell the user — they should set it explicitly with `/milky-kit:mode <value>`.
 
@@ -78,11 +78,19 @@ glb sub list <parent>           # List sub-issues with progress
 
 ## Session Start — MANDATORY (all modes)
 
-Sync before doing anything:
+Update remote refs before doing anything:
+
+```bash
+git fetch origin
+```
+
+In `main` and `branch` modes, also bring the root checkout onto a fresh `main`:
 
 ```bash
 git checkout main && git pull
 ```
+
+In `worktrees` mode, **do not switch the root's branch.** The root may hold the lead's in-progress feature branch — `git fetch origin` is enough; only `git pull` if the root happens to be on `main`.
 
 ## Read the Docs (all modes)
 
@@ -196,23 +204,39 @@ PR title format: `[#<num>] <issue title>`. Body starts with `closes #<num>`.
 
 When `.milky-kit-mode` is `worktrees`, follow this section. Skip the others.
 
-### Multi-Agent Environment (worktrees mode only)
+Worktrees mode has two roles. **The default is the worktree:**
+
+- **Delegated worktree task (default)** — unless the user explicitly says otherwise, create an isolated worktree for the task and work there. See `worktrees.md`. Spawned sub-agents on parallel tasks do this too.
+- **Lead, in the root checkout** — only when the user explicitly says "do it here," "in root," or "in the root checkout." Then develop on a feature branch in the root exactly like `branch` mode: create the branch, claim, work, `/ship`, `/land`.
+
+**Routing rule:** if the user did not say where to do the task, do it in a **worktree**. Work in the root checkout only on an explicit "do it here" / "in root."
+
+**Iron rule (both roles):** a worktree task must NEVER switch, pull, reset, or rebase the branch checked out in the **root**. No `git checkout <branch>` in root, no `git checkout main && git pull` in root from a worktree flow. To base a worktree on fresh main, `git fetch origin` and branch off `origin/main` — fetch updates refs without touching any working tree. The lead's root branch is sacred.
+
+### Lead — only when told "do it here" / "in root"
+
+Follow the **`branch` mode** workflow above verbatim: sync (`git fetch origin`, plus `git pull` if on `main`), create `feature/#<num>.<summary>` in the root checkout, `glb update <num> --claim`, work, `/ship`, `/land`.
+
+### Delegated worktree task (default)
+
+#### Multi-Agent Environment
 
 Multiple agents run in parallel on separate branches. This means:
 
 - **Only touch files relevant to your task.** Do not modify, stash, reset, or discard files you didn't create or change yourself.
 - **Never run `git stash`, `git reset --hard`, `git checkout -- <file>`, or `git clean`** unless you are certain those changes belong to you. When in doubt, leave it alone.
+- **Never run a git command in the root checkout.** The lead is working there on their own branch — stay in your worktree.
 - If you see unexpected files or changes, investigate before acting — they likely belong to another agent working in parallel.
 
-### 1. Create a Worktree
+#### 1. Create a worktree
 
-Each task gets its own isolated worktree. See `worktrees.md` for the full workflow.
+Each task gets its own isolated worktree, branched off fresh main. See `worktrees.md` for the full workflow.
 
 ```bash
 mise run worktree:setup <num> feature/#<num>.<summary>
 ```
 
-Then enter the worktree via the `EnterWorktree` tool — do **not** `cd`. Manual `cd` desynchronizes the harness from the shell.
+The setup task fetches `origin` and bases the new branch on `origin/main` — it never checks out `main` in the root. Then enter the worktree via the `EnterWorktree` tool — do **not** `cd`. Manual `cd` desynchronizes the harness from the shell.
 
 ```
 EnterWorktree(path: "../{{worktree_dir}}/<num>")
@@ -220,7 +244,7 @@ EnterWorktree(path: "../{{worktree_dir}}/<num>")
 
 Do all work — editing, building, testing, committing — from inside this directory.
 
-### 2. Verify Worktree
+#### 2. Verify worktree
 
 Before touching any file or running any command, confirm you are in the right place:
 
@@ -231,7 +255,7 @@ git branch --show-current # must be your issue branch
 
 If either is wrong, stop and re-enter the correct worktree with `EnterWorktree(path: ...)` — do not use `cd`.
 
-### 3. Claim & Work
+#### 3. Claim & work
 
 ```bash
 glb update <num> --claim
@@ -241,13 +265,13 @@ glb update <num> --claim
 
 Commit semi-frequently.
 
-### 4. Ship via PR
+#### 4. Ship via PR
 
 **When implementation is done, run `/ship`.** Same as `branch` mode — quality gates, draft PR, CI loop, mark ready.
 
 PR title format: `[#<num>] <issue title>`. Body starts with `closes #<num>`.
 
-After the user merges, say "merged" to trigger `/land`. `/land` cleans up the worktree.
+After the user merges, say "merged" to trigger `/land`. `/land` removes the worktree without touching the root's branch.
 
 ### Epic-branch workflow (worktrees mode, on request)
 
@@ -264,7 +288,7 @@ main
 feature/#409.llm-infrastructure -> main            <- one final PR
 ```
 
-1. Create the epic branch: `git worktree add ../{{worktree_dir}}/<epic-num> -b feature/#<num>.<summary> main`
+1. Create the epic branch: `git fetch origin && git worktree add ../{{worktree_dir}}/<epic-num> -b feature/#<num>.<summary> origin/main`
 2. **Immediately create the epic PR** (even if empty) so progress is visible
 3. Sub-issue worktrees branch off the **epic branch**, not main
 4. Sub-issue PRs target the **epic branch** (`gh pr create --base feature/#<epic-num>.<summary>`)
