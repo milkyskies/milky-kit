@@ -4,10 +4,13 @@ set -euo pipefail
 
 NUM="$1"
 BRANCH="$2"
-BASE="${3:-main}"
+BASE="${3:-origin/main}"
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 WT_DIR="$REPO_ROOT/../{{worktree_dir}}/$NUM"
 DB_NAME="{{project_name}}_wt_$NUM"
+
+# Fetch so the worktree bases off fresh main without switching the root's checked-out branch.
+git fetch origin
 
 git worktree add "$WT_DIR" -b "$BRANCH" "$BASE"
 cd "$WT_DIR"

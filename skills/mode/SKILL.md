@@ -1,6 +1,6 @@
 ---
 name: mode
-description: Show or switch the project's milky-kit workflow mode. Three modes — `main` (direct on main, no branches, no PRs), `branch` (feature branch in root checkout, PR to main, no worktree), `worktrees` (worktree per task, branch, PR). Writes `.milky-kit-mode` at project root.
+description: Show or switch the project's milky-kit workflow mode. Three modes — `main` (direct on main, no branches, no PRs), `branch` (feature branch in root checkout, PR to main, no worktree), `worktrees` (lead develops on a feature branch in root and delegates parallel tasks to isolated worktrees; PR to main; a worktree task never switches the root branch). Writes `.milky-kit-mode` at project root.
 argument-hint: "[main | branch | worktrees | (no argument shows current mode)]"
 ---
 
@@ -12,7 +12,7 @@ Use this skill to flip a project between the three workflow modes. Both the mode
 |---|---|---|---|
 | `main` | no | no | push to `main` directly |
 | `branch` | yes — in root checkout | no | PR to `main` |
-| `worktrees` | yes | yes — `../<worktree-dir>/<num>/` | PR to `main` |
+| `worktrees` | yes — lead on a branch in root | yes — delegated tasks in `../<worktree-dir>/<num>/` | PR to `main` |
 
 ## When to invoke
 
@@ -51,7 +51,7 @@ Anything else → reject with the valid values and stop.
    <requested> mode means:
    - main:      commit directly on main, push to main, no PRs
    - branch:    feature branch in the root checkout, ship via PR
-   - worktrees: feature branch + isolated worktree, ship via PR
+   - worktrees: lead on a feature branch in root + delegated tasks in isolated worktrees (a worktree task never switches the root branch), ship via PR
    ```
 
 4. **Write the file:**
