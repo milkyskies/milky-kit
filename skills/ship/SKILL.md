@@ -82,24 +82,38 @@ git push -u origin $(git branch --show-current)
 
 **If a PR already exists**, skip to step 6.
 
-**If no PR exists**, compose the body, then create a draft.
-
-**Invoke `/write-pr`** to compose the body — it owns the format (Overview / Architecture diagrams / Contents / Design decisions / Verification) and calls `/arch-diagrams` for the diagram section. It emits `closes #<num>` as the first line. Save its output to a temp file (e.g. `/tmp/pr-body.md`).
+**If no PR exists**, create a draft:
 
 **Standalone issue** (PR targets main):
 ```bash
-gh pr create --draft --title "[#<num>] <issue title>" --body-file /tmp/pr-body.md
+gh pr create --draft --title "[#<num>] <issue title>" --body "$(cat <<'EOF'
+closes #<num>
+
+<summary of changes>
+
+## Test plan
+
+<checklist>
+EOF
+)"
 ```
 
 **Sub-issue** (PR targets epic branch):
 ```bash
 gh pr create --draft --base feature/#<epic-num>.<summary> \
-  --title "[#<epic-num>/#<num>] <issue title>" --body-file /tmp/pr-body.md
+  --title "[#<epic-num>/#<num>] <issue title>" --body "$(cat <<'EOF'
+closes #<num>
+
+<summary of changes>
+
+## Test plan
+
+<checklist>
+EOF
+)"
 ```
 
-Get the issue title from `glb show <num>`. Do **not** hand-write the body here — `/write-pr` owns it, and guarantees the `closes #<num>` first line.
-
-**On re-runs where the change grew**, re-invoke `/write-pr` and update the body: `gh pr edit <pr-number> --body-file /tmp/pr-body.md`.
+Get the issue title from `glb show <num>`. The PR body must start with `closes #<num>` and include a test plan.
 
 ## Step 6: Local testing instructions (before CI)
 
