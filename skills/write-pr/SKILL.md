@@ -14,6 +14,10 @@ argument-hint: "[issue number (optional, inferred from branch)]"
 
 Compose the PR description for this branch. Output the markdown body only — `/ship` (or the user) runs `gh pr create`. **Invoke `/arch-diagrams` for the diagram section.**
 
+## Write for humans
+
+**Be concise. No fluff.** A busy reviewer reads this — every line must earn its place. Short declarative sentences and tight bullets, not prose paragraphs. Cut hedging, restatement, marketing tone, and AI throat-clearing ("This PR aims to…", "In order to…"). Say what changed and why; stop. If a section has nothing real to say, omit it.
+
 ## Procedure
 
 1. Infer the issue number from the branch (`feature/#123.foo` → `123`); confirm via `git log`/diff what actually changed. Get the issue title from `glb show <num>`.
