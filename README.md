@@ -161,7 +161,7 @@ Tagged releases may come later as the kit stabilizes; the skills will prefer tag
 milky-kit/
 ├── README.md
 ├── .claude-plugin/             Claude Code plugin manifest
-├── skills/                     Plugin skills (new, retrofit, upgrade, realign, edit, kit-modify, check-version, purge, mode, ship, land, rulify, simplify, retrospective, and template-specific helpers)
+├── skills/                     Plugin skills (new, retrofit, upgrade, realign, edit, kit-modify, check-version, purge, mode, ship, land, write-pr, arch-diagrams, rulify, simplify, retrospective, and template-specific helpers)
 ├── templates/                  Stack templates (alternatives — pick one per project)
 │   ├── effect-api/
 │   │   ├── rules/
