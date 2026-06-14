@@ -136,7 +136,7 @@ Each project picks one workflow mode via the `.milky-kit-mode` file at its root:
 |---|---|---|---|---|
 | `main` | no — on `main` | no | push to `main` | the kit itself, solo solo work, no review wanted |
 | `branch` (default) | yes — in root checkout | no | PR to `main` | typical solo work, GitHub-native flow |
-| `worktrees` | yes | yes — `../<worktree-dir>/<num>/` | PR to `main` | parallel multi-agent work, isolation matters |
+| `worktrees` | yes — lead on a branch in root | yes — delegated tasks in `../<worktree-dir>/<num>/` | PR to `main` | one lead agent that spawns parallel sub-agents; isolation matters |
 
 Flip per project at any time:
 
@@ -161,7 +161,7 @@ Tagged releases may come later as the kit stabilizes; the skills will prefer tag
 milky-kit/
 ├── README.md
 ├── .claude-plugin/             Claude Code plugin manifest
-├── skills/                     Plugin skills (new, retrofit, upgrade, realign, edit, kit-modify, check-version, purge, mode, ship, land, rulify, simplify, retrospective, and template-specific helpers)
+├── skills/                     Plugin skills (new, retrofit, upgrade, realign, edit, kit-modify, check-version, purge, mode, ship, land, write-pr, arch-diagrams, rulify, simplify, retrospective, and template-specific helpers)
 ├── templates/                  Stack templates (alternatives — pick one per project)
 │   ├── effect-api/
 │   │   ├── rules/

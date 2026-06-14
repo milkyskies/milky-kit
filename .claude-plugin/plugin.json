@@ -2,7 +2,7 @@
 	"$schema": "https://json.schemastore.org/claude-code-plugin",
 	"name": "milky-kit",
 	"version": "0.0.0",
-	"description": "Scaffold and maintain projects from milky-kit templates and modules. Provides /milky-kit:new, retrofit, upgrade, check-version, edit, kit-modify, mode, purge, realign, rulify, ship, land, retrospective, and stack-specific helpers (add-endpoint, database-seaorm, database-sqlx, heroui-react, setup-api-client, tanstack-query-patterns, update-rule).",
+	"description": "Scaffold and maintain projects from milky-kit templates and modules. Provides /milky-kit:new, retrofit, upgrade, check-version, edit, kit-modify, mode, purge, realign, rulify, ship, land, write-pr, arch-diagrams, retrospective, and stack-specific helpers (add-endpoint, database-seaorm, database-sqlx, heroui-react, setup-api-client, tanstack-query-patterns, update-rule).",
 	"author": {
 		"name": "milkyskies"
 	},
