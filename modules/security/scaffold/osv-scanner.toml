@@ -1,0 +1,15 @@
+# OSV-Scanner config. Auto-loaded by the OSV-Scanner reusable workflow for the
+# lockfile in this directory. Every entry must carry a reason and, where the
+# suppression is meant to be temporary, an ignoreUntil date so it resurfaces.
+
+# esbuild dev-server request smuggling. Dev-server-only: Vite ships its own dev
+# server and never invokes `esbuild serve`, and the Bun/Effect API templates do
+# not use esbuild's server either — so the vulnerable code path is unreachable.
+# The fix is esbuild 0.28.1, but Vite 6 needs esbuild ~0.25 (0.28 breaks the
+# destructuring transform for legacy browser targets), so no patched version is
+# compatible. Re-evaluate when Vite supports esbuild 0.28+, then bump the
+# esbuild override in package.json instead of ignoring.
+[[IgnoredVulns]]
+id = "GHSA-gv7w-rqvm-qjhr"
+ignoreUntil = 2026-12-14
+reason = "Dev-server-only advisory; Vite/Bun/Effect never invoke esbuild serve. No Vite-6-compatible patched esbuild exists (fix 0.28.1, Vite needs ~0.25)."
