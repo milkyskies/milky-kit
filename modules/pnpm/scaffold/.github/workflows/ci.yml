@@ -10,12 +10,21 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
+# Least-privilege default token: this workflow only reads the repo to lint and
+# typecheck, so an added step can never silently inherit write scopes.
+permissions:
+  contents: read
+
 jobs:
   check:
     name: Lint + typecheck
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        # No later step pushes, so persisting the GITHUB_TOKEN in .git/config
+        # would only widen the blast radius if a step were compromised.
+        with:
+          persist-credentials: false
 
       - name: Install pnpm
         # No `version:` — action-setup reads packageManager from
