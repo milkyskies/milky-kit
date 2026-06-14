@@ -28,6 +28,12 @@ fi
 
 missing=0
 for pkg in "${packages[@]}"; do
+  # Tooling / config-only manifests (private, no dependencies) ship no runtime
+  # code and are exempt from the script requirement — see modules/ci/rules/ci.md.
+  if node -e "const p = require('${pkg/#./$(pwd)}'); process.exit(p.private === true && !p.dependencies ? 0 : 1);" 2>/dev/null; then
+    continue
+  fi
+
   for script in "${REQUIRED[@]}"; do
     if ! node -e "
       const pkg = require('${pkg/#./$(pwd)}');
