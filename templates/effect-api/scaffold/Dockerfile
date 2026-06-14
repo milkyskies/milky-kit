@@ -21,5 +21,7 @@ ENV NODE_ENV=production
 EXPOSE 3000
 
 # Apply pending migrations, then serve. A migration failure aborts the boot so a
-# bad deploy surfaces instead of serving against a half-migrated database.
-CMD ["sh", "-c", "bun scripts/migrate.ts && bun src/main.ts"]
+# bad deploy surfaces instead of serving against a half-migrated database. `exec`
+# makes Bun PID 1 so it receives SIGTERM on `docker stop` and shuts down gracefully
+# (sh would otherwise swallow the signal and get SIGKILLed after the grace period).
+CMD ["sh", "-c", "bun scripts/migrate.ts && exec bun src/main.ts"]
