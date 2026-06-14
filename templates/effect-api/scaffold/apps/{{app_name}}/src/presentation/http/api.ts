@@ -17,4 +17,4 @@ const PostsGroup = HttpApiGroup.make("posts")
 			.addSuccess(Post, { status: 201 }),
 	)
 
-export class PostsApi extends HttpApi.make("api").add(PostsGroup) {}
+export class PostsApi extends HttpApi.make("api").add(PostsGroup).prefix("/api") {}

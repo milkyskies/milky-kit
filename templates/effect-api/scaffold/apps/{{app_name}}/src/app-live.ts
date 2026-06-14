@@ -13,11 +13,11 @@ import { HttpServerLive } from "@/presentation/http/server"
  *   - SqlLive provides SqlClient (consumed by PgDrizzle).
  *   - PgDrizzle.layer provides PgDrizzle (consumed by PostRepositoryLive).
  *   - PostRepositoryLive provides PostRepository (consumed by use cases).
- *   - HttpServerLive runs the HTTP listener.
+ *   - HttpServerLive runs the HTTP listener, serving REST under /api AND MCP at
+ *     /mcp (both share the toolkit definitions).
  *
- * The MCP server is NOT included here — it runs in its own entry point
- * because stdio transport competes with the process's stdout for log
- * output. Run via `bun src/main-mcp.ts` from Claude Code's MCP config.
+ * The stdio MCP transport runs in its own entry point (main-mcp.ts) for local
+ * Claude Code, since stdio competes with the process's stdout for log output.
  */
 export const AppLive = HttpServerLive.pipe(
 	Layer.provide(PostRepositoryLive),

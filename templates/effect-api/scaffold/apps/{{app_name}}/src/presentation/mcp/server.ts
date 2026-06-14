@@ -1,19 +1,17 @@
 import { McpServer } from "@effect/ai"
 import { BunSink, BunStream } from "@effect/platform-bun"
 import { Layer } from "effect"
-import { PostsToolHandlersLive, PostsToolkit } from "./post-tools"
+import { MCP_SERVER_INFO, McpToolkitsLive } from "./toolkits"
 
 /**
- * MCP server Layer. Same use cases as HTTP, different transport.
- * Stdio transport is the default for Claude Desktop / Claude Code.
- * Add SSE / Streamable HTTP transports if exposing over a network.
+ * MCP over stdio — the transport Claude Code / Claude Desktop launch as a
+ * subprocess. The running HTTP server exposes the same tools over HTTP at /mcp
+ * (see presentation/http/server.ts); both share McpToolkitsLive.
  */
-export const McpServerLive = McpServer.toolkit(PostsToolkit).pipe(
-	Layer.provide(PostsToolHandlersLive),
+export const McpServerLive = McpToolkitsLive.pipe(
 	Layer.provide(
 		McpServer.layerStdio({
-			name: "{{project_name}}-api",
-			version: "0.0.0",
+			...MCP_SERVER_INFO,
 			stdin: BunStream.stdin,
 			stdout: BunSink.stdout,
 		}),
