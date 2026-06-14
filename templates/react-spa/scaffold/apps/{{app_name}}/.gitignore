@@ -2,6 +2,9 @@
 node_modules
 .pnpm-store
 
+# Generated route tree (TanStack Router) — produced by `tsr generate` / typecheck
+routeTree.gen.ts
+
 # Build output
 dist
 .output
