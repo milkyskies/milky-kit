@@ -9,8 +9,9 @@ import { PostsHandlersLive } from "./post-handlers"
 
 /**
  * One Bun server, two surfaces on one port, composed on a single HttpLayerRouter:
- *   - REST API under /api (OpenAPI spec at /api/openapi.json, Swagger UI at /docs)
- *     — the web-client seam.
+ *   - REST API under /api (OpenAPI spec at /api/openapi.json, Swagger UI at /api/docs)
+ *     — the web-client seam. Everything API-related stays under /api so the root
+ *     namespace is free for the web client.
  *   - MCP over Streamable HTTP at /mcp — the same tools the stdio server exposes,
  *     so a running server is reachable by an HTTP MCP client.
  *
@@ -25,7 +26,7 @@ const McpRoutes = McpToolkitsLive.pipe(
 	Layer.provide(McpServer.layerHttpRouter({ ...MCP_SERVER_INFO, path: "/mcp" })),
 )
 
-const SwaggerRoutes = HttpApiSwagger.layerHttpLayerRouter({ api: PostsApi, path: "/docs" })
+const SwaggerRoutes = HttpApiSwagger.layerHttpLayerRouter({ api: PostsApi, path: "/api/docs" })
 
 export const HttpServerLive = HttpLayerRouter.serve(
 	Layer.mergeAll(ApiRoutes, McpRoutes, SwaggerRoutes),
