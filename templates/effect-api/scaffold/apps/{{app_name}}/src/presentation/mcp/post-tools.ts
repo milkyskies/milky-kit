@@ -29,10 +29,12 @@ const GetPostTool = Tool.make("GetPost", {
 	dependencies: [PostRepository],
 })
 
+// MCP structuredContent must be an object, so a list result is wrapped in a
+// single-key struct rather than returned as a top-level array.
 const ListPostsTool = Tool.make("ListPosts", {
 	description: "List all posts",
 	parameters: {},
-	success: Schema.Array(Post),
+	success: Schema.Struct({ posts: Schema.Array(Post) }),
 	failure: Schema.Never,
 	dependencies: [PostRepository],
 })
@@ -42,5 +44,9 @@ export const PostsToolkit = Toolkit.make(CreatePostTool, GetPostTool, ListPostsT
 export const PostsToolHandlersLive = PostsToolkit.toLayer({
 	CreatePost: (input) => createPost(input).pipe(Effect.orDie),
 	GetPost: (input) => getPost(input).pipe(Effect.orDie),
-	ListPosts: () => listPosts({}).pipe(Effect.orDie),
+	ListPosts: () =>
+		listPosts({}).pipe(
+			Effect.map((posts) => ({ posts })),
+			Effect.orDie,
+		),
 })

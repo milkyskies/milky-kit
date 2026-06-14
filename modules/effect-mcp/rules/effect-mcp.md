@@ -30,6 +30,20 @@ src/                                  (or apps/<app>/src/)
 - The MCP server is a `Layer` like everything else. Compose into `AppLive` alongside whatever else the app runs (HTTP server, workers).
 - Pick the transport at composition time: `McpServer.layerStdio` for local agent integration (Claude Desktop, MCP clients launching the binary), HTTP/SSE for remote.
 
+## Tool success shape
+
+- A tool's `success` schema must encode to an **object**, never a top-level array. MCP `structuredContent` is required to be an object; a `success: Schema.Array(...)` fails at the runtime with `expected record, received array` when the tool is actually called (it passes `tools/list`, so the bug hides until invocation).
+- Wrap list results in a single-key struct and map in the handler:
+
+  ```ts
+  // tool
+  success: Schema.Struct({ posts: Schema.Array(Post) })
+  // handler
+  ListPosts: () => listPosts({}).pipe(Effect.map((posts) => ({ posts })), Effect.orDie)
+  ```
+
+- Single-object results (`success: Post`) and `Schema.Struct({...})` are already fine. Only bare arrays need wrapping.
+
 ## Errors
 
 - Tools return Effects. Typed errors from the use case (the `E` channel) surface to the agent as structured tool errors via the `McpServer` runtime. No try/catch in the handler.
