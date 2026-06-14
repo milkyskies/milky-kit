@@ -3,6 +3,9 @@
 	"version": "0.0.0",
 	"private": true,
 	"type": "module",
+	"exports": {
+		"./client": "./src/client.ts"
+	},
 	"scripts": {
 		"dev": "bun --hot src/main.ts",
 		"start": "bun src/main.ts",

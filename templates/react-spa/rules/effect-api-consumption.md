@@ -2,9 +2,29 @@
 
 Use this rule only when the project's API is the milky-kit `effect-api` template (or another `@effect/platform`-based service). It documents the three bridges from a normal React + TanStack Query frontend to a typed Effect backend.
 
+## 0. First make the API importable (the `@/` alias barrier)
+
+The api package uses `@/*` path aliases internally (`@/domain/...`, `@/application/...`). Those aliases are resolved by **the importing project's** tsconfig/Vite, so the moment the web client imports an api source file that uses `@/`, resolution points at the *client's* `src/` and breaks — at typecheck and at bundle time. "Import directly across workspace boundaries" only works for an api surface that is **alias-free**.
+
+So the effect-api template ships a dedicated browser-safe entry, `src/client.ts`, that re-exports only what the client needs using **relative** imports, and declares it in `package.json`:
+
+```jsonc
+// apps/api/package.json
+"exports": { "./client": "./src/client.ts" }
+```
+```ts
+// apps/api/src/client.ts — only modules that import nothing but `effect`.
+export { Post, PostId } from "./domain/models/post"
+```
+
+The client imports `@<project>/api/client`. Which bridge below you reach for depends on what crosses the boundary:
+
+- **Domain schemas** (`Post`, value objects, input `Schema.Struct`s) import only `effect`, so they cross with no build step — re-export them from `src/client.ts` freely.
+- **The `HttpApi` definition value** (`PostsApi`) transitively pulls the `@/`-aliased handler/use-case graph. To use bridge #1 (`HttpApiClient`, below) you must **build the api** to alias-free output (e.g. `tsdown`/`tsup` resolving the paths) and point `./client` at `dist`. If you'd rather skip a build step, prefer bridge #3 (share the schemas, call `fetch` yourself) — lighter, still fully typed on the domain.
+
 ## 1. Typed client via `HttpApiClient`
 
-The effect-api template exports an `HttpApi` definition (e.g. `PostsApi`). Publishing it as a workspace package (`packages/api-client/`) or importing directly across workspace boundaries gives the frontend a typed client with zero codegen:
+The effect-api template exports an `HttpApi` definition (e.g. `PostsApi`). With the api built to alias-free output (see §0), importing it across the workspace boundary gives the frontend a typed client with zero codegen:
 
 ```ts
 // apps/web/src/services/api/client.ts
