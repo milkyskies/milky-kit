@@ -79,7 +79,7 @@ pnpm --filter '{{app_name}}' db:migrate
 pnpm --filter '{{app_name}}' dev
 ```
 
-Then `http://localhost:3000/docs` for Swagger UI.
+Then `http://localhost:3000/api/docs` for Swagger UI.
 
 ## MCP setup (Claude Code)
 
