@@ -21,7 +21,8 @@
 		"hono": "^4.12.10",
 		"react": "^19.0.0",
 		"react-dom": "^19.0.0",
-		"tailwind-merge": "^3.6.0"
+		"tailwind-merge": "^3.6.0",
+		"tailwind-variants": "^3.2.2"
 	},
 	"devDependencies": {
 		"@{{project_name}}/tsconfig": "workspace:*",
