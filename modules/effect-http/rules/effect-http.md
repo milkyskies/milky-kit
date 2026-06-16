@@ -44,6 +44,7 @@ src/                                  (or apps/<app>/src/)
 ## Typed client (same repo)
 
 - For a frontend app in the same repo, generate a typed client with `HttpApiClient.make(MyApi, { baseUrl })` and export it from `apps/api/src/client.ts`. The frontend imports it directly — types flow from the server, no codegen step.
+- **Every Schema reachable from the `HttpApi` must be importable by the consumer's tsc.** When the frontend imports the `HttpApi` (or a model re-exported alongside it), its tsc compiles every payload/success/**error** Schema the definition references — including each error class passed to `.addError`. If one of those lives in a module that uses path aliases (`@/...`), the frontend's tsc resolves `@/` against *its own* root and the build breaks with "cannot find module". So **error (and success) schemas exposed through the API must live in relative-import-only modules** — define an HttpApi-facing error (e.g. `domain/models/<x>-not-found.ts`) with relative imports and re-export it, rather than reaching for one defined in an `@/`-aliased repository/use-case file.
 
 ## HTTP client (outbound)
 
