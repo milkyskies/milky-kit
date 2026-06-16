@@ -44,6 +44,8 @@ src/                                  (or apps/<app>/src/)
     })
   ```
 
+- **Decode discriminant columns into their `Schema.Literal`, don't reconstruct them.** A `text` column that's really a finite set (`status`, `kind`, `type`) comes back as a bare `string`. Define the union once as `Schema.Literal("a", "b", "c")` and decode the column into it at the row boundary (`Schema.decodeUnknownOption(Status)` with a defensive default, or `Schema.decodeUnknown`). Never widen it to `string`, and never re-narrow with `value === "a" || value === "b"` chains — that's exactly the boundary decode the Schema rule exists to prevent. Downstream then dispatches with `Match` (see `effect.md`).
+
 ## Transactions
 
 - Multi-statement writes go through `SqlClient.withTransaction`. Never `db.transaction(...)` directly — the Effect-aware wrapper is the one that participates in scopes and traces.
