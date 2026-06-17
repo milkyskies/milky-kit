@@ -2,7 +2,7 @@
 -- src/infrastructure/db/schema.ts.
 
 CREATE TABLE IF NOT EXISTS "posts" (
-	"id" text PRIMARY KEY NOT NULL,
+	"id" uuid PRIMARY KEY NOT NULL,
 	"title" text NOT NULL,
 	"body" text NOT NULL,
 	"published_at" timestamp with time zone,

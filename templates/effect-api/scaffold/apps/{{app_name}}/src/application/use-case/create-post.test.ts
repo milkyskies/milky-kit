@@ -5,8 +5,10 @@ import { PostRepository } from "@/domain/repositories/post-repository"
 import { IdGenerator } from "@/domain/services/id-generator"
 import { createPost } from "./create-post"
 
+const testId = "01902d4e-7a1c-7c3f-bf2a-1e9d8c4a2b10"
+
 const StubIdGenerator = Layer.succeed(IdGenerator, {
-	nextId: () => Effect.succeed("p_test"),
+	nextId: () => Effect.succeed(testId),
 })
 
 const InMemoryPostRepository = Layer.succeed(PostRepository, {
@@ -38,7 +40,7 @@ describe("createPost", () => {
 				publishedAt: Option.none(),
 			})
 
-			expect(post.id).toBe("p_test")
+			expect(post.id).toBe(testId)
 			expect(post.title).toBe("Hello")
 			expect(post.isPublished).toBe(false)
 		}).pipe(Effect.provide(TestLive)),

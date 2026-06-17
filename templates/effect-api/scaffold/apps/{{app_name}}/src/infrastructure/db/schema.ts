@@ -1,7 +1,7 @@
-import { pgTable, text, timestamp } from "drizzle-orm/pg-core"
+import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core"
 
 export const postsTable = pgTable("posts", {
-	id: text("id").primaryKey(),
+	id: uuid("id").primaryKey(),
 	title: text("title").notNull(),
 	body: text("body").notNull(),
 	publishedAt: timestamp("published_at", { withTimezone: true, mode: "date" }),
