@@ -1,0 +1,8 @@
+# Durable Postgres-backed job queue for Effect projects. Ships scaffold code
+# (a generic poller + a jobs table + a JobQueue service + an example worker) plus
+# a rule. Assumes the effect + effect-sql modules and a Postgres template (the
+# effect-api template) are in place — it uses PgDrizzle + SqlClient and adds code
+# under apps/<app>/src/infrastructure/queue/.
+#
+# After scaffolding, follow QUEUE.md: register jobs-schema.ts in drizzle.config,
+# generate the migration, and merge JobWorkerLive into AppLive.

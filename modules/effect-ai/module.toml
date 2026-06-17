@@ -1,0 +1,7 @@
+# Provider-agnostic LLM access for Effect projects via @effect/ai. Ships a single
+# `AiService` (complete + structured) built on an OpenAI-compatible client, plus a
+# one-constant provider/model config (OpenRouter or local Ollama) and a rule.
+# Assumes the effect module is in place; adds code under apps/<app>/src/infrastructure/ai/.
+#
+# Post-scaffold (see AI-SETUP.md): `bun add @effect/ai @effect/ai-openai`, set the
+# provider key, and provide AiService.Default at the composition root.
