@@ -18,7 +18,7 @@ ghlobes is a Rust CLI that wraps `gh` + GitHub GraphQL for beads-like workflow o
 | `glb ready` | Show issues ready to work (unblocked, not in progress) |
 | `glb list` | List all open issues. Filters: `--status`, `--priority`, `--assignee` |
 | `glb show <num>` | Show issue details, deps, status, priority, points, sub-issues |
-| `glb create --title "..." --priority P1 --status Backlog --points 3` | Create an issue |
+| `glb create --title "..." --body "..." --priority P1 --status Backlog --points 3` | Create an issue (ALWAYS include `--body`) |
 | `glb update <num> --claim` | Claim issue (sets status to In Progress) |
 | `glb update <num> --status <s> --priority <p> --points <n>` | Update fields |
 | `glb close <num>` | Close an issue |
@@ -74,12 +74,53 @@ glb sub add 10 12
 glb dep add 12 11   # #12 blocked by #11
 ```
 
+## Writing issue bodies
+
+`glb create` takes freeform Markdown via `--body` and imposes no structure — this is the house template that makes an issue self-contained. An agent who wasn't part of the discussion should be able to pick it up cold.
+
+**Title:** one concise clause naming the capability or outcome. No em or en dashes (`glb create` rejects them) — use `-` or `:`.
+
+**Body sections — use the ones that apply, in this order:**
+
+- `## Problem` (or `## Goal`) — what's missing today and why it matters. Lead with the problem, not the solution. A concrete scenario often beats an abstract description.
+- **Key insight / rejected approach** (optional but valued) — the non-obvious framing, or why the naive approach is wrong. If the issue reframes an earlier idea, say so. This is the reasoning, not the spec.
+- `## What this issue does` (or `## What to do` / `## What to test`) — the concrete mechanics, broken into **named sub-behaviors**. Use code or data snippets (pseudocode, schema, example rows) to pin down intent.
+- `## Acceptance criteria` — bulleted, checkable outcomes: what must be true when this is done.
+- `## Tests` — the tests that verify the work. **Required**, except: bug reports that already reference a failing test, or chores with no behavior change (deps, CI, docs).
+- `## Dependencies` (optional) — prose note on blockers for a human reader. The `glb dep` graph is authoritative.
+
+Skeleton:
+
+```markdown
+## Problem
+<what's missing, why it matters — a concrete scenario if useful>
+
+<optional: the key insight, or the approach you're deliberately NOT taking, and why>
+
+## What this issue does
+### <Sub-behavior A>
+- <mechanic>  `(example, Data, Snippet)`
+### <Sub-behavior B>
+- <mechanic>
+
+## Acceptance criteria
+- <checkable outcome>
+- <checkable outcome>
+
+## Tests
+- <test that verifies X>
+- <test that verifies Y>
+```
+
+Keep the floor even for small issues: at minimum a one-paragraph problem statement and a `## Tests` list. Bare-title or one-line issues are not acceptable.
+
 ## Rules
 
 - **Always run `glb next` at the start of a session** to get scored recommendations.
 - **Always `--claim` before starting work** so other agents don't pick the same issue.
 - **Never work on issues with status `In Progress`** — another agent is on it.
 - **Create issues for new work** instead of just doing it. Keeps the project organized.
+- **Every issue must be self-contained — ALWAYS pass a description (`-b`/`--body`) when creating one.** Cover what it is, why, the relevant design doc/ADR, and the code files to touch, so an agent who wasn't part of the discussion can pick it up cold. Never create bare-title issues.
 - **Add dependencies** when an issue can't be done until another is finished.
 - **Use `glb done <num>`** when finishing — it shows what newly unblocked.
 - **No em or en dashes in titles.** Use a hyphen `-` or colon `:`. `glb create` enforces this.

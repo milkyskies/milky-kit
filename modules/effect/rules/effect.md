@@ -212,6 +212,7 @@ const authsEqual = (a: AuthState, b: AuthState) => Equal.equals(a, b)
 The 3-tier model + Gherkin spec convention lives in `modules/core/rules/testing.md`. Below is the Effect-flavor tool layer for the universal tiers; adapter modules (`effect-http`, `effect-mcp`) add their own E2E patterns.
 
 - Tests use `@effect/vitest`. Replace `it` / `test` with `it.effect`, `it.scoped`, or `it.live` — test bodies are Effects, assertions compose with the system under test.
+- **Run vitest under Bun**: the `test` script is `bunx --bun vitest run`, not plain `vitest run`. effect-api runs on Bun (`@effect/platform-bun`), so its tests must too — vitest's default Node workers throw `ReferenceError: Bun is not defined` the moment a test exercises a Bun-only platform API (e.g. `HttpServerResponse.file`). Running tests on the production runtime also keeps them honest.
 - **Domain tier** (`domain/models/*.test.ts`, `domain/services/*.test.ts`, `application/use-case/*.test.ts`): no real I/O. Build a `Layer.mergeAll(StubPostRepository, StubIdGenerator, ...)` per test or per `describe` block. Provide it via `Effect.provide(TestLive)` on the test body. Required for every use case — non-negotiable.
 - **Integration tier** (`tests/integration/`): provide the real infrastructure Layer (e.g. `SqlLive` against a fresh test database) and exercise use cases through it. Each infrastructure module describes its own setup.
 - Time-dependent code: `TestClock.adjust(Duration.seconds(5))` advances time deterministically. Never `vi.useFakeTimers` or `sinon`.
