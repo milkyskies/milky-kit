@@ -70,6 +70,25 @@ mise run db:status     # show what's applied vs pending
 
 Migration files live under `apps/api/drizzle/migrations/` (or wherever `drizzle.config.ts` points). The query runtime (`@effect/sql-drizzle`) reads the same Drizzle schema that `drizzle-kit` generates migrations from — single source of truth.
 
+### Parallel branches: resolving a migration collision
+
+Every `drizzle-kit generate` writes three files: the `NNNN_name.sql`, a `meta/NNNN_snapshot.json` whose `prevId` points at the previous snapshot, and an entry appended to the shared `meta/_journal.json`. The snapshot `prevId` chain and the journal are linear structures rebuilt from "what main looked like when I branched," so two branches that each add a migration off the same base will collide on all three — not just the filename. This is inherent to snapshot-based tools; a timestamp `prefix` removes the filename clash but the journal and snapshot chain still fork, so it does not avoid this recipe.
+
+Never hand-merge `_journal.json` or a `*_snapshot.json`. Regenerate them from the merged schema:
+
+1. `git merge origin/main`. The `.sql` files coexist; the two meta files conflict.
+2. Take main's meta wholesale: `git checkout origin/main -- apps/api/drizzle/migrations/meta/`. Main never had your journal entry, so this drops it.
+3. Delete your now-orphaned migration: `rm apps/api/drizzle/migrations/NNNN_yours.sql` (and its `meta/NNNN_snapshot.json` if the checkout left one behind).
+4. Regenerate from `apps/api`: `pnpm db:generate`. It reads the merged `schema.ts` and writes a fresh migration at the next free index, with a correct `prevId` and journal entry.
+5. Re-apply any hand-edits `generate` cannot infer — backfills, data moves, and the add-nullable/backfill/`SET NOT NULL` sequence for a `NOT NULL` column on a non-empty table (see below).
+6. Reset the test database and run the suite so the migration is proven to apply from scratch: `mise run db:reset` then the integration tests.
+
+Also watch for the **semantic** conflict git merges cleanly: if main added a row or fixture that constructs a domain type and your branch added a required field to that type, the merge is textually clean but type-broken. `pnpm typecheck` catches it; tests that do not typecheck will not.
+
+### Adding a `NOT NULL` column to a non-empty table
+
+`drizzle-kit generate` emits `ADD COLUMN ... NOT NULL`, which aborts on any existing row. Either give the column a `.default(...)` in `schema.ts` (the generator then emits `ADD COLUMN ... DEFAULT x NOT NULL`, safe in one statement), or, when you do not want a lingering default, hand-edit the generated SQL into three steps: add the column nullable, `UPDATE` to backfill, then `ALTER COLUMN ... SET NOT NULL`.
+
 ## Hyperdrive / Workers Postgres
 
 For Workers deploys via Hyperdrive: `PgClient.layer({ url: Config.string("HYPERDRIVE_CONNECTION_STRING") })`. The pool's lifecycle is per-isolate; layers compose the same way.
