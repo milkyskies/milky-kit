@@ -114,31 +114,8 @@ Do NOT wait for CI to finish before giving these instructions.
 
 ## Step 7: CI loop
 
-### 7a: Manual-dispatch CI
-
-Some projects gate CI behind `workflow_dispatch` to conserve Actions minutes — nothing runs on push or PR, so `gh pr checks` reports no checks forever. Detect this once, right after pushing:
-
-```bash
-gh workflow list                                     # what workflows exist
-gh workflow view <workflow> --yaml | grep -A3 '^on:' # what triggers them
-```
-
-If a workflow that gates this PR (tests, lint, build — not release/deploy) is `workflow_dispatch`-only, **trigger it yourself** and poll that run instead of PR checks:
-
-```bash
-gh workflow run <workflow>.yml --ref $(git branch --show-current)
-sleep 5 && gh run list --workflow=<workflow>.yml --branch $(git branch --show-current) --limit 1
-gh run watch <run-id> --exit-status   # or poll `gh run view <run-id> --json status,conclusion`
-```
-
-Treat a failed run exactly like a failed check (see below). Never mark the PR ready without a green run — a PR with zero checks is not a passing PR.
-
-Only trigger release/deploy workflows if the user explicitly asks.
-
-### 7b: Poll
-
 Each poll iteration, check **both**:
-1. CI status: `gh pr checks <pr-number>` (or the dispatched run from 7a)
+1. CI status: `gh pr checks <pr-number>`
 2. Merge conflicts: `gh pr view <pr-number> --json mergeable --jq '.mergeable'`
 
 Keep output minimal — just report pass/fail status, not full logs.
