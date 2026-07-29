@@ -81,6 +81,16 @@ return switch (ref.watch(activeBalloonsProvider)) {
 
 Never swallow an error. If you cannot act on a failure, let it reach a boundary that can.
 
+## Mutations and optimistic updates
+
+Riverpod has no mutation primitive. There is no `useMutation`, no built-in optimistic update, no rollback. You build it — which means you build it **once**, not per call site.
+
+- **Write a single shared helper for optimistic mutations.** Rollback lives inside the helper, not in each caller's error handler. A caller that forgets to restore is a silent data-loss bug, and the only reliable defence is making it impossible to forget.
+- **Anything changed before the request settles must be restorable.** Capture the prior value first, restore it on failure. This covers local UI state exactly as much as cache writes: **a cleared text field is optimistic state**, and it is the one people forget, because it does not look like a cache.
+- **Restoring must not clobber newer state.** If a second mutation started after the first, rolling back to the first's snapshot discards the second's work. Either serialise mutations on the same key, or verify the state has not moved before restoring.
+- **On success, replace the optimistic value with the server's.** Invalidate and refetch rather than leaving the guess in place. The guess and the truth drift — server-assigned identifiers, timestamps, computed fields — and a stale guess that looks correct is worse than a brief loading state.
+- **An optimistic update is a lie you are choosing to tell.** Only tell it where the operation almost always succeeds and the latency is genuinely user-visible. For a rare, slow, or destructive operation, a pending indicator is honest, simpler, and has no rollback to get wrong.
+
 ## Dependency injection via providers
 
 - **Every service, repository, and client is a provider.** Not a singleton, not a global, not a constructor parameter threaded through widgets.
