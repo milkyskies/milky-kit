@@ -105,6 +105,69 @@ Turning these off is never the fix. If the analyzer complains, the types are wro
 
 - Reach for `freezed` when you want the equality, `copyWith`, and JSON plumbing generated rather than hand-written. Freezed 3 emits native sealed classes, so pattern matching works the same either way — prefer native `switch` over any generated `when`/`map` helpers.
 
+## Errors
+
+Dart has no typed error channel — there is no `E` in the return type the way `Effect<A, E, R>` gives you. The discipline has to come from convention, and the convention is: **decide whether a failure is expected, and let that decide the mechanism.**
+
+### `Error` vs `Exception`
+
+Dart's own hierarchy already encodes the distinction. Respect it.
+
+- **`Error` and its subclasses signal a programming bug** (`StateError`, `ArgumentError`, `TypeError`, `UnimplementedError`). Throwing one asserts "this cannot happen". **Do not catch them** — a caught `Error` is a bug you have hidden rather than fixed. This is Dart's equivalent of an Effect defect.
+- **`Exception` signals a condition the program should anticipate** — I/O failure, a timeout, malformed input from outside the system.
+- **Never throw a bare `String`, `int`, or arbitrary object.** Dart permits it, and it destroys the ability to catch selectively downstream.
+
+### Two tiers
+
+| Kind | Mechanism | Handled |
+|---|---|---|
+| **Unexpected** — the network is down, the server returned 500, a payload failed to parse, a bug | `throw` | At an outer boundary that can report or retry. Not at the call site. |
+| **Expected** — a domain outcome the caller must reckon with | **named sealed union in the return type** | Pattern-matched exhaustively at the call site |
+
+This is the same split as Effect's defect-versus-`Data.TaggedError` distinction, expressed in Dart's idiom rather than fighting it.
+
+For expected outcomes, prefer a **per-operation named sealed union** over a generic `Result<T, E>`:
+
+```dart
+sealed class SubmitOrderOutcome {
+  const SubmitOrderOutcome();
+}
+
+final class OrderAccepted extends SubmitOrderOutcome {
+  const OrderAccepted(this.orderId);
+  final String orderId;
+}
+
+final class PaymentDeclined extends SubmitOrderOutcome {
+  const PaymentDeclined({required this.reason});
+  final String reason;
+}
+
+final class OutOfStock extends SubmitOrderOutcome {
+  const OutOfStock(this.availableQuantity);
+  final int availableQuantity;
+}
+```
+
+Named cases read better than `Left(SomeEnum.paymentDeclined)`, exhaustiveness checking works identically, and it scales past two outcomes without nesting generics. A caller cannot forget to handle `OutOfStock`, because the switch will not compile.
+
+### Catching
+
+- **Always type the catch and always take the stack trace**: `on FormatException catch (error, stackTrace)`. A bare `catch (error)` swallows `Error` subclasses too, which is how a genuine bug becomes a silent wrong answer.
+- **Never write an empty catch block.** `catch (_) {}` is banned outright. If a failure genuinely does not matter, say why in a comment and log it.
+- **Use `rethrow`, not `throw error`.** `throw error` resets the stack trace to the rethrow point and loses the original origin.
+- When wrapping an exception in a more meaningful one, preserve the original trace with `Error.throwWithStackTrace(newError, stackTrace)` rather than throwing fresh.
+- **Do not catch what you cannot handle.** Converting an exception into a `null` return, an empty list, or a default value is almost always wrong — it moves the failure to a place with less context, where it presents as bad data instead of an error.
+
+### fpdart
+
+`fpdart` is **permitted but scoped**.
+
+- **Use `TaskEither` / `Either`** where you are genuinely chaining several fallible asynchronous steps and the alternative is nested try/catch with intermediate nullable locals. Short-circuiting a three-step pipeline is where it earns its cost.
+- **Do not use fpdart's `Option`.** See the Optionals section above: `T?` with pattern matching already gives exhaustive absence handling, every SDK in the ecosystem returns `T?`, and a second representation of absence means converting in both directions at every boundary.
+- **Do not mix idioms within a layer.** A function returns a sealed union *or* a `TaskEither`, not both patterns scattered through the same module. Pick per layer and stay consistent, so callers know what shape to expect.
+- Be aware there is no do-notation at the language level. `TaskEither.Do` works but is noisier than `Effect.gen`, and inference through it is weaker. If a chain is getting hard to read, that is usually the signal to go back to a sealed union and an ordinary `await`.
+
 ## Naming
 
 - Files are `snake_case.dart`. Types are `UpperCamelCase`. Members and locals are `lowerCamelCase`. Constants are `lowerCamelCase`, not `SCREAMING_CASE`.

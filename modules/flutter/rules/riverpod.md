@@ -57,34 +57,29 @@ Tests are colocated for the pure tier (`poi_grouping.dart` next to `poi_grouping
 
 A `build` method with an `if`/`else` ladder over domain state is a code smell. Extract it into a `switch` expression in `core/` that returns a value the widget renders.
 
-## Errors: two tiers
+## Errors
 
-Dart has no typed error channel, and the whole Flutter ecosystem is exception-based. Fighting that means converting at every boundary. Instead, split by whether the failure is *expected*:
+**The base rules live in `modules/dart/rules/dart-style.md`** — the `Error`-versus-`Exception` distinction, the two-tier split (unexpected failures throw; expected outcomes are named sealed unions in the return type), the catching discipline, and the scoping of `fpdart` to `TaskEither`/`Either` but never `Option`. They apply here unchanged. This section covers only how those tiers surface through Riverpod.
 
-| Kind | Mechanism | Handled where |
-|---|---|---|
-| **Unexpected** — network down, 5xx, parse failure, bug | `throw` | Caught by `AsyncValue.error`, rendered by a shared error widget, reported to crash tracking |
-| **Expected** — a domain outcome the caller must handle | **named sealed union in the return type** | Pattern-matched exhaustively at the call site |
-
-This is the same split as Effect's defect-versus-`Data.TaggedError` distinction, expressed in Dart's idiom.
-
-For expected outcomes, prefer a **per-operation named sealed union** over a generic `Result<T, E>`:
+**Unexpected failures ride the `AsyncValue.error` channel.** A provider that throws is not a bug in the provider — it is the mechanism. Riverpod captures the error and the stack trace, and the widget renders it:
 
 ```dart
-sealed class JoinBalloonOutcome {
-  const JoinBalloonOutcome();
-}
-
-final class JoinedImmediately extends JoinBalloonOutcome { ... }
-final class JoinRequestPending extends JoinBalloonOutcome { ... }
-final class BalloonFull extends JoinBalloonOutcome { ... }
+return switch (ref.watch(activeBalloonsProvider)) {
+  AsyncData(:final value) => BalloonList(balloons: value),
+  AsyncError(:final error) => ErrorView(error: error),
+  AsyncLoading() => const LoadingView(),
+};
 ```
 
-Named cases read better than `Left(SomeEnum.balloonFull)`, exhaustiveness works identically, and it scales past two outcomes without nesting generics.
+- **Do not catch inside a provider just to return a sentinel.** Returning `null`, `[]`, or a default on failure destroys the distinction between "loaded, and empty" and "failed to load", and the UI can no longer offer a retry.
+- One shared error widget handles the unexpected tier. Per-screen error rendering is for cases where the screen can genuinely offer something better than "something went wrong, retry".
+- Errors reaching this channel are reported to crash tracking. `AsyncValue.error` carries the stack trace — pass it through rather than logging `error.toString()` alone.
 
-**`fpdart` is permitted but scoped.** Use `TaskEither` where you are genuinely chaining several fallible asynchronous steps and the alternative is nested try/catch. Do **not** use `fpdart`'s `Option` — see `modules/dart/rules/dart-style.md`; `T?` with pattern matching already gives exhaustive absence handling, and introducing a second representation means converting at every SDK boundary.
+**Expected outcomes do not use the error channel.** A join request being rejected, a balloon being full, a validation rule failing — these are *successful* operations whose result happens to be a refusal. They come back as `AsyncData` holding a sealed union, and the widget pattern-matches on it. Putting a domain outcome into `AsyncError` means the shared error widget swallows something the user needed to read.
 
-Never swallow an error silently. If you cannot act on a failure, let it propagate to a boundary that can.
+**Mutations report failure to the caller, not the console.** A notifier method that fails should surface it — as a returned sealed union the caller matches on, or by letting it throw so the calling widget can catch it and show a message. A mutation that logs and returns silently leaves the user staring at an unchanged screen.
+
+Never swallow an error. If you cannot act on a failure, let it reach a boundary that can.
 
 ## Dependency injection via providers
 
