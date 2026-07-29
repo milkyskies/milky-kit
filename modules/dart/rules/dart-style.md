@@ -168,6 +168,19 @@ Named cases read better than `Left(SomeEnum.paymentDeclined)`, exhaustiveness ch
 - **Do not mix idioms within a layer.** A function returns a sealed union *or* a `TaskEither`, not both patterns scattered through the same module. Pick per layer and stay consistent, so callers know what shape to expect.
 - Be aware there is no do-notation at the language level. `TaskEither.Do` works but is noisier than `Effect.gen`, and inference through it is weaker. If a chain is getting hard to read, that is usually the signal to go back to a sealed union and an ordinary `await`.
 
+## Test layout
+
+**Tests live under `test/`, mirroring the `lib/` structure.** `lib/src/map/poi_grouping.dart` is tested by `test/map/poi_grouping_test.dart`.
+
+**Do not colocate test files inside `lib/`.** This is a habit worth unlearning if you come from TypeScript, where colocation is standard. In Dart it breaks two things:
+
+- **The test runner only discovers `test/**_test.dart`.** A colocated test is silently never executed by a bare `dart test` — it passes review, it looks like coverage, and it never runs. Nothing warns you.
+- **`lib/` is the package's public surface** and must not import dev dependencies. A test file under `lib/` importing `package:test` trips `depend_on_referenced_packages`, correctly.
+
+Tests import the code under test through a package import (`package:my_package/src/map/poi_grouping.dart`), not a relative path that reaches back into `lib/`.
+
+Every package has a public entry point at `lib/<package_name>.dart` that re-exports its public API from `lib/src/`. Everything under `src/` is private by convention; consumers import the barrel, never a `src/` path.
+
 ## Naming
 
 - Files are `snake_case.dart`. Types are `UpperCamelCase`. Members and locals are `lowerCamelCase`. Constants are `lowerCamelCase`, not `SCREAMING_CASE`.
