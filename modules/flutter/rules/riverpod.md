@@ -44,7 +44,7 @@ lib/
 - `data/repositories/` returns domain types, never generated DTOs.
 - `features/` is the only place widgets live. A widget never calls a repository directly — it watches a provider.
 
-Tests are colocated for the pure tier (`poi_grouping.dart` next to `poi_grouping_test.dart`). Widget and integration tests live under `test/`.
+Tests live under `test/`, mirroring `lib/` — never colocated inside `lib/`. See the Test layout section of `modules/dart/rules/dart-style.md` for why; the short version is that Dart's runner does not discover colocated tests at all, so they silently never run.
 
 ## Keep logic out of widgets
 
