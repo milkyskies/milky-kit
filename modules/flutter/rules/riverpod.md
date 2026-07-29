@@ -81,6 +81,42 @@ return switch (ref.watch(activeBalloonsProvider)) {
 
 Never swallow an error. If you cannot act on a failure, let it reach a boundary that can.
 
+## Mutations and optimistic updates
+
+Riverpod has no mutation primitive. There is no `useMutation`, no built-in optimistic update, no rollback. You build it — which means you build it **once**, not per call site.
+
+- **Write a single shared helper for optimistic mutations.** Rollback lives inside the helper, not in each caller's error handler. A caller that forgets to restore is a silent data-loss bug, and the only reliable defence is making it impossible to forget.
+- **Anything changed before the request settles must be restorable.** Capture the prior value first, restore it on failure. This covers local UI state exactly as much as cache writes: **a cleared text field is optimistic state**, and it is the one people forget, because it does not look like a cache.
+- **Restoring must not clobber newer state.** If a second mutation started after the first, rolling back to the first's snapshot discards the second's work. Either serialise mutations on the same key, or verify the state has not moved before restoring.
+- **On success, replace the optimistic value with the server's.** Invalidate and refetch rather than leaving the guess in place. The guess and the truth drift — server-assigned identifiers, timestamps, computed fields — and a stale guess that looks correct is worse than a brief loading state.
+### When to use one
+
+There are three honest ways to handle a mutation. Pick deliberately; the default should be **optimistic wherever it qualifies**, because it is the only one that feels instant.
+
+| | Shows | Use when |
+|---|---|---|
+| **Optimistic** | the result, immediately | the checklist below passes |
+| **Pending** | the action is in flight (spinner on the button, row dimmed) | you cannot predict the result, but the user can keep working |
+| **Blocking** | a barrier until it resolves | the next step genuinely depends on the outcome |
+
+**Reach for optimistic when all four hold:**
+
+1. **You can compute the exact post-state on the client.** Not approximately — exactly. A counter incrementing, a flag toggling, an item joining a list you already order yourself.
+2. **It almost always succeeds.** The failure path is the exception, not a routine branch.
+3. **The revert is visually small.** A number ticking back is fine. A screen re-arranging, a list re-sorting, or a route changing back is not — the correction is more jarring than the wait would have been.
+4. **Failure is cheap to explain.** "That didn't save, try again" fully covers it, with nothing lost.
+
+**Never optimistic, no matter how well the above scores:**
+
+- **The server assigns identity or ordering.** If you would have to invent an id, a timestamp, a rank, or a position, you are guessing at the truth and the reconciliation will visibly correct you.
+- **The operation is destructive or irreversible.** Deleting, sending, publishing, paying. Showing it as done before it is done is a lie about something the user cannot take back.
+- **The server can reject for reasons the client cannot evaluate.** Capacity limits, permission checks, business rules you do not replicate. You will show success and then take it away, which reads as a bug.
+- **The change is visible to other people.** You can optimistically update your own view of your own action. You cannot optimistically update what anyone else sees, so anything whose whole point is the other party's state is not a candidate.
+
+**A useful tell:** if writing the optimistic update means duplicating server logic on the client, stop. That duplication is the bug — it will drift, and the drift shows up as the UI briefly asserting something false.
+
+Frequency is the tiebreaker. An action taken many times a session earns the complexity; one taken once does not, even when it qualifies.
+
 ## Dependency injection via providers
 
 - **Every service, repository, and client is a provider.** Not a singleton, not a global, not a constructor parameter threaded through widgets.
