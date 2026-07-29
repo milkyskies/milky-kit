@@ -1,0 +1,3 @@
+# The flutter module is the Riverpod paradigm + clean architecture layout for
+# Flutter apps, plus widget/theming/navigation conventions. Rules only, no
+# scaffold files. Requires the dart module.
