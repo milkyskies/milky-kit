@@ -1,0 +1,3 @@
+# The dart module is paradigm-neutral Dart writing conventions. It ships no
+# scaffold files of its own — rules only. Compose with the flutter module for
+# app projects, or use standalone for pure Dart packages and CLIs.
