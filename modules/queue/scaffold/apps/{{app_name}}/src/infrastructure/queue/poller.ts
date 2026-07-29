@@ -63,7 +63,9 @@ export const runPoller = <A, E, R>(
 // Layer that forks the poller as a scoped daemon — it runs for as long as the app's
 // scope is open and is interrupted on graceful shutdown. Provide its R
 // (claim/process dependencies) where this layer is composed (merge it into AppLive).
-export const pollerLayer = <A, E, R>(options: PollerOptions<A, E, R>): Layer.Layer<never, never, R> =>
+export const pollerLayer = <A, E, R>(
+	options: PollerOptions<A, E, R>,
+): Layer.Layer<never, never, R> =>
 	Layer.scopedDiscard(
 		Effect.logInfo(`poller "${options.name}" started`).pipe(
 			Effect.zipRight(Effect.forkScoped(runPoller(options))),
