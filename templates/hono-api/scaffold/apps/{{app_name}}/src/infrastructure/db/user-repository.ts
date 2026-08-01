@@ -58,6 +58,8 @@ export const makeUserRepository = (db: Database): UserRepository => ({
 				updatedAt: now,
 			})
 			.returning()
+		if (!row) throw new Error("Insert into users returned no rows")
+
 		return fromRow(row)
 	},
 

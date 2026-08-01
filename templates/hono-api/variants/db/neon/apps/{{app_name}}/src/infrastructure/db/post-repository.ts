@@ -43,6 +43,8 @@ export const makePostRepository = (db: Database): PostRepository => ({
 				updatedAt: now,
 			})
 			.returning()
+		if (!row) throw new Error("Insert into posts returned no rows")
+
 		return fromRow(row)
 	},
 
