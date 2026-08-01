@@ -10,7 +10,7 @@ export interface Post {
 	readonly id: string
 	readonly title: string
 	readonly body: string
-	readonly publishedAt: Date | null
+	readonly publishedAt: Date | undefined
 	readonly createdAt: Date
 	readonly updatedAt: Date
 }
@@ -23,7 +23,7 @@ export const Post = {
 			id: dto.id,
 			title: dto.title,
 			body: dto.body,
-			publishedAt: dto.publishedAt ? new Date(dto.publishedAt) : null,
+			publishedAt: dto.publishedAt ? new Date(dto.publishedAt) : undefined,
 			createdAt: new Date(dto.createdAt),
 			updatedAt: new Date(dto.updatedAt),
 		}),
