@@ -2,6 +2,6 @@
 	"$schema": "https://biomejs.dev/schemas/2.5.6/schema.json",
 	"extends": ["@milkyskies/biome-config/biome.json"],
 	"files": {
-		"includes": ["**", "!**/wrangler.jsonc"]
+		"includes": ["**", "!**/wrangler.jsonc", "!**/drizzle/migrations"]
 	}
 }
