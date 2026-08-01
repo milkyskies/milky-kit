@@ -23,7 +23,7 @@ Suspense-first means: components call `useSuspenseQuery`, never `useQuery` + `is
 ## Variants
 
 - **`mobile`**: `none`, `tauri`, `capacitor`
-- **`ui`**: `none` (build your own), `shadcn`, `heroui` (v3), `base-ui`
+- **`ui`**: `none` (build your own), `shadcn` (generated onto Base UI primitives), `heroui` (v3), `base-ui` (raw primitives)
 - **`auth`**: `none`, `firebase`
 
 ## Stack
