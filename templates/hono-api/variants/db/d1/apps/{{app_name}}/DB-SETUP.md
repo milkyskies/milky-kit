@@ -19,6 +19,8 @@ pnpm dev
 
 Local data persists between runs. Wipe it with `rm -rf .wrangler/state/v3/d1`.
 
+The local state is keyed by `database_id`, so changing that value in `wrangler.jsonc` points at a fresh empty database. Re-run `pnpm db:migrate:local` after you paste the real id in.
+
 ## Production setup
 
 ### 1. Create the D1 database on Cloudflare
