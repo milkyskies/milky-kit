@@ -7,7 +7,11 @@ export function createOptimisticMutationHook<
 	TContext = unknown,
 	TSavedData = unknown,
 >(config: OptimisticMutationConfig<TData, TVariables, TSavedData>) {
-	return (options?: OptimisticMutationOptions<TData, Error, TVariables, TContext>) => {
+	// The context is widened to `TContext | undefined` because this wrapper owns
+	// `onMutate` and only forwards a user context when the caller supplied their
+	// own `onMutate`. Declaring it as `TContext` would promise `onSuccess` a value
+	// that does not exist when they did not.
+	return (options?: OptimisticMutationOptions<TData, Error, TVariables, TContext | undefined>) => {
 		const queryClient = useQueryClient()
 
 		const {
