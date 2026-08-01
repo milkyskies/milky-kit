@@ -52,18 +52,8 @@ export const makePostRepository = (db: Database): PostRepository => ({
 		const updates: Partial<typeof postsTable.$inferInsert> = {
 			updatedAt: new Date(),
 		}
-		Option.match(patch.title, {
-			onNone: () => {},
-			onSome: (value) => {
-				updates.title = value
-			},
-		})
-		Option.match(patch.body, {
-			onNone: () => {},
-			onSome: (value) => {
-				updates.body = value
-			},
-		})
+		if (Option.isSome(patch.title)) updates.title = patch.title.value
+		if (Option.isSome(patch.body)) updates.body = patch.body.value
 
 		const [row] = await db.update(postsTable).set(updates).where(eq(postsTable.id, id)).returning()
 

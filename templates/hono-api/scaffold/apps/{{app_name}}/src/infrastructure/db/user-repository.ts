@@ -67,24 +67,9 @@ export const makeUserRepository = (db: Database): UserRepository => ({
 		const updates: Partial<typeof usersTable.$inferInsert> = {
 			updatedAt: new Date(),
 		}
-		Option.match(patch.email, {
-			onNone: () => {},
-			onSome: (value) => {
-				updates.email = value
-			},
-		})
-		Option.match(patch.displayName, {
-			onNone: () => {},
-			onSome: (value) => {
-				updates.displayName = value
-			},
-		})
-		Option.match(patch.avatarUrl, {
-			onNone: () => {},
-			onSome: (value) => {
-				updates.avatarUrl = value
-			},
-		})
+		if (Option.isSome(patch.email)) updates.email = patch.email.value
+		if (Option.isSome(patch.displayName)) updates.displayName = patch.displayName.value
+		if (Option.isSome(patch.avatarUrl)) updates.avatarUrl = patch.avatarUrl.value
 
 		const [row] = await db.update(usersTable).set(updates).where(eq(usersTable.id, id)).returning()
 
