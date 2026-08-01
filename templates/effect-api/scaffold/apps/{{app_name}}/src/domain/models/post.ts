@@ -1,4 +1,4 @@
-import { Schema } from "effect"
+import { Option, Schema } from "effect"
 
 export class Post extends Schema.Class<Post>("Post")({
 	id: Schema.UUID,
@@ -9,7 +9,7 @@ export class Post extends Schema.Class<Post>("Post")({
 	updatedAt: Schema.Date,
 }) {
 	get isPublished(): boolean {
-		return this.publishedAt._tag === "Some"
+		return Option.isSome(this.publishedAt)
 	}
 }
 

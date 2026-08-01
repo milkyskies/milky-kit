@@ -1,4 +1,4 @@
-import { Match } from "effect"
+import { Match, Option } from "effect"
 import type { ErrorHandler } from "hono"
 import { UserAlreadyExists } from "../application/errors"
 
@@ -16,7 +16,7 @@ export const errorHandler: ErrorHandler = (error, context) => {
 		Match.option,
 	)
 
-	if (mapped._tag === "Some") {
+	if (Option.isSome(mapped)) {
 		return context.json(mapped.value.body, mapped.value.status)
 	}
 
