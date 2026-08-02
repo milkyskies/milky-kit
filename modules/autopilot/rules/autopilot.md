@@ -80,6 +80,28 @@ Then `glb update <num> --status "Needs Decision"` and exit. Leave the worktree i
 
 **Always offer numbered options.** A question with concrete options is answered with one keypress; a question in prose costs a paragraph. If you genuinely cannot enumerate options, say so explicitly rather than padding the list with filler.
 
+## Propose the issue you needed
+
+When you park because the issue was **underspecified** — stop reason 1, not the other three — also post the body you would have needed. By the time you decided to stop you already know which acceptance criteria were missing and which behaviours were ambiguous; making a human reconstruct that is waste.
+
+```markdown
+<!-- autopilot:proposed-body -->
+## Proposed issue body
+
+<the full replacement body>
+
+<!-- autopilot:agent -->
+```
+
+Rules for the proposal:
+
+- **Carry `## Problem` through unchanged, byte for byte.** Intent is the human's; only the mechanics are yours to draft.
+- Fill in `## Acceptance criteria` and `## Tests` concretely enough to satisfy the eligibility gate.
+- Resolve the ambiguity into explicit numbered options rather than prose.
+- Do not post one for the other three stop reasons. A security decision needs an answer, not a rewritten spec.
+
+This is the fastest route from a human-only issue to an autopilot-eligible one: the agent drafts the spec, a human approves it. Issue quality improves as a side effect of running the system rather than as separate discipline.
+
 ## Answering
 
 Either run `/decisions`, or reply directly on GitHub. Both routes end the same way: a comment on the issue and the status back to `Todo`.

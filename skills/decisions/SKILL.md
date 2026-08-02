@@ -52,7 +52,24 @@ For each: the agent's question is the question, its numbered options are the opt
 
 Where the agent gave no usable options, ask for free text instead.
 
-### 4. Record the answer
+### 4. Offer proposed bodies
+
+If the issue also carries an `<!-- autopilot:proposed-body -->` block, the agent parked because the spec was too thin and has drafted a replacement. Present it as **approve / edit / reject**:
+
+- **Approve** — preserve the original first, then replace:
+  ```bash
+  gh issue comment <num> --body "Original body before autopilot rewrite:
+
+  <original>"
+  gh issue edit <num> --body-file <proposed>
+  ```
+  Then add the `autopilot` label **only if** the result now has non-empty `## Acceptance criteria` and `## Tests`. Check with `glb ready --autopilot --explain` rather than eyeballing it.
+- **Edit** — take the user's changes, then approve as above.
+- **Reject** — leave body and status untouched.
+
+Never replace a body without preserving the original in a comment first. Never alter `## Problem`; if the proposal changed it, that is a bug in the worker and the proposal should be rejected.
+
+### 5. Record the answer
 
 For each answered issue:
 
@@ -65,7 +82,7 @@ Comment first, then flip. If the flip fails, the answer is still on the issue an
 
 Skipped issues are left untouched — still `Needs Decision`, no comment.
 
-### 5. Report
+### 6. Report
 
 Say what was answered and what remains. If anything was requeued, name the next dispatcher wake as when it will be picked up.
 
