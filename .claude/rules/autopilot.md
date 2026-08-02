@@ -1,0 +1,1 @@
+../../modules/autopilot/rules/autopilot.md
