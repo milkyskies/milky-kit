@@ -41,6 +41,24 @@ A **module** is one orthogonal concern that composes cleanly with any template. 
 
 A project's `.claude/rules/` directory symlinks one rule per file into the chosen template + modules. Claude Code auto-loads every `.md` (including symlinks) under `.claude/rules/` at session start.
 
+## Rule symlinks are per machine
+
+`.claude/rules/*.md` are symlinks into `~/.claude/kit`, whose real path differs per machine and OS. They are **gitignored**; the committed record is `.claude/rules.manifest`.
+
+After cloning a project on a new machine — or after your first `retrofit`:
+
+```bash
+mise run rules:link
+```
+
+Without it the rules simply do not load, and nothing says so. If an agent seems to be ignoring the project's conventions, check this first:
+
+```bash
+for f in .claude/rules/*.md; do [ -e "$f" ] || echo "BROKEN $f"; done
+```
+
+Rules a project owns itself are regular files, not symlinks, and stay tracked as normal.
+
 ## How a project consumes the kit
 
 Rules are **symlinked**, not copied. Each project's `.claude/rules/` directory holds one symlink per rule, pointing through `~/.claude/kit/` to the live source-of-truth file in this repo:

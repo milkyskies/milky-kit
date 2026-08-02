@@ -88,6 +88,33 @@ Report findings briefly. Then ask which modules to apply.
 
    For files that are real (non-symlink) at a path the desired set wants to claim, ask before replacing.
 
+   5. **Write the manifest and gitignore the links.** The symlink targets are absolute paths inside `~/.claude/kit`, whose real location differs per machine and per OS. Committed, they resolve on exactly one machine and dangle everywhere else — and nothing reports it, so the project silently loads no rules at all.
+
+      Commit the portable record instead:
+
+      ```bash
+      # .claude/rules.manifest — tab-separated: local link name, then the path within the kit.
+      # Store the name rather than deriving it: a project may rename a rule to disambiguate it
+      # (dart-models.md for modules/dart/rules/models.md, alongside models.md for the TypeScript
+      # one), and a basename cannot round-trip that.
+      : > .claude/rules.manifest
+      for f in .claude/rules/*.md; do
+        [ -L "$f" ] || continue                       # project-owned rules are regular files
+        t=$(readlink "$f" | sed "s|^$HOME/.claude/kit/||")
+        [ -n "$t" ] && printf '%s\t%s\n' "$(basename "$f")" "$t"
+      done | sort > .claude/rules.manifest
+
+      # Untrack the generated links and ignore them
+      while IFS=$'\t' read -r name _; do
+        git rm --cached -q ".claude/rules/$name" 2>/dev/null || true
+        grep -qxF ".claude/rules/$name" .gitignore || echo ".claude/rules/$name" >> .gitignore
+      done < .claude/rules.manifest
+      ```
+
+      **Only ever iterate symlinks.** A regular file in `.claude/rules/` is a rule the project owns; `readlink` returns empty for it, and blindly using that empty value will replace the file with a symlink to the kit root.
+
+      Tell the user to run `mise run rules:link` after cloning on a new machine, and that the task ships with the `core` module.
+
 2. **Merge scaffold files** for each chosen module. Substitute all placeholders (`{{project_name}}`, `{{worktree_dir}}`, `{{app_name}}`, etc.) when copying:
    - For `package.json`: deep-merge — add new deps + scripts without touching existing keys. If a script name collides (e.g. `lint` already defined), ask which to keep.
    - For `biome.json`: replace with `{ "$schema": "...", "extends": ["@milkyskies/biome-config/biome.json"] }`, preserving any project-specific `files.includes` patterns from the old config.

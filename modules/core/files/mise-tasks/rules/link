@@ -1,0 +1,37 @@
+#!/bin/bash
+#MISE description="Recreate .claude/rules symlinks from .claude/rules.manifest for this machine"
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
+KIT="$HOME/.claude/kit"
+
+if [ ! -d "$KIT" ]; then
+	echo "No kit at $KIT. Symlink it first:  ln -s /path/to/milky-kit ~/.claude/kit" >&2
+	exit 1
+fi
+
+mkdir -p .claude/rules
+linked=0
+missing=0
+
+# Tab-separated: local link name, then the path within the kit. The two differ where this project renames a rule to disambiguate it (dart-models.md against the TypeScript models.md), so a basename alone cannot round-trip.
+while IFS=$'\t' read -r name rel; do
+	[ -z "${name:-}" ] && continue
+	src="$KIT/$rel"
+	if [ ! -f "$src" ]; then
+		echo "Missing from kit: $rel" >&2
+		missing=$((missing + 1))
+		continue
+	fi
+	ln -sfn "$src" ".claude/rules/$name"
+	linked=$((linked + 1))
+done < .claude/rules.manifest
+
+if [ "$missing" -gt 0 ]; then
+	echo "$missing rule(s) in the manifest are absent from the kit. Run /milky-kit:upgrade." >&2
+	exit 1
+fi
+
+echo "Linked $linked kit rules from $KIT"

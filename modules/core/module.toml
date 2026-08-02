@@ -11,6 +11,11 @@ src = "mise-tasks/worktree/sync-env"
 dest = ".mise/tasks/worktree/sync-env"
 
 [[files]]
+src = "mise-tasks/rules/link"
+dest = ".mise/tasks/rules/link"
+mode = "0755"
+
+[[files]]
 src = "AGENTS.md"
 dest = "AGENTS.md"
 
