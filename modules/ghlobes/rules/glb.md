@@ -15,10 +15,12 @@ ghlobes is a Rust CLI that wraps `gh` + GitHub GraphQL for beads-like workflow o
 
 | Command | What it does |
 |---|---|
-| `glb ready` | Show issues ready to work (unblocked, not in progress) |
+| `glb ready` | Show issues ready to work (unblocked, Todo, not an epic) |
+| `glb ready --autopilot` | Only issues an autonomous agent may claim. `--explain` prints why each other issue was skipped |
 | `glb list` | List all open issues. Filters: `--status`, `--priority`, `--assignee` |
 | `glb show <num>` | Show issue details, deps, status, priority, points, sub-issues |
 | `glb create --title "..." --body "..." --priority P1 --status Backlog --points 3` | Create an issue (ALWAYS include `--body`) |
+| `glb create --autopilot ...` | Create an issue an autonomous agent may claim (adds the `autopilot` label) |
 | `glb update <num> --claim` | Claim issue (sets status to In Progress) |
 | `glb update <num> --status <s> --priority <p> --points <n>` | Update fields |
 | `glb close <num>` | Close an issue |
@@ -51,6 +53,22 @@ ghlobes is a Rust CLI that wraps `gh` + GitHub GraphQL for beads-like workflow o
 `glb ready` shows only **Todo** issues that are unblocked, not an epic with open sub-issues, and unassigned. Claimability is an allowlist: any status other than `Todo` is excluded, so a status added to the board later is never claimable by default.
 
 `Needs Decision` is distinct from `glb blocked`. Blocked means waiting on another **issue**; Needs Decision means waiting on **you**.
+
+## Autopilot eligibility
+
+An autonomous agent may only claim an issue that is **opted in explicitly**. `glb ready --autopilot` returns issues that are unblocked and `Todo`, and additionally:
+
+1. Carry the `autopilot` label. Adding it is a deliberate human act - consent per issue.
+2. Have a non-empty `## Acceptance criteria` section.
+3. Have a non-empty `## Tests` section.
+
+Those two sections are what an agent needs to work unattended and to know when it is finished, so their absence is a reliable proxy for "a human should drive this."
+
+**Opt-in, never opt-out.** Forgetting the label means an agent leaves the issue alone. A `no-autopilot` label would mean forgetting it lets an agent run unattended on work nobody vetted, which is the wrong way round.
+
+A heading with nothing under it counts as missing - an empty `## Tests` satisfies a grep while telling an agent nothing.
+
+Eligibility is a filter, not a transition: an ineligible issue is skipped and its status is never changed. Use `glb ready --autopilot --explain` to see why each issue was passed over.
 
 ## Points (Fibonacci)
 
