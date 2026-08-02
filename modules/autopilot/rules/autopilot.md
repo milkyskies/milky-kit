@@ -43,6 +43,18 @@ Stop only for these. Everything else is yours to decide, and an agent that asks 
 
 Plus one mechanical stop: **three failed attempts.** Park with a comment listing what was tried and why each failed, rather than burning a night's tokens on one impossible issue.
 
+## Mark every comment you post
+
+Every comment an agent writes ends with:
+
+```markdown
+<!-- autopilot:agent -->
+```
+
+The bookkeeping workflow uses this to tell an agent's comment from a human's. Recognising the agent by comment author would break the moment the token changes — a PAT, `GITHUB_TOKEN`, and a GitHub App all report different identities, and a configuration detail must not be able to break the resume loop.
+
+Miss the marker and the workflow treats the agent's own question as a human answer, requeueing the issue immediately and burning an attempt.
+
 ## The decision comment protocol
 
 When stopping, post a comment in exactly this shape. The marker is what `/decisions` parses.
@@ -60,6 +72,8 @@ When stopping, post a comment in exactly this shape. The marker is what `/decisi
 **Recommendation:** <n>
 
 _Stopped at: <what you were doing>. Reply in a comment and I will pick it up._
+
+<!-- autopilot:agent -->
 ```
 
 Then `glb update <num> --status "Needs Decision"` and exit. Leave the worktree in place; the next attempt resumes in it.
@@ -68,9 +82,11 @@ Then `glb update <num> --status "Needs Decision"` and exit. Leave the worktree i
 
 ## Answering
 
-Either run `/decisions`, or reply directly on GitHub and let the dispatcher notice. Both routes end the same way: a comment on the issue and the status back to `Todo`.
+Either run `/decisions`, or reply directly on GitHub. Both routes end the same way: a comment on the issue and the status back to `Todo`.
 
-**A human flips the status, not the agent.** If the agent re-checked on its own it would consume a half-written reply and burn an attempt.
+If the project installs the bookkeeping workflow (`modules/autopilot/scaffold/.github/workflows/`), replying on GitHub is enough — the workflow flips the status server-side, so an answer written on a phone is queued before you next open the laptop. Without it, flip the status yourself.
+
+**A human flips the status, never the agent.** If the agent re-checked on its own it would consume a half-written reply and burn an attempt.
 
 ## Two gates stay human, always
 

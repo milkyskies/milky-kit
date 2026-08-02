@@ -1,0 +1,119 @@
+name: Autopilot bookkeeping
+
+# Two events in the autopilot loop happen outside the local session: a human answers a parked decision, and a PR merges. Handling them here rather than in the dispatcher keeps the dispatcher pure - read glb, spawn, write glb - with no polling, no timestamp comparison, and no debounce window. It also means the board is already correct when you open the laptop, so a decision answered from a phone is queued rather than waiting to be discovered.
+#
+# This does NOT make cron viable for the dispatcher itself. A cloud runner cannot reach local worktrees or spawn local agents. Only the bookkeeping belongs here.
+#
+# Status is set through `gh api graphql` rather than glb, because installing a Rust toolchain on every issue comment costs more than the three API calls it would save.
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.issue.number || github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  requeue-answered-decision:
+    if: github.event_name == 'issue_comment' && !github.event.issue.pull_request
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      repository-projects: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Requeue if a human answered a parked decision
+        env:
+          GH_TOKEN: ${{ secrets.AUTOPILOT_TOKEN || secrets.GITHUB_TOKEN }}
+          ISSUE: ${{ github.event.issue.number }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          COMMENT_AT: ${{ github.event.comment.created_at }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          source .github/scripts/autopilot-status.sh
+
+          # The agent marks its own comments rather than being recognised by author. Author identity changes with the token (PAT vs GITHUB_TOKEN vs GitHub App), and a token swap must not be able to break the resume loop.
+          if printf '%s' "$COMMENT_BODY" | grep -q '<!-- autopilot:agent -->'; then
+            echo "Comment is from the agent. Nothing to do."
+            exit 0
+          fi
+
+          if [ "$(current_status "$ISSUE")" != "Needs Decision" ]; then
+            echo "Issue #$ISSUE is not parked. Nothing to do."
+            exit 0
+          fi
+
+          # A reply only counts as an answer if it came after the agent's question; anything earlier is unrelated conversation.
+          question_at=$(gh issue view "$ISSUE" --repo "$REPO" --json comments \
+            | jq -r '[.comments[] | select(.body | contains("autopilot:decision")) | .createdAt] | last // empty')
+
+          if [ -z "$question_at" ]; then
+            echo "No decision block on #$ISSUE. Leaving it parked."
+            exit 0
+          fi
+
+          if [[ "$COMMENT_AT" < "$question_at" ]]; then
+            echo "Comment predates the agent's question. Nothing to do."
+            exit 0
+          fi
+
+          set_status "$ISSUE" "Todo"
+          echo "Requeued #$ISSUE to Todo."
+
+  close-merged-issue:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      repository-projects: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Mark the linked issue Done on merge
+        env:
+          GH_TOKEN: ${{ secrets.AUTOPILOT_TOKEN || secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+          MERGED: ${{ github.event.pull_request.merged }}
+          BODY: ${{ github.event.pull_request.body }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          source .github/scripts/autopilot-status.sh
+
+          issue=$(printf '%s' "$BODY" | grep -oiE '(closes|fixes|resolves)[[:space:]]+#[0-9]+' | head -1 | grep -oE '[0-9]+' || true)
+
+          if [ -z "$issue" ]; then
+            echo "PR #$PR links no issue. Nothing to do."
+            exit 0
+          fi
+
+          if [ "$MERGED" != "true" ]; then
+            # Closing without merging is a human decision, not a state transition. Say so and leave the status alone.
+            gh issue comment "$issue" --repo "$REPO" \
+              --body "PR #$PR was closed without merging. Status left unchanged."
+            exit 0
+          fi
+
+          # A replayed event must be a no-op, so an issue that has already moved on is left alone.
+          if [ "$(gh issue view "$issue" --repo "$REPO" --json state -q .state)" = "CLOSED" ]; then
+            echo "Issue #$issue already closed. Nothing to do."
+            exit 0
+          fi
+
+          set_status "$issue" "Done"
+          gh issue close "$issue" --repo "$REPO" --comment "Closed by merged PR #$PR."
+          echo "Closed #$issue."
