@@ -17,8 +17,9 @@ export default defineConfig({
 		// Bind to 0.0.0.0 so phones / tablets / Capacitor live-reload on the
 		// same Wi-Fi can hit `http://<lan-ip>:5173`. Default `localhost` bind
 		// blocks LAN access. Safe because (1) the API's CORS_ORIGINS still
-		// gates cross-origin reads and (2) pnpm.overrides pins esbuild to a
-		// version without the dev-server SSRF advisory.
+		// gates cross-origin reads and (2) the `overrides` block in
+		// pnpm-workspace.yaml pins esbuild to a version without the dev-server
+		// SSRF advisory.
 		host: true,
 		proxy: {
 			"/api": {

@@ -1,3 +1,24 @@
 packages:
   - "apps/*"
   - "packages/*"
+
+# These settings used to live under the `pnpm` key in package.json. pnpm 11 stopped reading that key and reports it only as a warning during install, so anything left there is silently ignored. Keep them in this file.
+
+# Packages allowed to run install scripts. pnpm disables preinstall/install/postinstall by default; only what is listed here may run them. Each entry fetches or compiles a native binary and is useless without it. Adding to this list requires a PR.
+onlyBuiltDependencies:
+  - "@biomejs/biome"
+  - "@tailwindcss/oxide"
+  - esbuild
+  - sharp
+  - workerd
+
+# Refuse install if a package's trust level decreased from a prior version, for example a version that previously shipped provenance and no longer does. Catches the common compromise pattern where an attacker republishes from a stolen account without the original publisher's signing setup.
+trustPolicy: no-downgrade
+
+# Refuse transitive deps from non-registry sources (git URLs, tarballs, local paths). Direct deps may still use exotic sources when explicitly declared, but a transitive dep is never allowed to drag in code from outside the registry.
+blockExoticSubdeps: true
+
+# Pins transitive dep versions across the whole graph. Use when a vulnerability is identified in a transitive dep that direct deps have not patched yet. Every pin gets a comment naming the advisory, and is removed once upstream catches up, because a stale override locks you out of legitimate version bumps. See .claude/rules/pnpm-security.md.
+overrides:
+  # GHSA-67mh-4wv8-2f99 - esbuild < 0.25.0 lets any website send requests to the dev server. Some older deps (vite plugins, drizzle-kit) still pull an older esbuild transitively.
+  esbuild: "^0.25.0"

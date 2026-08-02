@@ -7,7 +7,7 @@ FROM oven/bun:1.2.10
 WORKDIR /app
 
 # Keep this pnpm version in sync with the root package.json `packageManager`.
-RUN bun install -g pnpm@10.29.3
+RUN bun install -g pnpm@11.18.0
 
 # Install production deps first, keyed only on the manifests, for layer caching.
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./

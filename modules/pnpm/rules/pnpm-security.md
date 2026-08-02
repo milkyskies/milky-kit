@@ -32,9 +32,15 @@ npm i -g @aikidosec/safe-chain
 safe-chain setup
 ```
 
+## Where these settings live
+
+**All pnpm settings below live in `pnpm-workspace.yaml`, at the top level.** pnpm 11 stopped reading the `pnpm` key in `package.json` and reports it only as a warning during install, so settings left in the old place are silently ignored while everything appears to work. Assume misplacement, not error, is how this breaks.
+
+Check with `pnpm config get <setting>` when in doubt. A `[WARN] The "pnpm" field in package.json is no longer read by pnpm` line during install means protection is off.
+
 ## Install-script allowlist
 
-`package.json` declares `pnpm.onlyBuiltDependencies`. pnpm v10 disables `preinstall`/`install`/`postinstall` scripts by default; only the listed packages can run them. Adding a new package to the list requires a PR.
+`pnpm-workspace.yaml` declares `onlyBuiltDependencies`. pnpm disables `preinstall`/`install`/`postinstall` scripts by default; only the listed packages can run them. Adding a new package to the list requires a PR.
 
 The risky moment is bumping an already-allowlisted package — a compromised version inherits the allowance. The cooldown + safe-chain mitigate that.
 
@@ -48,29 +54,30 @@ The risky moment is bumping an already-allowlisted package — a compromised ver
 
 ## Trust policy
 
-`package.json` sets `pnpm.trustPolicy: "no-downgrade"` (pnpm ≥ 10.21). Refuses install if a package's trust level decreased compared to previously installed versions (e.g. previously published with provenance, new version doesn't). Catches the common compromise pattern where an attacker republishes from a stolen account without the original signing setup.
+`pnpm-workspace.yaml` sets `trustPolicy: no-downgrade`. Refuses install if a package's trust level decreased compared to previously installed versions (e.g. previously published with provenance, new version doesn't). Catches the common compromise pattern where an attacker republishes from a stolen account without the original signing setup.
 
-For legitimate exceptions: `pnpm.trustPolicyExclude` (package names that bypass) or `pnpm.trustPolicyIgnoreAfter` (skip for versions older than a duration). Use sparingly with written justification.
+For legitimate exceptions: `trustPolicyExclude` (package names that bypass) or `trustPolicyIgnoreAfter` (skip for versions older than a duration). Use sparingly with written justification.
 
 ## Block exotic transitive deps
 
-`pnpm.blockExoticSubdeps: true` (pnpm ≥ 10.26). Direct deps can still resolve from git URLs / tarballs / local paths when explicitly declared, but a transitive dep can never drag in code from outside the registry.
+`blockExoticSubdeps: true`. Direct deps can still resolve from git URLs / tarballs / local paths when explicitly declared, but a transitive dep can never drag in code from outside the registry.
 
 ## Transitive dep overrides
 
-`pnpm.overrides` pins a vulnerable transitive dep to a fixed version when the direct dep hasn't patched yet. Document each pin in a sibling `//overrides-<name>` key (sibling of `overrides`, not inside it — pnpm rejects `//`-prefixed package selectors). Example:
+`overrides` pins a vulnerable transitive dep to a fixed version when the direct dep hasn't patched yet. Document each pin with a YAML comment directly above it:
 
-```json
-"//overrides-esbuild": "GHSA-67mh-4wv8-2f99 — esbuild < 0.25.0 lets any website send requests to dev server.",
-"overrides": {
-  "esbuild": "^0.25.0"
-}
+```yaml
+overrides:
+  # GHSA-67mh-4wv8-2f99 - esbuild < 0.25.0 lets any website send requests to the dev server.
+  esbuild: "^0.25.0"
 ```
 
 Each override should:
 
-1. Reference an OSV / CVE id in an adjacent `//overrides-<name>` comment so a future reader knows why the pin exists.
+1. Reference an OSV / CVE id in the comment above it so a future reader knows why the pin exists.
 2. Be removed once the upstream direct deps have caught up — leaving stale overrides locks you out of legitimate version bumps.
+
+Scope a pin to a major line (`ws@^7.0.0: "^7.5.11"`) when several majors of the same package are live in the tree, so no consumer is forced across a major boundary.
 
 OSV-Scanner CI surfaces these advisories — when a new advisory lands, add the override + commit the updated lockfile.
 
