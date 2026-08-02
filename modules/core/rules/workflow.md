@@ -14,11 +14,13 @@ cat .milky-kit-mode  # → main  OR  branch  OR  worktrees
 |---|---|---|---|
 | `main` | no — commit on `main` | no | push to `main` directly |
 | `branch` | yes — feature branch in root checkout | no | PR to `main` |
-| `worktrees` | yes — lead on a branch in root | yes — delegated tasks in `../<worktree-dir>/<num>/` | PR to `main` |
+| `worktrees` | yes — in the worktree | yes — **every task by default**, in `../<worktree-dir>/<num>/`; root only via `/here` | PR to `main` |
 
 - **`main`** — direct on main. No branches, no worktrees, no PRs. Best for solo solo work, the kit itself, small personal projects where you trust yourself.
 - **`branch`** — feature branch in the root checkout. Ship via PR. No worktree directory. Best for typical solo work where you still want PR review.
-- **`worktrees`** — a lead agent develops on a feature branch in the root checkout (exactly like `branch` mode) and delegates parallel tasks to isolated worktrees. A worktree task must never switch the root's checked-out branch. Best for one driving agent that spawns sub-agents, or any parallel multi-agent work.
+- **`worktrees`** — **every task gets its own worktree by default.** Working in the root checkout is the exception and requires an explicit `/here`. A worktree task must never switch the root's checked-out branch. Best for parallel multi-agent work, or any time you want the root left free while work happens.
+
+**Do not try to determine your own role.** "Am I the lead?" is not answerable from inside one agent's context, and guessing it is how an agent ends up checking out its branch in a root checkout someone else is using. Whoever spawns an agent creates the worktree first and launches the agent inside it. If you are already in a worktree, that is your answer.
 
 If `.milky-kit-mode` is missing, default to `branch` and tell the user — they should set it explicitly with `/milky-kit:mode <value>`.
 
@@ -90,7 +92,7 @@ In `main` and `branch` modes, also bring the root checkout onto a fresh `main`:
 git checkout main && git pull
 ```
 
-In `worktrees` mode, **do not switch the root's branch.** The root may hold the lead's in-progress feature branch — `git fetch origin` is enough; only `git pull` if the root happens to be on `main`.
+In `worktrees` mode, **do not switch the root's branch.** The root may hold someone else's in-progress feature branch — `git fetch origin` is enough; only `git pull` if the root happens to be on `main`.
 
 ## Read the Docs (all modes)
 
@@ -206,18 +208,18 @@ When `.milky-kit-mode` is `worktrees`, follow this section. Skip the others.
 
 Worktrees mode has two roles. **The default is the worktree:**
 
-- **Delegated worktree task (default)** — unless the user explicitly says otherwise, create an isolated worktree for the task and work there. See `worktrees.md`. Spawned sub-agents on parallel tasks do this too.
-- **Lead, in the root checkout** — only when the user explicitly says "do it here," "in root," or "in the root checkout." Then develop on a feature branch in the root exactly like `branch` mode: create the branch, claim, work, `/ship`, `/land`.
+- **Worktree task (default)** — unless the user explicitly says otherwise, create an isolated worktree for the task and work there. See `worktrees.md`. Spawned sub-agents on parallel tasks do this too.
+- **Root checkout** — only via `/here`, or when the user explicitly says "do it here," "in root," or "in the root checkout." Then develop on a feature branch in the root exactly like `branch` mode: create the branch, claim, work, `/ship`, `/land`.
 
-**Routing rule:** if the user did not say where to do the task, do it in a **worktree**. Work in the root checkout only on an explicit "do it here" / "in root."
+**Routing rule:** if the user did not say where to do the task, do it in a **worktree**. Work in the root checkout only on an explicit `/here` / "do it here" / "in root."
 
-**Iron rule (both roles):** a worktree task must NEVER switch, pull, reset, or rebase the branch checked out in the **root**. No `git checkout <branch>` in root, no `git checkout main && git pull` in root from a worktree flow. To base a worktree on fresh main, `git fetch origin` and branch off `origin/main` — fetch updates refs without touching any working tree. The lead's root branch is sacred.
+**Iron rule (both roles):** a worktree task must NEVER switch, pull, reset, or rebase the branch checked out in the **root**. No `git checkout <branch>` in root, no `git checkout main && git pull` in root from a worktree flow. To base a worktree on fresh main, `git fetch origin` and branch off `origin/main` — fetch updates refs without touching any working tree. The root's branch is sacred; someone else may be mid-edit on it.
 
-### Lead — only when told "do it here" / "in root"
+### Root checkout — only via `/here` or an explicit "in root"
 
 Follow the **`branch` mode** workflow above verbatim: sync (`git fetch origin`, plus `git pull` if on `main`), create `feature/#<num>.<summary>` in the root checkout, `glb update <num> --claim`, work, `/ship`, `/land`.
 
-### Delegated worktree task (default)
+### Worktree task (default)
 
 #### Multi-Agent Environment
 
@@ -225,7 +227,7 @@ Multiple agents run in parallel on separate branches. This means:
 
 - **Only touch files relevant to your task.** Do not modify, stash, reset, or discard files you didn't create or change yourself.
 - **Never run `git stash`, `git reset --hard`, `git checkout -- <file>`, or `git clean`** unless you are certain those changes belong to you. When in doubt, leave it alone.
-- **Never run a git command in the root checkout.** The lead is working there on their own branch — stay in your worktree.
+- **Never run a git command in the root checkout.** Someone may be working there on their own branch — stay in your worktree.
 - If you see unexpected files or changes, investigate before acting — they likely belong to another agent working in parallel.
 
 #### 1. Create a worktree
