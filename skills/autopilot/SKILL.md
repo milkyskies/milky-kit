@@ -1,0 +1,143 @@
+---
+name: autopilot
+description: >
+  Drive eligible issues from Todo to draft PR without human keystrokes. One wake
+  evaluates the board, does the highest-value thing available, and blocks on the
+  next event rather than a timer.
+  TRIGGER when: the user says "/autopilot", "run autopilot", "work the board", or
+  asks to start autonomous work on the backlog.
+  DO NOT TRIGGER when: the user named a specific issue to work on (just do it),
+  or `.milky-kit-mode` is `main`.
+argument-hint: "[--dry-run] [--explain] [--max N]"
+---
+
+# Autopilot
+
+Work the board autonomously. Read `.claude/rules/autopilot.md` first — it carries the state machine, the stop criteria, and the comment protocol this skill assumes.
+
+## Refuse to run when
+
+- **`.milky-kit-mode` is `main`.** Parallel agents in one checkout will trample each other. Say so and stop.
+- **No issue is autopilot-eligible.** `glb ready --autopilot` is empty and there is nothing merged or answered to process. Report and stop; this is a normal outcome, not an error.
+
+## The wake
+
+Not a timer. Do the **first** thing that applies, then re-evaluate:
+
+### 1. Land merged PRs
+
+Cheapest, and it frees dependents this same wake — which is why it runs before anything else.
+
+```bash
+gh pr list --state merged --limit 20 --json number,body,mergedAt
+```
+
+For each merged PR whose linked issue is still open: `/land`, then `glb done <num>`.
+
+Skip if the bookkeeping workflow is installed — it already did this server-side.
+
+### 2. Requeue answered decisions
+
+```bash
+glb list --status "Needs Decision"
+```
+
+For each, check whether the newest comment is a human's (no `<!-- autopilot:agent -->` marker) and postdates the agent's question. If so, `glb update <num> --status Todo`.
+
+Skip if the bookkeeping workflow is installed.
+
+### 3. Fix PRs in trouble
+
+For issues in `In Review`, check the PR:
+
+```bash
+gh pr checks <num>
+gh pr view <num> --json reviews,comments
+```
+
+CI red or unaddressed review comments → spawn a fix agent **in the existing worktree**. Do not create a new one; the branch and its state are already there.
+
+### 4. Start new work
+
+```bash
+glb ready --autopilot
+```
+
+Up to the concurrency cap. For each: create a worktree, spawn a worker (below).
+
+### 5. Nothing to do
+
+Block on the next event. Do not poll.
+
+## Spawning a worker
+
+Create the worktree **before** launching the agent, and launch the agent inside it. The agent must never decide where it belongs — see `workflow.md`.
+
+```bash
+git fetch origin
+git worktree add ../<worktree-dir>/<num> -b feature/#<num>.<summary> origin/main
+```
+
+### herdr backend (`HERDR_ENV=1`)
+
+Visible and interruptible — you can watch a run and take it over. Prefer this while the prompts are still being tuned.
+
+```bash
+WS=$(herdr workspace create --cwd "../<worktree-dir>/<num>" --label "#<num> <slug>" --no-focus \
+  | python3 -c 'import sys,json; print(json.load(sys.stdin)["result"]["root_pane"]["pane_id"])')
+herdr pane run "$WS" "claude"
+herdr wait output "$WS" --match ">" --timeout 15000
+herdr pane run "$WS" "<worker prompt>"
+herdr wait agent-status "$WS" --status done --timeout 3600000
+herdr pane read "$WS" --source recent --lines 200
+```
+
+`herdr wait agent-status` is a real waiter — the wake resumes the instant an agent finishes, with no polling.
+
+### Headless backend
+
+No herdr running. `claude -p "<worker prompt>"` as a subprocess and wait on exit — process exit is the same signal without the visibility.
+
+Either way the glb state transitions are identical. The backend is an implementation detail.
+
+## The worker's job
+
+1. `glb update <num> --claim`
+2. Read the issue body **and every comment**; latest comment wins
+3. Implement in the worktree
+4. `/ship --draft` — quality gates, `/simplify`, `/rulify`, `/write-pr`, draft PR, CI poll
+5. `glb update <num> --status "In Review"`
+
+Or, on hitting one of the four stop criteria: post the decision comment, `glb update <num> --status "Needs Decision"`, exit. Leave the worktree; the next attempt resumes in it.
+
+## Safety
+
+- **Concurrency cap.** Default 3, override with `--max N`. More agents than cores makes everything slower and the output unreadable.
+- **Three attempts per issue.** Track attempts in issue comments. On the third failure, park on `Needs Decision` with what was tried and why each attempt failed. Without this, one impossible issue eats a night of tokens.
+- **Never promote a draft PR to ready.** Never merge. Both are human gates, always.
+
+## `--dry-run` and `--explain`
+
+`--dry-run` evaluates a full wake and prints the action list without executing any of it: no `glb update`, no worktree creation, no spawns, no comments.
+
+`--explain` accounts for every open issue — selected, or the reason it was not:
+
+```
+#141  spawn        eligible, unblocked, slot 2/3
+#69   skip         no `autopilot` label
+#53   skip         labelled, missing `## Tests`
+#137  skip         blocked by #136
+#140  skip         status is Needs Decision
+#138  skip         concurrency cap reached (3/3)
+```
+
+Reasons come from `glb ready --autopilot --explain`, not a reimplementation — a second copy of the rules drifts from the one that actually decides.
+
+**Run `--dry-run` before leaving this unattended.** What makes an autonomous system safe to walk away from is being able to see what it decided, not more approval gates.
+
+## Rules
+
+- **Never spawn on an issue you cannot see in `glb ready --autopilot`.** That command is the gate; do not reimplement its filter.
+- **Never work in the root checkout.** Every worker gets a worktree.
+- **Log every action.** One line per action per wake: issue, action, reason, backend, resulting transition. This is what you read the morning after.
+- **Report what you skipped.** A silent cap reads as "covered everything" when it did not.
