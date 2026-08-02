@@ -44,9 +44,13 @@ ghlobes is a Rust CLI that wraps `gh` + GitHub GraphQL for beads-like workflow o
 - **Backlog** — acknowledged, not yet prioritized for active work
 - **Todo** — ready to be picked up
 - **In Progress** — someone is actively working on it
+- **Needs Decision** — work stopped, parked on a human answer; the question is a comment on the issue
+- **In Review** — a draft PR is open, waiting on human promotion and merge
 - **Done** — completed
 
-`glb ready` shows only **Todo** issues that are unblocked and unassigned.
+`glb ready` shows only **Todo** issues that are unblocked, not an epic with open sub-issues, and unassigned. Claimability is an allowlist: any status other than `Todo` is excluded, so a status added to the board later is never claimable by default.
+
+`Needs Decision` is distinct from `glb blocked`. Blocked means waiting on another **issue**; Needs Decision means waiting on **you**.
 
 ## Points (Fibonacci)
 
