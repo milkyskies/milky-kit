@@ -87,7 +87,7 @@ In any Claude Code session (project doesn't matter for the install):
 /plugin install milky-kit@milkyskies
 ```
 
-Claude clones the repo to its own plugin cache and registers the skills. Run `/help` to confirm `/milky-kit:new`, `:retrofit`, `:upgrade`, `:realign`, `:edit`, `:kit-modify`, `:check-version`, `:purge`, `:mode`, plus the pre-existing `:ship`, `:land`, `:rulify`, `:simplify`, etc. all appear.
+Claude clones the repo to its own plugin cache and registers the skills. Run `/help` to confirm `/milky-kit:new`, `:retrofit`, `:upgrade`, `:realign`, `:edit`, `:kit-modify`, `:check-version`, `:purge`, `:mode`, `:autopilot`, `:decisions`, `:here`, plus the pre-existing `:ship`, `:land`, `:rulify`, `:simplify`, etc. all appear.
 
 To pull future kit changes:
 
@@ -136,7 +136,7 @@ Each project picks one workflow mode via the `.milky-kit-mode` file at its root:
 |---|---|---|---|---|
 | `main` | no — on `main` | no | push to `main` | the kit itself, solo solo work, no review wanted |
 | `branch` (default) | yes — in root checkout | no | PR to `main` | typical solo work, GitHub-native flow |
-| `worktrees` | yes — lead on a branch in root | yes — delegated tasks in `../<worktree-dir>/<num>/` | PR to `main` | one lead agent that spawns parallel sub-agents; isolation matters |
+| `worktrees` | yes — in the worktree | yes — **every task by default**, in `../<worktree-dir>/<num>/`; root only via `/milky-kit:here` | PR to `main` | parallel multi-agent work, autopilot, keeping the root free |
 
 Flip per project at any time:
 
@@ -148,6 +148,81 @@ Flip per project at any time:
 ```
 
 `workflow.md` reads `.milky-kit-mode` at session start and follows the matching task workflow section.
+
+In `worktrees` mode a worktree is the **default** for every task. To work in the root checkout instead — a typo fix, a one-line config change, anything not worth paying worktree setup for — use `/milky-kit:here`.
+
+## Autopilot
+
+Autopilot drives eligible issues from `Todo` to a **draft PR** with no keystrokes from you. It stops there: promoting a draft to ready-for-review and merging are always yours.
+
+The protocol it follows — the state machine, the four stop criteria, the decision comment format — lives in `modules/autopilot/rules/autopilot.md`. This section is about operating it.
+
+### 1. Switch to worktrees mode
+
+```
+/milky-kit:mode worktrees
+```
+
+Autopilot refuses to run in `main` or `branch` mode. Both put every worker in one checkout, where parallel agents trample each other.
+
+### 2. Opt an issue in
+
+Nothing runs on an issue you have not explicitly opted in. There is no `no-autopilot` label, because forgetting a label must mean an agent leaves the issue alone rather than running unattended on work nobody vetted.
+
+```bash
+glb create --autopilot -t "..." -b "..." -p P2 --points 3   # at creation
+gh issue edit <num> --add-label autopilot                    # after the fact
+```
+
+### 3. Check it actually qualifies
+
+The label alone is not enough. An issue also needs non-empty `## Acceptance criteria` and `## Tests` sections — those are what an agent needs to work unattended and to know when it is finished.
+
+```bash
+glb ready --autopilot --explain
+```
+
+`--explain` accounts for every open issue and names why each was passed over: `no autopilot label`, `labelled, missing ## Tests`, `blocked by #136`, `status is Needs Decision`.
+
+**An empty first run is the gate working, not a failure.** On a fresh repository nothing carries the label, so autopilot correctly finds nothing to do.
+
+### 4. Dry run before you walk away
+
+```
+/milky-kit:autopilot --dry-run --explain
+```
+
+Prints the actions a wake would take and executes none of them. What makes an autonomous system safe to leave running is being able to see what it decided, not more approval gates.
+
+### 5. Run it
+
+```
+/milky-kit:autopilot
+```
+
+Inside herdr you get one workspace per in-flight issue, so you can watch any agent and take it over mid-run. Without herdr it runs headless; the board transitions are identical either way.
+
+### Answering what it gets stuck on
+
+When an agent hits something it must not guess at, it posts the question as an issue comment and parks the issue on `Needs Decision`.
+
+```
+/milky-kit:decisions
+```
+
+presents each parked question with the options the agent proposed, and requeues whatever you answer.
+
+You can also just reply on the GitHub issue — including from the mobile app. Install `modules/autopilot/scaffold/.github/workflows/autopilot-bookkeeping.yml` and the status flips server-side, so a decision answered on your commute is queued before you next open the laptop.
+
+### Running it continuously
+
+```bash
+herdr --session autopilot        # persistent, survives closing the terminal
+# then, in a pane inside it:
+/loop /milky-kit:autopilot       # no interval — it self-paces
+```
+
+Not cron: a cloud runner cannot reach your local worktrees or spawn local agents. Only the GitHub-side bookkeeping belongs in Actions.
 
 ## Versioning
 
