@@ -136,4 +136,6 @@ Keep the floor even for small issues: at minimum a one-paragraph problem stateme
 glb init
 ```
 
-writes `.ghlobes.toml` against the detected GitHub project. The project must have a GitHub Project (Beta) with single-select fields `Status` and `Priority` configured — `glb init` shows what's needed if missing.
+writes `.ghlobes.toml` against the detected GitHub project, creating the GitHub Project (Beta) and its `Status`, `Priority`, and `Points` fields if they do not exist.
+
+Run against an existing project, `glb init` repairs the `Status` field by appending any missing options. It is idempotent and preserves existing option IDs, so issues keep their current status; custom statuses you added yourself are left alone. Re-run it after upgrading the kit to pick up new statuses.
