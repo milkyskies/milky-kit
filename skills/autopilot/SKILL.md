@@ -133,7 +133,25 @@ Or, on hitting one of the four stop criteria: post the decision comment, `glb up
 
 Reasons come from `glb ready --autopilot --explain`, not a reimplementation — a second copy of the rules drifts from the one that actually decides.
 
+`--dry-run` must be genuinely side-effect free. No issue comments, no label writes, no `gh pr` mutations. If you cannot compute something without writing, report that you could not rather than writing.
+
 **Run `--dry-run` before leaving this unattended.** What makes an autonomous system safe to walk away from is being able to see what it decided, not more approval gates.
+
+## The decision log
+
+Every real wake appends one line per action to `.autopilot/log.jsonl`, git-ignored. This is the artifact you read the morning after, so it must be reconstructable without the transcript.
+
+```jsonl
+{"at":"2026-08-02T09:14:22Z","issue":141,"action":"spawn","reason":"eligible, unblocked, slot 1/3","backend":"herdr","from":"Todo","to":"In Progress"}
+{"at":"2026-08-02T09:41:07Z","issue":141,"action":"park","reason":"attempt 3 of 3 failed","backend":"herdr","from":"In Progress","to":"Needs Decision"}
+{"at":"2026-08-02T09:41:09Z","issue":137,"action":"skip","reason":"blocked by #136","backend":null,"from":"Todo","to":"Todo"}
+```
+
+`action` is one of `spawn`, `land`, `requeue`, `fix`, `park`, `skip`. A `skip` records `from` equal to `to`, because eligibility is a filter and never transitions anything.
+
+Add `.autopilot/` to `.gitignore` on first run. The log is local telemetry, not shared state — everything another machine needs is already on the board.
+
+**Log skips too.** A wake that only logs what it did reads as "covered everything" when it silently passed over nine issues.
 
 ## Rules
 
