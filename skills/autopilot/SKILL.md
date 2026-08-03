@@ -82,17 +82,31 @@ git worktree add ../<worktree-dir>/<num> -b feature/#<num>.<summary> origin/main
 
 Visible and interruptible — you can watch a run and take it over. Prefer this while the prompts are still being tuned.
 
+**One tab per issue, inside the project's existing workspace. Never a workspace per issue.** A workspace is a *project* context; minting one per issue puts `#141` as a peer of `adoba` in the sidebar, and four concurrent issues double the project list. Tabs are what herdr provides for subcontexts within a project.
+
+Discover your own workspace from the focused pane — `workspace list` does not carry a cwd, so there is nothing to match a path against:
+
 ```bash
-WS=$(herdr workspace create --cwd "../<worktree-dir>/<num>" --label "#<num> <slug>" --no-focus \
+WS=$(herdr pane list | python3 -c 'import sys,json; print(next(p["workspace_id"] for p in json.load(sys.stdin)["result"]["panes"] if p.get("focused")))')
+
+PANE=$(herdr tab create --workspace "$WS" --cwd "../<worktree-dir>/<num>" \
+  --label "#<num> <slug>" --no-focus \
   | python3 -c 'import sys,json; print(json.load(sys.stdin)["result"]["root_pane"]["pane_id"])')
-herdr pane run "$WS" "claude"
-herdr wait output "$WS" --match ">" --timeout 15000
-herdr pane run "$WS" "<worker prompt>"
-herdr wait agent-status "$WS" --status done --timeout 3600000
-herdr pane read "$WS" --source recent --lines 200
+
+herdr pane run "$PANE" "claude"
+herdr wait output "$PANE" --match ">" --timeout 15000
+herdr pane run "$PANE" "<worker prompt>"
+herdr wait agent-status "$PANE" --status done --timeout 3600000
+herdr pane read "$PANE" --source recent --lines 200
 ```
 
+`--cwd` on `tab create` starts the tab's root pane in the worktree, so no `cd` is needed.
+
 `herdr wait agent-status` is a real waiter — the wake resumes the instant an agent finishes, with no polling.
+
+**Never parse or construct ids by format.** They are `w3:pC` / `w3:tC` in practice, not the `1-1` shape herdr's own docs show, and they compact when tabs close. Always read them back from the response you just got.
+
+Close the tab when the issue reaches `In Review` or parks. `herdr tab close <tab_id>` — the tab is a view, and leaving finished ones open buries the running agents.
 
 ### Headless backend
 
