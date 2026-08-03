@@ -49,9 +49,29 @@ A question is worth asking when two plausible designs exist, a scope boundary is
 
 **Never invent acceptance criteria.** If the sentence genuinely does not determine what "done" means, ask. A fabricated criterion is worse than a missing one: a worker will implement against it and hand back the wrong thing having satisfied every box.
 
-### 3. Propose points and priority
+### 3. Assign points and priority
 
-Fibonacci per `glb.md` — `1, 2, 3, 5, 8, 13`. State the reasoning in one line so a wrong guess is cheap to correct.
+**Set both. Do not ask.** State the reasoning in one line each so a wrong call is cheap to correct — a number you can argue with beats a question you have to answer.
+
+**Points — you can estimate this, so do.** You just read the code: you know how many files, how many layers, and whether a pattern exists to copy. Fibonacci per `glb.md`:
+
+| | |
+|---|---|
+| `1` | one function in one file, test already exists beside it |
+| `2` | a few files in one layer, pattern to follow |
+| `3` | crosses layers, needs new tests |
+| `5` | a day; touches several areas or has no pattern to copy |
+| `8` | several days |
+| `13` | too big — say so and propose the split rather than filing it |
+
+**Priority — you mostly cannot know this, so default it.** Urgency is about what the user needs next week, which is not in the code. Use **P2** unless their sentence actually says otherwise:
+
+- **P0** — they said broken, crashing, losing data, or a security hole
+- **P1** — they said it blocks something, or named a deadline
+- **P2** — everything else. This is the honest answer most of the time.
+- **P3/P4** — they said someday, eventually, or nice to have
+
+Do not infer urgency from how the work sounds. A migration is not P0 because migrations feel serious; it is P0 if something is broken right now.
 
 ### 4. Show it, then file
 
@@ -76,5 +96,6 @@ Report the issue number and the line the new issue appears on. If it is in the s
 ## Rules
 
 - **One sentence in, one issue out.** If the description covers several separable pieces of work, say so and propose splitting it rather than filing one vague issue.
+- **Never ask for points or priority.** Assign them and show your reasoning. Asking hands back a decision the user came here to avoid making.
 - **Carry the user's framing.** `## Problem` is theirs; the mechanics are yours to draft. Do not rewrite their intent into what you would have asked for.
 - **Do not implement anything.** This files an issue. If they wanted the work done, they would have asked for the work.
