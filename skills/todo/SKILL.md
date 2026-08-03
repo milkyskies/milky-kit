@@ -29,6 +29,17 @@ Draft all four sections from that. Most of what a questionnaire would ask is ans
 - **`## What this issue does`** — the mechanics, broken into named sub-behaviours.
 - **`## Acceptance criteria`** — checkable outcomes.
 - **`## Tests`** — the tests that verify it, named against the tiers in `testing.md`.
+- **`## Area`** — the path globs this issue will touch, one per line.
+
+`## Area` exists because autopilot picks an implementation tier **before** the work exists, so it cannot inspect a diff. You are reading the code right now, which makes this the only honest moment to record it. Match the granularity of the project's `## Implementation tiers` table in `CLAUDE.md` so the two line up:
+
+```markdown
+## Area
+- apps/api/src/domain/balloon/**
+- packages/adoba_core/lib/src/balloon/**
+```
+
+If the project declares no tier table, still write it — it tells a human where to look, and the table may arrive later.
 
 ### 2. Ask only about genuine forks
 

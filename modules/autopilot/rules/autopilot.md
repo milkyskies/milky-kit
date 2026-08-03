@@ -26,6 +26,72 @@ The label answers one question - may this run unattended - and it is the only qu
 
 An ineligible issue is skipped, never parked. It was never claimed, so its status is not the agent's to change.
 
+## The area table
+
+Two decisions — which model implements an issue, and whether its diff earns a review pass — take the same input: **what part of the codebase it touches.**
+
+Where a similar implementation already exists, the work is pattern-matching. A cheap model does that well, and a simplify pass finds nothing in it. Where the agent must design — domain rules, a schema change, a money path — that is judgement, which is what the expensive model and the review pass are both for.
+
+The kit owns the shape; **the contents are the project's**. "Netcode" is meaningless in a Flutter API and "drizzle migrations" is meaningless in a Godot game. Each project declares its own in `CLAUDE.md`:
+
+```markdown
+## Implementation tiers
+
+Opus:
+- apps/api/drizzle/migrations/**    irreversible
+- apps/api/src/domain/**            business rules; nothing to copy
+- apps/api/src/**/auth/**           expensive when wrong
+
+Sonnet:
+- apps/mobile/lib/features/**/ui/**  widget layout; heavily patterned
+- packages/*/lib/src/**              pure functions with existing tests
+
+Haiku:
+- docs/**, locale/**, config, version bumps
+
+## Correctness-critical paths
+
+Always get the review pass, whatever the diff size.
+
+- apps/api/drizzle/migrations/**
+- apps/api/src/**/auth/**
+```
+
+A project that declares neither routes everything to Sonnet with no review pass, and still works.
+
+### Routing order
+
+1. **`needs:opus` label** — the human who filed it knows
+2. **P0**
+3. **Area matches the table** — use that tier
+4. **No match** — Sonnet
+5. **Failed *or parked*** — escalate one tier and retry
+
+Step 5 is a backstop, not the plan. Starting everything cheap and escalating sounds efficient and is not: some work should never get a cheap first attempt, because the cost of a wrong one is not a wasted run but a human interrupted.
+
+**Escalate on parking, not only on failure.** A weaker model mostly does not write bad code — it parks more, hitting ambiguity a stronger model would have decided. Every false park costs human attention, which is the scarce resource here. So a park on the first attempt earns one retry a tier up before anyone is notified. If the stronger model parks too, the question is real and worth your time.
+
+### The review pass, from the same table
+
+- **Correctness-critical path** → always run `/simplify` and `/rulify`, whatever the size.
+- **Otherwise** → only above roughly **50 changed lines** of non-generated code.
+- **Never** → values, constants, config, input maps, text, docs, renames, generated artifacts. At any size.
+
+**Say which and why, every time** — `no review pass: 15 lines, not correctness-critical`. A silent skip reads as "this was checked". That is the failure a merge gate exists to prevent, and it is worse than skipping loudly.
+
+### Roles get fixed tiers
+
+Only the worker is routed. These are stable:
+
+| Role | Tier |
+|---|---|
+| Dispatcher — read board, decide | Haiku |
+| CI-fix agent — read log, apply fix | Sonnet |
+| Review pass | Opus |
+| Decision comment | Opus |
+
+The decision comment is Opus because deciding *what to ask a human* is the highest-leverage sentence an agent writes all run.
+
 ## Read the comments before the body
 
 Design decisions, spec changes, and human answers arrive as **comments**, not body edits. Before implementing:
