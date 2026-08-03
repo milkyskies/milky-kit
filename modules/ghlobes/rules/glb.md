@@ -56,17 +56,15 @@ ghlobes is a Rust CLI that wraps `gh` + GitHub GraphQL for beads-like workflow o
 
 ## Autopilot eligibility
 
-An autonomous agent may only claim an issue that is **opted in explicitly**. `glb ready --autopilot` returns issues that are unblocked and `Todo`, and additionally:
-
-1. Carry the `autopilot` label. Adding it is a deliberate human act - consent per issue.
-2. Have a non-empty `## Acceptance criteria` section.
-3. Have a non-empty `## Tests` section.
-
-Those two sections are what an agent needs to work unattended and to know when it is finished, so their absence is a reliable proxy for "a human should drive this."
+An autonomous agent may only claim an issue that is **opted in explicitly**. `glb ready --autopilot` returns issues that are unblocked, `Todo`, and carry the `autopilot` label. Adding the label is a deliberate human act - consent per issue.
 
 **Opt-in, never opt-out.** Forgetting the label means an agent leaves the issue alone. A `no-autopilot` label would mean forgetting it lets an agent run unattended on work nobody vetted, which is the wrong way round.
 
-A heading with nothing under it counts as missing - an empty `## Tests` satisfies a grep while telling an agent nothing.
+**The label is the whole gate.** Eligibility used to also require non-empty `## Acceptance criteria` and `## Tests` sections, on the theory that their absence proved a human should drive. It did not survive contact with a real board: the section check excluded exactly one issue out of thirty-three, and that issue was fully specified under a heading called `## What to do`. It rejected a heading name, not a thin spec.
+
+Consent and specification are different questions and only the first is the tracker's to enforce. Whether an issue says enough to finish is a judgement the agent makes **while reading it**, and it already has somewhere to put that answer: the decision-comment protocol in `autopilot.md` parks an underspecified issue on `Needs Decision`, states the question with numbered options, and proposes the issue body it needed. That is strictly more useful than being filtered out before anyone looked - you get a draft spec instead of silence.
+
+The house template below still asks for both sections, and issues are still better with them. That is a writing convention now, not a gate.
 
 Eligibility is a filter, not a transition: an ineligible issue is skipped and its status is never changed. Use `glb ready --autopilot --explain` to see why each issue was passed over.
 
