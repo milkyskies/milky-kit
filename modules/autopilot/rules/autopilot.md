@@ -20,7 +20,9 @@ The payoff for keeping the transport on GitHub is that the mobile app is a free 
 
 ## Eligibility is opt-in
 
-An agent may only claim an issue that carries the `autopilot` label **and** has non-empty `## Acceptance criteria` and `## Tests` sections. See `glb.md`. Forgetting the label means an agent leaves the issue alone.
+An agent may only claim an issue that carries the `autopilot` label. That label is the whole gate. See `glb.md`. Forgetting it means an agent leaves the issue alone.
+
+The label answers one question - may this run unattended - and it is the only question a tracker can answer without reading. **Whether the issue says enough to finish is the agent's call, made while reading it**, and the answer goes in a decision comment rather than a filter. An issue too thin to implement is claimed, read, and parked on `Needs Decision` with the question and a proposed body. A human then gets a draft spec back instead of an issue that silently never ran.
 
 An ineligible issue is skipped, never parked. It was never claimed, so its status is not the agent's to change.
 
@@ -78,6 +80,8 @@ _Stopped at: <what you were doing>. Reply in a comment and I will pick it up._
 
 Then `glb update <num> --status "Needs Decision"` and exit. Leave the worktree in place; the next attempt resumes in it.
 
+**Parking must reach the human, not just the board.** A comment nobody is looking at is the same as no comment: the run stalls silently and the board looks busy. The dispatcher sends a push notification naming the issue and the question the moment it sees a worker park - see the autopilot skill. The worker's job is to make that notification worth reading, which is what the numbered options below are for.
+
 **Always offer numbered options.** A question with concrete options is answered with one keypress; a question in prose costs a paragraph. If you genuinely cannot enumerate options, say so explicitly rather than padding the list with filler.
 
 ## Propose the issue you needed
@@ -96,11 +100,11 @@ When you park because the issue was **underspecified** — stop reason 1, not th
 Rules for the proposal:
 
 - **Carry `## Problem` through unchanged, byte for byte.** Intent is the human's; only the mechanics are yours to draft.
-- Fill in `## Acceptance criteria` and `## Tests` concretely enough to satisfy the eligibility gate.
+- Fill in `## Acceptance criteria` and `## Tests` concretely enough that the next attempt can finish without asking again.
 - Resolve the ambiguity into explicit numbered options rather than prose.
 - Do not post one for the other three stop reasons. A security decision needs an answer, not a rewritten spec.
 
-This is the fastest route from a human-only issue to an autopilot-eligible one: the agent drafts the spec, a human approves it. Issue quality improves as a side effect of running the system rather than as separate discipline.
+**This section carries the weight the eligibility gate used to.** Nothing now stops a thin issue from being claimed, so the check happens here instead: an agent reads it, finds it underspecified, and hands back the spec it needed. A human approves a draft rather than authoring one cold. Issue quality improves as a side effect of running the system rather than as separate discipline.
 
 ## Answering
 

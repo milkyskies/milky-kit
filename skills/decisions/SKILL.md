@@ -63,7 +63,7 @@ If the issue also carries an `<!-- autopilot:proposed-body -->` block, the agent
   <original>"
   gh issue edit <num> --body-file <proposed>
   ```
-  Then add the `autopilot` label **only if** the result now has non-empty `## Acceptance criteria` and `## Tests`. Check with `glb ready --autopilot --explain` rather than eyeballing it.
+  The issue keeps whatever label it already had — approving a body does not grant consent it did not have. If it is not labelled yet, add it deliberately, and confirm with `glb ready --autopilot --explain` rather than eyeballing it.
 - **Edit** — take the user's changes, then approve as above.
 - **Reject** — leave body and status untouched.
 

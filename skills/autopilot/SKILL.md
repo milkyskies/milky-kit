@@ -126,6 +126,25 @@ Either way the glb state transitions are identical. The backend is an implementa
 
 Or, on hitting one of the four stop criteria: post the decision comment, `glb update <num> --status "Needs Decision"`, exit. Leave the worktree; the next attempt resumes in it.
 
+## Ping when a worker parks
+
+A parked issue is the one autopilot outcome that cannot make progress on its own. Everything else resolves on the next wake; this waits on a person, and a person who does not know is a run that stalls until morning for no reason.
+
+So whenever a wake observes a worker move an issue to `Needs Decision`, send a **PushNotification** naming the issue and its question in one line:
+
+```
+#141 parked: should a report notify a channel or land in an admin query? 2 options in the comment.
+```
+
+Rules:
+
+- **One push per park, not per wake.** Re-notifying an issue that was already `Needs Decision` when this wake began trains the user to ignore them. Only push for issues that transitioned during *this* wake.
+- **Carry the question, not the status.** "Autopilot needs a decision" tells the user nothing they cannot see on the board. The question is what lets them answer from a phone without opening the laptop.
+- **Do not push for the other outcomes.** A draft PR opened, an issue landed, a wake with nothing to do — all of those are readable the next time they look. Only parks interrupt.
+- Log the park to `.autopilot/log.jsonl` as usual. The push is the interrupt; the log is the record.
+
+Answering is unchanged: a human comments, the bookkeeping workflow flips the status back to `Todo`, and the next wake resumes in the worktree that is still there.
+
 ## Safety
 
 - **Concurrency cap.** Default 5, override with `--max N`. More agents than cores makes everything slower and the output unreadable.
@@ -141,7 +160,6 @@ Or, on hitting one of the four stop criteria: post the decision comment, `glb up
 ```
 #141  spawn        eligible, unblocked, slot 2/5
 #69   skip         no `autopilot` label
-#53   skip         labelled, missing `## Tests`
 #137  skip         blocked by #136
 #140  skip         status is Needs Decision
 #138  skip         concurrency cap reached (5/5)

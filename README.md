@@ -194,13 +194,13 @@ gh issue edit <num> --add-label autopilot                    # after the fact
 
 ### 3. Check it actually qualifies
 
-The label alone is not enough. An issue also needs non-empty `## Acceptance criteria` and `## Tests` sections — those are what an agent needs to work unattended and to know when it is finished.
+The label is the whole gate — an agent may claim any labelled, unblocked `Todo` issue. It does not have to look well specified first: an agent that finds one too thin to implement parks it on `Needs Decision`, asks the question with numbered options, and proposes the issue body it needed.
 
 ```bash
 glb ready --autopilot --explain
 ```
 
-`--explain` accounts for every open issue and names why each was passed over: `no autopilot label`, `labelled, missing ## Tests`, `blocked by #136`, `status is Needs Decision`.
+`--explain` accounts for every open issue and names why each was passed over: `no autopilot label`, `blocked by #136`, `status is Needs Decision`.
 
 **An empty first run is the gate working, not a failure.** On a fresh repository nothing carries the label, so autopilot correctly finds nothing to do.
 
