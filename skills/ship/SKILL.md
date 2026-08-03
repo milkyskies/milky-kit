@@ -1,10 +1,10 @@
 ---
 name: ship
 description: >
-  Run quality gates, /simplify, /rulify, create or update a PR, poll CI, then mark ready.
-  TRIGGER when: (1) the user says "ship it", "ship", or asks to create a PR, OR (2) you have finished implementing a task and are ready to submit it -- invoke this automatically as part of the workflow.
+  Run quality gates, create or update a PR, poll CI, then mark ready. Pass --review to also run /simplify and /rulify first; without it neither runs.
+  TRIGGER when: (1) the user says "ship it", "ship", or asks to create or open a PR, OR (2) you have finished implementing a task and are ready to submit it -- invoke this automatically as part of the workflow.
   DO NOT TRIGGER when: the user just wants to run tests or quality gates without creating a PR.
-argument-hint: "[issue number (optional, inferred from branch if omitted)]"
+argument-hint: "[issue number (optional, inferred from branch)] [--review]"
 ---
 
 # Ship
@@ -12,13 +12,16 @@ argument-hint: "[issue number (optional, inferred from branch if omitted)]"
 Full pipeline. Shape depends on the project's workflow mode (see `modules/core/rules/workflow.md`):
 
 - **`main` mode**: quality gates → push to main → `glb done`. No PR.
-- **`branch` or `worktrees` mode**: quality gates → code review → PR → CI loop → mark ready. Full flow below.
+- **`branch` or `worktrees` mode**: quality gates → PR → CI loop → mark ready. Full flow below.
 
-On **re-runs** (PR already exists), skip PR creation — just run quality gates, code review, push, and resume the CI + merge loop.
+**`/simplify` and `/rulify` do not run unless you pass `--review`.** They rewrite code, and whether a diff is worth that is the author's call, not this skill's.
+
+On **re-runs** (PR already exists), skip PR creation — just run quality gates, push, and resume the CI + merge loop. `--review` behaves the same on a re-run as on a first run.
 
 ## Inputs
 
 - `$ARGUMENTS` — issue number. If omitted, infer from the current branch name (e.g. `feature/#123.foo` -> `123`).
+- `--review` — also run the review passes (`/simplify`, `/rulify`) before opening the PR. Off by default.
 
 ## Step 0: Read the workflow mode
 
@@ -49,9 +52,15 @@ mode=$(cat .milky-kit-mode 2>/dev/null || echo "branch")
 
 If anything is ✗, finish it before proceeding.
 
-## Step 3: Code review
+## Step 3: Review passes — only with `--review`
 
-Run in order:
+**Skip this step entirely unless `$ARGUMENTS` contains `--review`.**
+
+These passes rewrite code. They are expensive, they are subjective, and whether a diff is worth one is a judgement the person who wrote it has already made. Running them uninvited on three files of tuned constants wastes their time to tell them nothing.
+
+Gates are different — cheap, objective, and always worth it. They are Step 4 and always run.
+
+When `--review` is passed, run in order:
 
 1. **`/simplify`** — reuse, quality, efficiency.
 2. **`/rulify`** — cross-check `.claude/rules/`.
@@ -59,11 +68,11 @@ Run in order:
 
 Commit any fixes.
 
-**Skipping `/simplify` is only OK for trivial diffs** (docs-only, version bumps, pure renames, mechanical lint/format fixes). If you skip, announce it + one-line reason before pushing.
+**Autopilot is the exception, and it does not rely on this skill for it.** An unattended run has no human between its first draft and the review pile, so its worker invokes the passes in its own step list — see `skills/autopilot/SKILL.md`. Do not add them back here to cover that case.
 
 ## Step 4: Quality gates
 
-Run quality gates **scoped to changed packages only** — after code review, since /simplify may have rewritten code that needs re-formatting and re-linting.
+Run quality gates **scoped to changed packages only**. These always run. They come after Step 3 because `/simplify` may have rewritten code that needs re-formatting and re-linting.
 
 Check `.claude/rules/` for the specific quality gate commands for each technology in this project (e.g., Rust formatting/linting/testing, frontend linting/typechecking/testing).
 
@@ -127,7 +136,7 @@ Track consecutive failures. **Cap at 3 — after 3 consecutive failures, stop an
 1. **Merge conflicts** (`mergeable` is `CONFLICTING`): merge the base branch in and resolve conflicts
 2. **CI failures**: read failure logs and fix the issue
 3. Re-run quality gates (step 4) on affected packages
-4. If the fix involved new logic or structural changes (not just mechanical fixes like missing imports or type annotations), re-run `/simplify` and `/rulify`
+4. If `--review` was passed and the fix involved new logic rather than a mechanical correction, re-run the passes over the new work
 5. Commit, push, poll again
 
 ### On CI pass AND no conflicts:
@@ -143,7 +152,7 @@ gh pr ready <pr-number>
 Tell the user:
 
 1. **PR URL** — always link the PR.
-2. **`/simplify` status** — state explicitly whether you ran `/simplify` in step 3. If you did not, say so and give the reason. Do not omit this line.
+2. **Whether the review passes ran** — one line. If they did not, say `no review passes (pass --review to run them)` so the option stays visible.
 3. Remind them to say "merged" when the PR is merged so `/land` can clean up.
 
 **Never run `gh pr merge`.**
@@ -168,7 +177,7 @@ Same as Step 2 above — produce the ✓/✗/⊘ checklist from `glb show <num>`
 
 ### M3: Code review + quality gates
 
-Same as steps 3 + 4 above. Run `/simplify` (when non-trivial), `/rulify`, formatter, linter, typecheck, test scoped to changed packages. Commit fixes.
+Same as steps 3 + 4 above: the review passes only if `--review` was given, then the gates — formatter, linter, typecheck, test scoped to changed packages. Commit fixes.
 
 ### M4: Push to main
 
@@ -192,6 +201,6 @@ Tell the user:
 
 1. Issue #N closed.
 2. Commit SHA pushed.
-3. **`/simplify` status** — explicit yes/no + one-line reason if skipped.
+3. **Whether the review passes ran** — one line, naming `--review` if they did not.
 
 No `/land` follow-up needed in main mode; nothing to clean up.

@@ -119,8 +119,10 @@ Either way the glb state transitions are identical. The backend is an implementa
 1. `glb update <num> --claim`
 2. Read the issue body **and every comment**; latest comment wins
 3. Implement in the worktree
-4. `/ship --draft` — quality gates, `/simplify`, `/rulify`, `/write-pr`, draft PR, CI poll
+4. `/ship --review` — gates, then the review passes, `/write-pr`, draft PR, CI poll
 5. `glb update <num> --status "In Review"`
+
+**`--review` is not optional here.** `/ship` leaves `/simplify` and `/rulify` off by default, because a human can see their own diff and decide. An unattended run has nobody between its first draft and the review pile, so those passes *are* the review. Dropping the flag means handing over unreviewed work that looks reviewed.
 
 Or, on hitting one of the four stop criteria: post the decision comment, `glb update <num> --status "Needs Decision"`, exit. Leave the worktree; the next attempt resumes in it.
 
