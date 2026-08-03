@@ -135,14 +135,20 @@ Either way the glb state transitions are identical. The backend is an implementa
 1. `glb update <num> --claim`
 2. Read the issue body **and every comment**; latest comment wins
 3. Implement in the worktree
-4. `/ship` — add `--review` only when the diff earns it (below), then `/write-pr`, draft PR, CI poll
+4. `/ship` — with the review flag the diff earns (below), then `/write-pr`, draft PR, CI poll
 5. `glb update <num> --status "In Review"`
 
-### When to pass `--review`
+### Which review flag to pass
 
-- **The diff touches a correctness-critical path** → always, whatever its size
-- **Otherwise** → only above roughly **50 changed lines** of non-generated code
-- **Never** for values, constants, config, input maps, text, docs, renames or generated artifacts, at any size
+Three levels, from the same `## Correctness-critical paths` table:
+
+| Diff | Flag | Runs |
+|---|---|---|
+| Touches a correctness-critical path | `--code-review` | simplify, rulify, **and the bug hunt** |
+| Above ~50 changed lines, not critical | `--review` | simplify, rulify |
+| Below that, or only values/config/text/docs/renames | *(none)* | gates only |
+
+`--code-review` is the level that matters most and the one easiest to under-reach on. `/simplify` explicitly does not hunt bugs and `/rulify` checks conventions, so on an auth or migration diff those two will tidy the code and check comment style while the actual defect goes straight past. That is why the critical table gets its own level rather than just "run the passes".
 
 Unlike the tier, this is decided **after** implementing, when the diff exists and can be measured — so measure it rather than guessing from the issue.
 

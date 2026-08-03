@@ -73,9 +73,11 @@ Step 5 is a backstop, not the plan. Starting everything cheap and escalating sou
 
 ### The review pass, from the same table
 
-- **Correctness-critical path** → always run `/simplify` and `/rulify`, whatever the size.
-- **Otherwise** → only above roughly **50 changed lines** of non-generated code.
-- **Never** → values, constants, config, input maps, text, docs, renames, generated artifacts. At any size.
+- **Correctness-critical path** → `/ship --code-review`, whatever the size. Simplify and rulify, **plus the correctness pass**.
+- **Otherwise, above ~50 changed lines** of non-generated code → `/ship --review`. Quality and conventions only.
+- **Below that, or values, config, text, docs, renames, generated artifacts** → no flag, at any size.
+
+The critical tier gets its own level because `/simplify` explicitly does not hunt bugs and `/rulify` checks conventions. On an auth or migration diff those two tidy the code and check comment style while the actual defect goes past. Quality and correctness are different questions, and only the second one is why the path is on this list.
 
 **Say which and why, every time** — `no review pass: 15 lines, not correctness-critical`. A silent skip reads as "this was checked". That is the failure a merge gate exists to prevent, and it is worse than skipping loudly.
 

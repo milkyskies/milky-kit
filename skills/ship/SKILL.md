@@ -1,10 +1,10 @@
 ---
 name: ship
 description: >
-  Run quality gates, create or update a PR, poll CI, then mark ready. Pass --review to also run /simplify and /rulify first; without it neither runs.
+  Run quality gates, create or update a PR, poll CI, then mark ready. Pass --review to also run /simplify and /rulify first, or --code-review to add the correctness pass on top; without a flag none of them run.
   TRIGGER when: (1) the user says "ship it", "ship", or asks to create or open a PR, OR (2) you have finished implementing a task and are ready to submit it -- invoke this automatically as part of the workflow.
   DO NOT TRIGGER when: the user just wants to run tests or quality gates without creating a PR.
-argument-hint: "[issue number (optional, inferred from branch)] [--review]"
+argument-hint: "[issue number (optional, inferred from branch)] [--review | --code-review]"
 ---
 
 # Ship
@@ -14,14 +14,23 @@ Full pipeline. Shape depends on the project's workflow mode (see `modules/core/r
 - **`main` mode**: quality gates → push to main → `glb done`. No PR.
 - **`branch` or `worktrees` mode**: quality gates → PR → CI loop → mark ready. Full flow below.
 
-**`/simplify` and `/rulify` do not run unless you pass `--review`.** They rewrite code, and whether a diff is worth that is the author's call, not this skill's.
+**No review pass runs unless you ask for one.** They rewrite code or spend real time, and whether a diff is worth that is the author's call, not this skill's.
+
+| Flag | Runs | For |
+|---|---|---|
+| *(none)* | gates only | the common case |
+| `--review` | `/simplify` + `/rulify` | quality and conventions |
+| `--code-review` | the above **plus** `/code-review` | correctness-critical diffs |
+
+`--code-review` implies `--review`, and in that order: simplify rewrites without hunting bugs, so reviewing the simplified diff reviews what will actually be merged.
 
 On **re-runs** (PR already exists), skip PR creation — just run quality gates, push, and resume the CI + merge loop. `--review` behaves the same on a re-run as on a first run.
 
 ## Inputs
 
 - `$ARGUMENTS` — issue number. If omitted, infer from the current branch name (e.g. `feature/#123.foo` -> `123`).
-- `--review` — also run the review passes (`/simplify`, `/rulify`) before opening the PR. Off by default.
+- `--review` — also run the quality passes (`/simplify`, `/rulify`) before opening the PR. Off by default.
+- `--code-review` — everything `--review` does, plus `/code-review` for correctness bugs. Off by default. This is the expensive one; reach for it on auth, money, migrations, concurrency, and anything else where being wrong is costly rather than untidy.
 
 ## Step 0: Read the workflow mode
 
@@ -54,21 +63,27 @@ If anything is ✗, finish it before proceeding.
 
 ## Step 3: Review passes — only with `--review`
 
-**Skip this step entirely unless `$ARGUMENTS` contains `--review`.**
+**Skip this step entirely unless `$ARGUMENTS` contains `--review` or `--code-review`.**
 
-These passes rewrite code. They are expensive, they are subjective, and whether a diff is worth one is a judgement the person who wrote it has already made. Running them uninvited on three files of tuned constants wastes their time to tell them nothing.
+These passes rewrite code or spend real time, and whether a diff is worth one is a judgement the person who wrote it has already made. Running them uninvited on three files of tuned constants wastes their time to tell them nothing.
 
 Gates are different — cheap, objective, and always worth it. They are Step 4 and always run.
 
-When `--review` is passed, run in order:
+With `--review` or `--code-review`, run in order:
 
 1. **`/simplify`** — reuse, quality, efficiency.
 2. **`/rulify`** — cross-check `.claude/rules/`.
 3. **Clean removals** — no dead branches, commented-out blocks, unused stubs, backcompat shims, `// TODO remove later`. If old code was replaced, it must be fully gone.
 
+With `--code-review`, then also:
+
+4. **`/code-review`** — correctness bugs. Nothing above looks for these: `/simplify` explicitly does not hunt bugs, and `/rulify` checks conventions. On a diff touching auth, money, a migration or concurrency, steps 1-3 will tidy the code and check the comment style while the security bug goes straight past.
+
+It runs **after** simplify so it reviews the code that will actually be merged rather than a draft that is about to be rewritten.
+
 Commit any fixes.
 
-**Autopilot is the exception, and it does not rely on this skill for it.** An unattended run has no human between its first draft and the review pile, so its worker invokes the passes in its own step list — see `skills/autopilot/SKILL.md`. Do not add them back here to cover that case.
+**Autopilot picks its own flag** from the project's area table rather than relying on a default here — see `skills/autopilot/SKILL.md`. Do not add a default back to cover that case.
 
 ## Step 4: Quality gates
 
