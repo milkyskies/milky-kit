@@ -182,9 +182,10 @@ If the project installs the bookkeeping workflow (`modules/autopilot/scaffold/.g
 
 **A human flips the status, never the agent.** If the agent re-checked on its own it would consume a half-written reply and burn an attempt.
 
-## Two gates stay human, always
+## One gate stays human: the merge
 
-- **Draft to ready-for-review.** That is the review.
-- **Merge.**
+**Merge is the gate, and it is the only one.** Nothing else about a PR is automatic in the sense that matters — a change reaches `main` only because a person put it there.
 
-`/land` after merge is automatic. Nothing else about the PR is.
+Marking a PR ready for review used to be treated as a second gate. It is not one, and using it as one was actively harmful: a finished draft looks exactly like a draft still being written, so the work that most needed attention was the work hardest to see. A worker now marks its own PR ready on finishing, which is what the state means — ready for *your* review.
+
+`/land` after merge is automatic, and it is what closes the herdr tab and removes the worktree. Nothing is reaped before then, because until a PR merges you may still want to say something to the agent that wrote it.

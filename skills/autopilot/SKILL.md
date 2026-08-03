@@ -52,10 +52,18 @@ For issues in `In Review`, check the PR:
 
 ```bash
 gh pr checks <num>
-gh pr view <num> --json reviews,comments
+gh pr view <num> --json mergeable,reviews,comments
 ```
 
-CI red or unaddressed review comments → spawn a fix agent **in the existing worktree**. Do not create a new one; the branch and its state are already there.
+Spawn a fix agent **in the existing worktree** — never a new one; the branch and its state are already there — when any of these hold:
+
+- **CI is red**
+- **`mergeable` is `CONFLICTING`** — mechanically detectable and always needs the same action, so it must never wait for a human to notice and say so
+- **There are unaddressed comments** on the PR
+
+A merge conflict in particular should never require a comment asking for it to be fixed. If a human had to point it out, this check failed.
+
+**Repeated comments on the same point spawn a fresh agent, not the original.** One round is a detail the author can fix. Two means the context that produced the problem is not the context that will solve it, and fresh eyes beat full recall.
 
 ### 4. Start new work
 
@@ -122,7 +130,11 @@ herdr pane read "$PANE" --source recent --lines 200
 
 **Never parse or construct ids by format.** They are `w3:pC` / `w3:tC` in practice, not the `1-1` shape herdr's own docs show, and they compact when tabs close. Always read them back from the response you just got.
 
-Close the tab when the issue reaches `In Review` or parks. `herdr tab close <tab_id>` — the tab is a view, and leaving finished ones open buries the running agents.
+**Leave the tab open until the PR merges.** `/land` closes it.
+
+herdr's own statuses are the queue: `working` is still going, `done` means the agent finished and you have not looked yet — which is exactly the state a finished worker is in. Closing the tab throws that away and then needs a notification to reinvent it.
+
+Keeping it open also keeps the agent reachable. Typing in the tab reaches the original, with full context of why it built what it did — quicker than a PR comment for anything small.
 
 ### Headless backend
 
@@ -136,7 +148,10 @@ Either way the glb state transitions are identical. The backend is an implementa
 2. Read the issue body **and every comment**; latest comment wins
 3. Implement in the worktree
 4. `/ship` — with the review flag the diff earns (below), then `/write-pr`, draft PR, CI poll
-5. `glb update <num> --status "In Review"`
+5. `gh pr ready <pr>` — **mark it ready for review**
+6. `glb update <num> --status "In Review"`
+
+Step 5 is what makes a finished worker visible. A draft that is finished looks exactly like a draft still being typed into, so leaving it draft hides the queue. "Ready for review" means ready for *your* review — **merge is the gate, and it is the only one.**
 
 ### Which review flag to pass
 
@@ -156,31 +171,24 @@ Unlike the tier, this is decided **after** implementing, when the diff exists an
 
 Or, on hitting one of the four stop criteria: post the decision comment, `glb update <num> --status "Needs Decision"`, exit. Leave the worktree; the next attempt resumes in it.
 
-## Ping when a worker parks
+## One digest per wake
 
-A parked issue is the one autopilot outcome that cannot make progress on its own. Everything else resolves on the next wake; this waits on a person, and a person who does not know is a run that stalls until morning for no reason.
-
-So whenever a wake observes a worker move an issue to `Needs Decision`, send a **PushNotification** naming the issue and its question in one line:
+A wake that changed nothing sends nothing. A wake that changed something sends **one** notification, not one per event — five separate "PR ready" pushes in a minute train you to ignore all of them.
 
 ```
-#141 parked: should a report notify a channel or land in an admin query? 2 options in the comment.
+autopilot: 3 ready to review, 1 parked, 2 running
+#324 LINE token claim · #326 blocks and reporting · #327 profile picture
+#289 parked: notify a channel, or an admin query? 2 options in the comment.
 ```
 
 Rules:
 
-- **One push per park, not per wake.** Re-notifying an issue that was already `Needs Decision` when this wake began trains the user to ignore them. Only push for issues that transitioned during *this* wake.
-- **Carry the question, not the status.** "Autopilot needs a decision" tells the user nothing they cannot see on the board. The question is what lets them answer from a phone without opening the laptop.
-- **Do not push for the other outcomes.** A draft PR opened, an issue landed, a wake with nothing to do — all of those are readable the next time they look. Only parks interrupt.
-- Log the park to `.autopilot/log.jsonl` as usual. The push is the interrupt; the log is the record.
+- **Lead with what needs you.** Ready-to-review and parked are both waiting on a person; running is context, not a request.
+- **Carry the parked question, not the status.** "Autopilot needs a decision" tells you nothing the board does not. The question is what lets you answer from a phone without opening the laptop.
+- **Only report transitions.** An issue that was already parked when this wake began is not news. Re-notifying it is how a digest becomes noise.
+- Use `PushNotification`, or `herdr notification show` when `HERDR_ENV=1`.
 
-Answering is unchanged: a human comments, the bookkeeping workflow flips the status back to `Todo`, and the next wake resumes in the worktree that is still there.
-
-## Safety
-
-- **Concurrency cap.** Default 5, override with `--max N`. More agents than cores makes everything slower and the output unreadable.
-- **Three attempts per issue.** Track attempts in issue comments. Each attempt escalates one tier. On the third failure, park on `Needs Decision` with what was tried, at which tier, and why each failed. Without this, one impossible issue eats a night of tokens.
-- **A first-attempt park earns one retry a tier up**, before the human is notified. A weaker model parks more than it fails, and a false park costs attention rather than tokens. If the stronger tier parks too, notify — the question is real.
-- **Never promote a draft PR to ready.** Never merge. Both are human gates, always.
+Finished work is the outcome that most needs announcing, and the one easiest to miss: a parked issue is an orange column on the board, while a finished one looks identical to a running one until you check the PR.
 
 ## `--dry-run` and `--explain`
 

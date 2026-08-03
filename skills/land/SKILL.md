@@ -69,14 +69,23 @@ First determine which role you're landing. Check whether the current checkout is
 git rev-parse --show-toplevel   # if this path is under the worktree dir, you're in a delegated worktree
 ```
 
-**Landing a delegated worktree task** — remove the worktree and its database, and update refs **without switching the root's branch** (the lead may be mid-task there):
+**Landing a delegated worktree task** — remove the worktree and its database, and update refs **without switching the root's branch** (someone may be mid-task there):
 
 ```bash
 mise run worktree:cleanup <num>
 git fetch origin
 ```
 
-Do NOT `cd` to the root and `git checkout main` — that would yank the lead off their branch.
+Do NOT `cd` to the root and `git checkout main` — that would yank whoever is there off their branch.
+
+**Close the herdr tab too, if the task came from autopilot.** The dispatcher deliberately leaves it open from spawn until merge, so the sidebar shows `working` versus `done` as a queue and the agent stays reachable for a follow-up. This is the point where that stops being useful, so this is where it closes:
+
+```bash
+herdr tab list --workspace <ws>      # find the tab labelled "#<num> ..."
+herdr tab close <tab_id>
+```
+
+Read the id back from `tab list` rather than remembering one — ids compact when tabs close. Skip this outside herdr (`HERDR_ENV` unset).
 
 **Landing the lead's own root branch** — you finished a feature branch in the root checkout. Land it exactly like `branch` mode:
 
