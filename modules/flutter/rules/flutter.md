@@ -1,3 +1,9 @@
+---
+paths:
+  - "**/*.dart"
+  - "pubspec.yaml"
+---
+
 # Flutter conventions
 
 Widget, theming, and navigation conventions. Composes with `modules/dart/rules/dart-style.md` (typing and pattern matching) and `modules/flutter/rules/riverpod.md` (state, dependency injection, layering).

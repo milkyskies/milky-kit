@@ -1,3 +1,9 @@
+---
+paths:
+  - "**/*.ts"
+  - "**/*.tsx"
+---
+
 # Effect HTTP: `@effect/platform`
 
 This rule adds the HTTP inbound adapter (`HttpApi`) and outbound HTTP client (`HttpClient`) to an Effect project. Assumes the `effect` module is already in place — the paradigm, clean-architecture layout, and use-case discipline come from there. This rule only describes the `presentation/http/` adapter and the outbound HTTP client service pattern.

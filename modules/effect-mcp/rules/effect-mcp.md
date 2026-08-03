@@ -1,3 +1,9 @@
+---
+paths:
+  - "**/*.ts"
+  - "**/*.tsx"
+---
+
 # Effect MCP: `@effect/ai` `McpServer`
 
 This rule adds the MCP (Model Context Protocol) inbound adapter to an Effect project. Assumes the `effect` module is already in place — the paradigm, clean-architecture layout, and use-case discipline come from there. This rule only describes the `presentation/mcp/` adapter.

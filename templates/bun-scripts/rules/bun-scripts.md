@@ -1,3 +1,9 @@
+---
+paths:
+  - "**/*.ts"
+  - "**/*.tsx"
+---
+
 # Bun scripts
 
 Personal-scale scripting project, not a deployed app. Conventions:

@@ -1,3 +1,11 @@
+---
+paths:
+  - "**/package.json"
+  - "pnpm-workspace.yaml"
+  - "pnpm-lock.yaml"
+  - "**/tsconfig*.json"
+---
+
 # Monorepo Structure
 
 ## Rules

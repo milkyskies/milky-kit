@@ -1,3 +1,9 @@
+---
+paths:
+  - "**/*.ts"
+  - "**/*.tsx"
+---
+
 # Effect SQL: `@effect/sql-drizzle` + `@effect/sql-pg`
 
 This rule adds the SQL infrastructure layer to an Effect project. Assumes the `effect` module is already in place — the paradigm, clean-architecture layout, and repository pattern come from there. This rule only describes how repository implementations in `infrastructure/db/` work.

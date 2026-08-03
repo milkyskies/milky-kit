@@ -1,3 +1,10 @@
+---
+paths:
+  - "**/*.rs"
+  - "**/*.sql"
+  - "migrations/**"
+---
+
 # Database: PostgreSQL + sqlx
 
 ## ORM

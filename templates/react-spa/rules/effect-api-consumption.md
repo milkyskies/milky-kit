@@ -1,3 +1,10 @@
+---
+paths:
+  - "**/*.tsx"
+  - "**/*.ts"
+  - "**/*.css"
+---
+
 # Consuming an effect-api from a React frontend
 
 Use this rule only when the project's API is the milky-kit `effect-api` template (or another `@effect/platform`-based service). It documents the three bridges from a normal React + TanStack Query frontend to a typed Effect backend.

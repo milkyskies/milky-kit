@@ -1,3 +1,9 @@
+---
+paths:
+  - "**/*.ts"
+  - "**/*.tsx"
+---
+
 # Background jobs: durable Postgres queue
 
 This module adds a durable, Postgres-backed job queue (no extra infra). A `pending`

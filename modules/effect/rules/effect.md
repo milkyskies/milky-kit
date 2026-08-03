@@ -1,3 +1,9 @@
+---
+paths:
+  - "**/*.ts"
+  - "**/*.tsx"
+---
+
 # Effect-TS paradigm
 
 This rule is the paradigm core + the universal clean-architecture layout for every Effect-TS project. Compose with adapter modules (`effect-http`, `effect-mcp`) and infrastructure modules (`effect-sql`) as the project needs them. Effect-TS supersedes the paradigm-neutral TypeScript rules in `modules/ts/rules/`; pick one paradigm per project, never both.

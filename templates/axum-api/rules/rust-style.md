@@ -1,3 +1,9 @@
+---
+paths:
+  - "**/*.rs"
+  - "Cargo.toml"
+---
+
 # Rust Style & Conventions
 
 ## Module layout

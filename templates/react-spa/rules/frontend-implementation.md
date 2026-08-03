@@ -1,3 +1,10 @@
+---
+paths:
+  - "**/*.tsx"
+  - "**/*.ts"
+  - "**/*.css"
+---
+
 # Frontend Implementation Rules
 
 ## Components

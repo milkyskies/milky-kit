@@ -1,3 +1,9 @@
+---
+paths:
+  - "**/*.dart"
+  - "pubspec.yaml"
+---
+
 # Riverpod paradigm
 
 This rule is the paradigm core plus the clean-architecture layout for every Flutter project in the kit. It plays the role `modules/effect/rules/effect.md` plays for TypeScript: it decides how effects, errors, dependency injection, and layering work. Compose it with `modules/dart/rules/dart-style.md` (which it does not supersede — the typing and pattern-matching rules hold everywhere).

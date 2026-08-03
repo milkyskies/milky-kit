@@ -1,3 +1,9 @@
+---
+paths:
+  - "**/*.ts"
+  - "**/*.tsx"
+---
+
 # AI: provider-agnostic LLM via `@effect/ai`
 
 This module adds LLM access as a single Effect service. The point is that call sites

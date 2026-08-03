@@ -1,3 +1,9 @@
+---
+paths:
+  - "**/*.zig"
+  - "build.zig"
+---
+
 # Zig Style & Conventions
 
 ## Module layout

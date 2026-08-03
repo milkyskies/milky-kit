@@ -1,3 +1,9 @@
+---
+paths:
+  - "**/*.rs"
+  - "Cargo.toml"
+---
+
 # Clean Architecture (Rust)
 
 ## Where things live

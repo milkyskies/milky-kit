@@ -1,3 +1,9 @@
+---
+paths:
+  - "**/*.dart"
+  - "pubspec.yaml"
+---
+
 # Domain models
 
 Architectural placement for Dart projects. Paradigm-neutral: applies whether or not the project uses Riverpod.

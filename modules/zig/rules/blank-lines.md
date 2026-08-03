@@ -1,3 +1,9 @@
+---
+paths:
+  - "**/*.zig"
+  - "build.zig"
+---
+
 # Blank lines (kaigyou)
 
 Use blank lines to separate the *phases* of a function: setup -> validate -> work -> return. Reading top-to-bottom should feel like reading a paragraph, not a wall of text.

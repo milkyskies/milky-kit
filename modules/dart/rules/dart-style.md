@@ -1,3 +1,9 @@
+---
+paths:
+  - "**/*.dart"
+  - "pubspec.yaml"
+---
+
 # Dart conventions
 
 Paradigm-neutral rules that apply to every Dart file. Projects using Riverpod additionally follow `modules/flutter/rules/riverpod.md`, which supersedes the dependency-injection and error-handling choices below with Riverpod equivalents.

@@ -1,3 +1,9 @@
+---
+paths:
+  - "**/*.rs"
+  - "Cargo.toml"
+---
+
 # Rust testing conventions
 
 This file is the Rust-specific tool layer for `modules/core/rules/testing.md`. Read that first for the universal 3-tier model + Gherkin spec convention. Anything below is Rust-flavor — `cargo test`, `proptest`, `sqlx`, `tokio::test`.
