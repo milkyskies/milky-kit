@@ -126,7 +126,7 @@ Or, on hitting one of the four stop criteria: post the decision comment, `glb up
 
 ## Safety
 
-- **Concurrency cap.** Default 3, override with `--max N`. More agents than cores makes everything slower and the output unreadable.
+- **Concurrency cap.** Default 5, override with `--max N`. More agents than cores makes everything slower and the output unreadable.
 - **Three attempts per issue.** Track attempts in issue comments. On the third failure, park on `Needs Decision` with what was tried and why each attempt failed. Without this, one impossible issue eats a night of tokens.
 - **Never promote a draft PR to ready.** Never merge. Both are human gates, always.
 
@@ -137,12 +137,12 @@ Or, on hitting one of the four stop criteria: post the decision comment, `glb up
 `--explain` accounts for every open issue — selected, or the reason it was not:
 
 ```
-#141  spawn        eligible, unblocked, slot 2/3
+#141  spawn        eligible, unblocked, slot 2/5
 #69   skip         no `autopilot` label
 #53   skip         labelled, missing `## Tests`
 #137  skip         blocked by #136
 #140  skip         status is Needs Decision
-#138  skip         concurrency cap reached (3/3)
+#138  skip         concurrency cap reached (5/5)
 ```
 
 Reasons come from `glb ready --autopilot --explain`, not a reimplementation — a second copy of the rules drifts from the one that actually decides.
@@ -156,7 +156,7 @@ Reasons come from `glb ready --autopilot --explain`, not a reimplementation — 
 Every real wake appends one line per action to `.autopilot/log.jsonl`, git-ignored. This is the artifact you read the morning after, so it must be reconstructable without the transcript.
 
 ```jsonl
-{"at":"2026-08-02T09:14:22Z","issue":141,"action":"spawn","reason":"eligible, unblocked, slot 1/3","backend":"herdr","from":"Todo","to":"In Progress"}
+{"at":"2026-08-02T09:14:22Z","issue":141,"action":"spawn","reason":"eligible, unblocked, slot 1/5","backend":"herdr","from":"Todo","to":"In Progress"}
 {"at":"2026-08-02T09:41:07Z","issue":141,"action":"park","reason":"attempt 3 of 3 failed","backend":"herdr","from":"In Progress","to":"Needs Decision"}
 {"at":"2026-08-02T09:41:09Z","issue":137,"action":"skip","reason":"blocked by #136","backend":null,"from":"Todo","to":"Todo"}
 ```
