@@ -185,6 +185,14 @@ Autopilot refuses to run in `main` or `branch` mode. Both put every worker in on
 
 ### 2. Opt an issue in
 
+Fastest route — describe it and let the agent write it:
+
+```
+/milky-kit:todo add a reload-cancel when the player sprints
+```
+
+It drafts the house body format, asks only what it cannot infer from the code, shows you the result, and files it with the `autopilot` label. Or do it by hand:
+
 Nothing runs on an issue you have not explicitly opted in. There is no `no-autopilot` label, because forgetting a label must mean an agent leaves the issue alone rather than running unattended on work nobody vetted.
 
 ```bash
