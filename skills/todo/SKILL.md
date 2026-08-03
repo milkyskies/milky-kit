@@ -73,19 +73,39 @@ A question is worth asking when two plausible designs exist, a scope boundary is
 
 Do not infer urgency from how the work sounds. A migration is not P0 because migrations feel serious; it is P0 if something is broken right now.
 
-### 4. Show it, then file
+### 4. Pick the type label
+
+One of these, always exactly one:
+
+| Label | When |
+|---|---|
+| `type:feature` | new capability; nothing there before |
+| `type:change` | an existing feature behaves differently |
+| `type:fix` | broken; restore intended behaviour |
+| `type:chore` | deps, CI, tooling, config |
+| `type:docs` | documentation only |
+| `type:refactor` | internals move, behaviour identical |
+
+The line between `feature` and `change` is **"did this exist yesterday?"** — not how big the work is. A new balloon type is `feature`; balloons expiring differently is `change`.
+
+Do not label an epic. An issue is an epic if it has sub-issues, which GitHub already knows and renders — a label would be a second source of truth that can drift from the actual list.
+
+If the project has no `type:*` labels, skip this rather than inventing them.
+
+### 5. Show it, then file
 
 Print the full body and wait. Never file silently — the user is the only one who knows whether the framing is right.
 
 ```bash
-glb create --autopilot --title "<title>" --body "$(cat /tmp/todo-body.md)" --priority P2 --points 3 --status Todo
+glb create --autopilot --title "<title>" --body "$(cat /tmp/todo-body.md)" \
+  --priority P2 --points 3 --status Todo --label "type:change"
 ```
 
 `--no-autopilot` in `$ARGUMENTS` drops the flag and files it human-only.
 
 **No em or en dashes in the title** — `glb create` rejects them. Use a hyphen or a colon.
 
-### 5. Confirm it will actually be picked up
+### 6. Confirm it will actually be picked up
 
 ```bash
 glb ready --autopilot --explain

@@ -68,6 +68,25 @@ The house template below still asks for both sections, and issues are still bett
 
 Eligibility is a filter, not a transition: an ineligible issue is skipped and its status is never changed. Use `glb ready --autopilot --explain` to see why each issue was passed over.
 
+## Type labels
+
+Every issue carries exactly one `type:*` label:
+
+| Label | When |
+|---|---|
+| `type:feature` | new capability; nothing there before |
+| `type:change` | an existing feature behaves differently |
+| `type:fix` | broken; restore intended behaviour |
+| `type:chore` | deps, CI, tooling, config |
+| `type:docs` | documentation only |
+| `type:refactor` | internals move, behaviour identical |
+
+`feature` versus `change` is **"did this exist yesterday?"**, not how large the work is.
+
+The distinction is worth drawing because new capability has no existing pattern to copy while modifying one does — the same property the autopilot tier table measures. See `autopilot.md`.
+
+**No epic label.** An issue is an epic if it has sub-issues, which GitHub knows natively and renders with a progress bar, and which `glb ready` already excludes. A label would be a second source of truth free to disagree with the real one.
+
 ## Points (Fibonacci)
 
 Use Fibonacci numbers for `--points`: `1, 2, 3, 5, 8, 13`. This represents effort/complexity. Pick the closest.
