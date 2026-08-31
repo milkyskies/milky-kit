@@ -88,7 +88,7 @@ Report the issue number and the line the new issue appears on. If it is in the s
 
 ## Rules
 
-- **One sentence in, one issue out.** If the description covers several separable pieces of work, say so and propose splitting it rather than filing one vague issue.
+- **One issue per separable piece of work.** Several pieces in one description means several issues — not one vague issue, and not one issue with the rest withheld. An epic filed with one child understates its own plan and cannot be sequenced.
 - **Never ask for points or priority.** Assign them and show your reasoning. Asking hands back a decision the user came here to avoid making.
 - **Carry the user's framing.** `## Problem` is theirs; the mechanics are yours to draft. Do not rewrite their intent into what you would have asked for.
 - **An unresolved fork is filed, not guessed.** Step 1 exists so a half-decided thought gets recorded as a question rather than laundered into a spec.

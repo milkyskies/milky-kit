@@ -183,6 +183,8 @@ Skeleton:
 
 Keep the floor even for small issues: at minimum a one-paragraph problem statement and a `## Tests` list. Bare-title or one-line issues are not acceptable.
 
+The floor is per issue, and never a reason to file fewer of them. An issue you can specify is an issue you file: withholding five specified stages to avoid writing a thin one leaves the plan off the board, where it cannot be sequenced, blocked, or counted.
+
 ## Filing something you have not decided
 
 Not every issue is a task. An idea, an unresolved fork, a half-thought you want out of your head — file it with `--status "Needs Decision"` and the open question in the body.
