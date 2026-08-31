@@ -46,7 +46,7 @@ ghlobes is a Rust CLI that wraps `gh` + GitHub GraphQL for beads-like workflow o
 - **Backlog** — acknowledged, not yet prioritized for active work
 - **Todo** — ready to be picked up
 - **In Progress** — someone is actively working on it
-- **Needs Decision** — work stopped, parked on a human answer; the question is a comment on the issue
+- **Needs Decision** — waiting on a decision from **you**. Either an agent parked mid-run with its question in a comment, or you filed the issue undecided with the question in the body. See "Filing something you have not decided" below.
 - **In Review** — a draft PR is open, waiting on human promotion and merge
 - **Done** — completed
 
@@ -89,14 +89,32 @@ The distinction is worth drawing because new capability has no existing pattern 
 
 ## Points (Fibonacci)
 
-Use Fibonacci numbers for `--points`: `1, 2, 3, 5, 8, 13`. This represents effort/complexity. Pick the closest.
+Use Fibonacci numbers for `--points`: `1, 2, 3, 5, 8, 13`. Points measure effort and complexity. Pick the closest.
 
-- `1` — trivial (under 1 hour)
-- `2` — small (a few hours)
-- `3` — medium (half a day)
-- `5` — large (full day)
-- `8` — very large (2–3 days)
-- `13` — epic (break it down into sub-issues if possible)
+| | Time | Shape |
+|---|---|---|
+| `1` | under an hour | one function in one file, a test already sits beside it |
+| `2` | a few hours | a few files in one layer, an existing pattern to follow |
+| `3` | half a day | crosses layers, needs new tests |
+| `5` | a full day | touches several areas, or has no pattern to copy |
+| `8` | two to three days | several areas, and design work with nothing to copy |
+| `13` | too big | propose the split instead of filing it |
+
+**Estimate; do not ask.** Reading the code tells you how many files, how many layers, and whether a pattern exists to copy — that is the estimate. State the reasoning in one line so a wrong call is cheap to argue with.
+
+## Priorities
+
+`P0` through `P4`. Default `P2`.
+
+| | When |
+|---|---|
+| `P0` | broken, crashing, losing data, or a security hole |
+| `P1` | blocks other work, or carries a named deadline |
+| `P2` | everything else. The honest answer most of the time. |
+| `P3` | someday |
+| `P4` | backlog, nice to have |
+
+Urgency lives in what the filer needs next week, and the code does not record that. Default to `P2` unless they said otherwise. Never infer urgency from how serious the work sounds: a migration is `P0` when something is broken right now, not because migrations feel weighty.
 
 ## Epics (sub-issues)
 
@@ -124,7 +142,10 @@ glb dep add 12 11   # #12 blocked by #11
 - `## Problem` (or `## Goal`) — what's missing today and why it matters. Lead with the problem, not the solution. A concrete scenario often beats an abstract description.
 - **Key insight / rejected approach** (optional but valued) — the non-obvious framing, or why the naive approach is wrong. If the issue reframes an earlier idea, say so. This is the reasoning, not the spec.
 - `## What this issue does` (or `## What to do` / `## What to test`) — the concrete mechanics, broken into **named sub-behaviors**. Use code or data snippets (pseudocode, schema, example rows) to pin down intent.
-- `## Acceptance criteria` — bulleted, checkable outcomes: what must be true when this is done.
+- `## Area` — the path globs this issue touches, one per line. Autopilot picks an implementation tier **before** the work exists, so it cannot inspect a diff; this section is the only record of where the change lands. Match the granularity of the project's `## Implementation tiers` table in `CLAUDE.md`. Write it even when the project declares no tier table — it tells a human where to look.
+- `## Out of scope` (optional) — what an executor might reasonably touch and must not. Unbounded scope is where an agent drifts, and one line here costs less than a review that unpicks it.
+- `## Reference points` (optional, high value) — paths to existing code that already does something analogous, each with one line on what to take from it. A pointer to a similar implementation keeps the output idiomatic better than a paragraph of description does.
+- `## Acceptance criteria` — bulleted, checkable outcomes: what must be true when this is done. Each one binary: "the endpoint returns 409 when the slug exists" beats "handles conflicts correctly".
 - `## Tests` — the tests that verify the work. **Required**, except: bug reports that already reference a failing test, or chores with no behavior change (deps, CI, docs).
 - `## Dependencies` (optional) — prose note on blockers for a human reader. The `glb dep` graph is authoritative.
 
@@ -142,9 +163,18 @@ Skeleton:
 ### <Sub-behavior B>
 - <mechanic>
 
+## Area
+- <path/glob/**>
+
+## Out of scope
+- <what not to touch, and where it belongs instead>
+
+## Reference points
+- <path/to/analogous.ts> - <what to take from it>
+
 ## Acceptance criteria
-- <checkable outcome>
-- <checkable outcome>
+- <binary, checkable outcome>
+- <binary, checkable outcome>
 
 ## Tests
 - <test that verifies X>
@@ -152,6 +182,34 @@ Skeleton:
 ```
 
 Keep the floor even for small issues: at minimum a one-paragraph problem statement and a `## Tests` list. Bare-title or one-line issues are not acceptable.
+
+## Filing something you have not decided
+
+Not every issue is a task. An idea, an unresolved fork, a half-thought you want out of your head — file it with `--status "Needs Decision"` and the open question in the body.
+
+```bash
+glb create --title "..." --body "$(cat body.md)" --status "Needs Decision" --priority P2
+```
+
+Skeleton:
+
+```markdown
+## Problem
+<what bugs you, and the concrete moment it bit>
+
+## Open questions
+1. <the fork you have not resolved>
+2. <the fork you have not resolved>
+
+## Sketch
+<optional: the half-thought, explicitly flagged as not a decision>
+```
+
+**No `## Acceptance criteria`, no `## Tests`, no `## Area`.** Deciding those is the work. Writing them anyway fakes a decision you have not made, and a worker implements against the fake one and hands back the wrong thing having satisfied every box.
+
+**No `autopilot` label and no points.** Both describe work whose shape is known. Add them when you answer the question and flip the status to `Todo`.
+
+**No `[Idea]` title prefix and no `idea` label.** `Needs Decision` already means "waiting on you", `glb ready` already excludes it, and `/decisions` already collects it. A title prefix is state you would have to hand-edit off when the issue graduates, and state belongs in fields.
 
 ## Rules
 

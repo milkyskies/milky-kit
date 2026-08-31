@@ -13,11 +13,11 @@ argument-hint: "[issue number (optional, answers just that one)]"
 
 # Decisions
 
-Clear the autopilot decision queue.
+Clear the decision queue.
 
-When an agent hits something it must not guess at, it posts a question as an issue comment and parks the issue on `Needs Decision`. Those pile up silently — a parked issue looks like nothing is happening. This gathers them, asks you each question with the options the agent proposed, and requeues what you answer.
+`Needs Decision` fills from two directions. An agent hits something it must not guess at, posts the question as an issue comment, and parks. Or you filed the issue undecided yourself — an idea, an unresolved fork — with the question in the body under `## Open questions`. Both pile up silently, because a parked issue looks like nothing is happening. This gathers them, asks you each question, and requeues what you answer.
 
-**The inbox is a query, not a table.** Nothing is stored here. The queue is `glb list --status "Needs Decision"`, the message body is the agent's comment, and your answer is a reply. That is deliberate: because the transport is GitHub, you can answer these from the GitHub mobile app instead, and the dispatcher picks them up identically.
+**The inbox is a query, not a table.** Nothing is stored here. The queue is `glb list --status "Needs Decision"`, the message body is the agent's comment or your own `## Open questions`, and your answer is a reply. That is deliberate: because the transport is GitHub, you can answer these from the GitHub mobile app instead, and the dispatcher picks them up identically.
 
 ## Steps
 
@@ -31,7 +31,7 @@ If `$ARGUMENTS` names an issue number, restrict to that one.
 
 Empty queue: say "Nothing waiting on you" and stop. Do not prompt.
 
-### 2. Read each agent's question
+### 2. Read each question
 
 ```bash
 gh issue view <num> --comments
@@ -39,10 +39,11 @@ gh issue view <num> --comments
 
 Find the **last** comment containing `<!-- autopilot:decision -->` and parse out the question, the numbered options, and the recommendation. The protocol is in `.claude/rules/autopilot.md`.
 
-Two things to watch:
+Three things to watch:
 
 - **Latest wins.** An issue may have parked more than once. Only the newest decision block is live.
 - **Malformed or missing marker.** Do not skip the issue. Fall back to presenting the last comment verbatim as free text and take a written answer.
+- **No agent comment at all.** The user filed this one themselves. Read `## Open questions` from the body and present those as the questions — numbered items become the options where they read as alternatives, free text otherwise. A self-filed issue has no recommendation, and inventing one would answer it on their behalf.
 
 ### 3. Ask
 
@@ -79,6 +80,8 @@ glb update <num> --status Todo
 ```
 
 Comment first, then flip. If the flip fails, the answer is still on the issue and the next run finds it; the reverse would requeue an issue whose answer was lost.
+
+A **self-filed** issue answered this way reaches `Todo` still carrying only `## Problem` and the answered question — no acceptance criteria, no tests, and no `autopilot` label, so no agent claims it. Say so, and offer `/todo` to write the spec now that the fork is resolved.
 
 Skipped issues are left untouched — still `Needs Decision`, no comment.
 

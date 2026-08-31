@@ -1,9 +1,10 @@
 ---
 name: todo
 description: >
-  File an autopilot-ready issue from one rough sentence. Drafts the house body format,
-  asks only what cannot be inferred, shows it for approval, then creates it with the
-  `autopilot` label.
+  File an issue from one rough sentence. Drafts the house body format, asks only what
+  cannot be inferred, shows it for approval, then creates it with the `autopilot` label.
+  Something the user has not decided yet gets filed on `Needs Decision` with the open
+  question instead of a fake spec.
   TRIGGER when: the user says "/todo", "make an issue for...", "file a task", "add a todo",
   or describes work they want tracked rather than done now.
   DO NOT TRIGGER when: the user wants the work done immediately (just do it), or is asking
@@ -17,88 +18,58 @@ Turn a sentence into a filed issue an agent can pick up cold.
 
 The point is the **shape**, not the saved typing. An issue in the house format can be claimed by a worker who was not part of this conversation; one that just restates the sentence gets claimed, read, and parked on `Needs Decision` — which works, but costs a whole agent spawn to discover the spec was thin.
 
+`glb.md` owns the formats, the points scale, the priority scale, and the type labels. This skill owns the procedure. Where the two ever disagree, `glb.md` wins.
+
 ## Steps
 
-### 1. Infer before asking
+### 1. Decide which of the two things this is
+
+**A task** — the user knows what they want built, even roughly. Goes to step 2.
+
+**An undecided thing** — an idea, an unresolved fork, a half-thought. Goes to the "Filing something you have not decided" skeleton in `glb.md`: `## Problem` plus `## Open questions`, filed with `--status "Needs Decision"`, no points, no `autopilot` label, no acceptance criteria.
+
+The tell is whether you can write a binary acceptance criterion without inventing the decision behind it. If every criterion you draft depends on a fork the user has not resolved, it is undecided — file it as one, and say so in a line. Do not resolve the fork on their behalf and file a task.
+
+Filing an undecided thing costs nothing later: answering the question and flipping the status to `Todo` graduates it into a normal issue.
+
+### 2. Infer before asking
 
 Read the code for whatever area the sentence names. Look at how similar things are already built, what tests exist near them, what would have to change.
 
-Draft all four sections from that. Most of what a questionnaire would ask is answerable by looking:
+Draft the sections from `glb.md` off that reading. Most of what a questionnaire would ask is answerable by looking. Three of them can only be written well right now, while the code is in front of you:
 
-- **`## Problem`** — what is missing today and why it matters. A concrete scenario beats an abstract description.
-- **`## What this issue does`** — the mechanics, broken into named sub-behaviours.
-- **`## Acceptance criteria`** — checkable outcomes.
-- **`## Tests`** — the tests that verify it, named against the tiers in `testing.md`.
-- **`## Area`** — the path globs this issue will touch, one per line.
+- **`## Area`** — the path globs this will touch. Autopilot picks an implementation tier before the work exists, so it cannot inspect a diff. Match the granularity of the project's `## Implementation tiers` table in `CLAUDE.md`.
+- **`## Out of scope`** — the neighbouring code an executor would plausibly wander into. You just saw what sits next to the change; name it here.
+- **`## Reference points`** — the analogous implementations you read to draft this, each with one line on what to take. You already opened these files. Writing the paths down costs nothing and does more for idiomatic output than a paragraph of description.
 
-`## Area` exists because autopilot picks an implementation tier **before** the work exists, so it cannot inspect a diff. You are reading the code right now, which makes this the only honest moment to record it. Match the granularity of the project's `## Implementation tiers` table in `CLAUDE.md` so the two line up:
-
-```markdown
-## Area
-- apps/api/src/domain/balloon/**
-- packages/adoba_core/lib/src/balloon/**
-```
-
-If the project declares no tier table, still write it — it tells a human where to look, and the table may arrive later.
-
-### 2. Ask only about genuine forks
+### 3. Ask only about genuine forks
 
 A question is worth asking when two plausible designs exist, a scope boundary is unclear, or a behaviour has no obvious correct answer. Batch them into one `AskUserQuestion` with your recommendation first.
 
 **Do not ask what you can read.** Which file it lives in, what the existing pattern is, whether there is a test helper — go look.
 
-**Never invent acceptance criteria.** If the sentence genuinely does not determine what "done" means, ask. A fabricated criterion is worse than a missing one: a worker will implement against it and hand back the wrong thing having satisfied every box.
+**Never invent acceptance criteria.** If the sentence genuinely does not determine what "done" means, that is step 1's answer, not a gap to paper over. A fabricated criterion is worse than a missing one: a worker will implement against it and hand back the wrong thing having satisfied every box.
 
-### 3. Assign points and priority
+### 4. Assign points, priority, and a type label
 
-**Set both. Do not ask.** State the reasoning in one line each so a wrong call is cheap to correct — a number you can argue with beats a question you have to answer.
+**Set all three. Do not ask.** The scales live in `glb.md` — points, priorities, and the `type:*` table. State your reasoning in one line each so a wrong call is cheap to correct: a number you can argue with beats a question you have to answer.
 
-**Points — you can estimate this, so do.** You just read the code: you know how many files, how many layers, and whether a pattern exists to copy. Fibonacci per `glb.md`:
+You just read the code, so the points estimate is yours to make. Priority is not in the code, so default to `P2` unless the user's sentence says otherwise.
 
-| | |
-|---|---|
-| `1` | one function in one file, test already exists beside it |
-| `2` | a few files in one layer, pattern to follow |
-| `3` | crosses layers, needs new tests |
-| `5` | a day; touches several areas or has no pattern to copy |
-| `8` | several days |
-| `13` | too big — say so and propose the split rather than filing it |
-
-**Priority — you mostly cannot know this, so default it.** Urgency is about what the user needs next week, which is not in the code. Use **P2** unless their sentence actually says otherwise:
-
-- **P0** — they said broken, crashing, losing data, or a security hole
-- **P1** — they said it blocks something, or named a deadline
-- **P2** — everything else. This is the honest answer most of the time.
-- **P3/P4** — they said someday, eventually, or nice to have
-
-Do not infer urgency from how the work sounds. A migration is not P0 because migrations feel serious; it is P0 if something is broken right now.
-
-### 4. Pick the type label
-
-One of these, always exactly one:
-
-| Label | When |
-|---|---|
-| `type:feature` | new capability; nothing there before |
-| `type:change` | an existing feature behaves differently |
-| `type:fix` | broken; restore intended behaviour |
-| `type:chore` | deps, CI, tooling, config |
-| `type:docs` | documentation only |
-| `type:refactor` | internals move, behaviour identical |
-
-The line between `feature` and `change` is **"did this exist yesterday?"** — not how big the work is. A new balloon type is `feature`; balloons expiring differently is `change`.
-
-Do not label an epic. An issue is an epic if it has sub-issues, which GitHub already knows and renders — a label would be a second source of truth that can drift from the actual list.
-
-If the project has no `type:*` labels, skip this rather than inventing them.
+If the project has no `type:*` labels, skip the label rather than inventing them.
 
 ### 5. Show it, then file
 
 Print the full body and wait. Never file silently — the user is the only one who knows whether the framing is right.
 
 ```bash
+# A task
 glb create --autopilot --title "<title>" --body "$(cat /tmp/todo-body.md)" \
   --priority P2 --points 3 --status Todo --label "type:change"
+
+# An undecided thing
+glb create --title "<title>" --body "$(cat /tmp/todo-body.md)" \
+  --priority P2 --status "Needs Decision"
 ```
 
 `--no-autopilot` in `$ARGUMENTS` drops the flag and files it human-only.
@@ -106,6 +77,8 @@ glb create --autopilot --title "<title>" --body "$(cat /tmp/todo-body.md)" \
 **No em or en dashes in the title** — `glb create` rejects them. Use a hyphen or a colon.
 
 ### 6. Confirm it will actually be picked up
+
+Tasks only. An undecided issue is meant to sit out of the queue, so skip this for one.
 
 ```bash
 glb ready --autopilot --explain
@@ -118,4 +91,5 @@ Report the issue number and the line the new issue appears on. If it is in the s
 - **One sentence in, one issue out.** If the description covers several separable pieces of work, say so and propose splitting it rather than filing one vague issue.
 - **Never ask for points or priority.** Assign them and show your reasoning. Asking hands back a decision the user came here to avoid making.
 - **Carry the user's framing.** `## Problem` is theirs; the mechanics are yours to draft. Do not rewrite their intent into what you would have asked for.
+- **An unresolved fork is filed, not guessed.** Step 1 exists so a half-decided thought gets recorded as a question rather than laundered into a spec.
 - **Do not implement anything.** This files an issue. If they wanted the work done, they would have asked for the work.

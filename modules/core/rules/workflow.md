@@ -30,53 +30,14 @@ To switch modes between tasks, run `/milky-kit:mode main | branch | worktrees`. 
 
 Use `glb` for ALL task tracking via GitHub Issues + Projects. Do NOT use TodoWrite, TaskCreate, or markdown TODOs.
 
-### Finding Work
+**`glb.md` is canonical for everything about the tracker** — commands, statuses, points, priorities, type labels, epics, and the issue body template. Read that file rather than this one for any of them.
 
-```bash
-glb ready                    # Show unblocked issues
-glb list                     # All open issues
-glb show <num>               # Detailed view with dependencies
-glb path                     # Critical path + high-leverage issues (--by-count, --top N)
-glb next                     # Recommend next batch for parallel agents (--agents N, default 3)
-```
+Start every session with `glb next`, run `glb update <num> --claim` before touching code, and `glb done <num>` when finished.
 
-### Creating Issues
+Two rules stay here, because both are about branching rather than tracking:
 
-```bash
-glb create --title="Summary" --body="Why and what" --priority P2 --status Todo --points 3
-```
-
-**Issue body must include a `## Tests` section** listing the tests that need to be written to verify the work. Exception: bug-report issues that already reference a failing test, chores with no behavior change (deps, CI, docs).
-
-**No em dashes in titles.** Issue titles and PR titles must not contain em dashes. Use a regular hyphen (-) or rewrite the sentence instead.
-
-Priorities: P0 (critical), P1 (high), P2 (medium/default), P3 (low), P4 (backlog)
-
-### Points
-
-Use **Fibonacci numbers** for the `--points` field: `1, 2, 3, 5, 8, 13`.
-- `1` — trivial (< 1 hour)
-- `2` — small (a few hours)
-- `3` — medium (half a day)
-- `5` — large (full day)
-- `8` — very large (2-3 days)
-- `13` — epic (break it down into sub-issues instead if possible)
-
-### Epics (sub-issues)
-
-```bash
-glb sub add <parent> <child>    # Add a sub-issue to a parent (epic)
-glb sub remove <parent> <child> # Remove a sub-issue from a parent
-glb sub list <parent>           # List sub-issues with progress
-```
-
-**Default: sub-issues branch off `main` and PR into `main`, just like any other issue.** The parent/child relationship is organizational only. The epic-branch workflow (sub-PRs into an epic branch) applies only in `branch` or `worktrees` mode, and only when the user explicitly asks for it.
-
-### Rules
-
-- Check `glb ready` before asking "what should I work on?"
-- Use `glb search "query"` to find existing issues
-- Do NOT create markdown TODO lists or use external trackers
+- **Sub-issues branch off `main` and PR into `main`, just like any other issue.** The parent/child relationship is organizational only. The epic-branch workflow (sub-PRs into an epic branch) applies only in `branch` or `worktrees` mode, and only when the user explicitly asks for it.
+- **No em dashes in PR titles.** `glb create` rejects them in issue titles; nothing checks a PR title, so it falls to you.
 
 ## Session Start — MANDATORY (all modes)
 
