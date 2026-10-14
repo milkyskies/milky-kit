@@ -1,8 +1,8 @@
 {
 	"dependencies": {
-		"@heroui/react": "^3.0.0",
-		"@heroui/styles": "^3.0.0",
-		"lucide-react": "^0.460.0",
+		"@heroui/react": "^3.2.6",
+		"@heroui/styles": "^3.2.6",
+		"lucide-react": "^1.56.0",
 		"react-aria-components": "^1.5.0",
 		"tailwind-variants": "^0.3.0"
 	}

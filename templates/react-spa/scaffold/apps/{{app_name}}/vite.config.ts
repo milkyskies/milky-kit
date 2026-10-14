@@ -1,12 +1,12 @@
 import tailwindcss from "@tailwindcss/vite"
-import { TanStackRouterVite } from "@tanstack/router-plugin/vite"
+import { tanstackRouter } from "@tanstack/router-plugin/vite"
 import react from "@vitejs/plugin-react"
 import { defineConfig } from "vite"
 
 export default defineConfig({
 	plugins: [
 		tailwindcss(),
-		TanStackRouterVite({
+		tanstackRouter({
 			target: "react",
 			autoCodeSplitting: true,
 			routesDirectory: "./src/app/routes",
@@ -14,12 +14,7 @@ export default defineConfig({
 		react(),
 	],
 	server: {
-		// Bind to 0.0.0.0 so phones / tablets / Capacitor live-reload on the
-		// same Wi-Fi can hit `http://<lan-ip>:5173`. Default `localhost` bind
-		// blocks LAN access. Safe because (1) the API's CORS_ORIGINS still
-		// gates cross-origin reads and (2) the `overrides` block in
-		// pnpm-workspace.yaml pins esbuild to a version without the dev-server
-		// SSRF advisory.
+		// Bind to 0.0.0.0 so phones, tablets and Capacitor live-reload on the same Wi-Fi can reach http://<lan-ip>:5173; the default localhost bind blocks LAN access. Safe because the API's CORS_ORIGINS still gates cross-origin reads.
 		host: true,
 		proxy: {
 			"/api": {

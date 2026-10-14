@@ -1,7 +1,12 @@
 {
-	"$schema": "https://biomejs.dev/schemas/2.5.6/schema.json",
+	"$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
 	"extends": ["@milkyskies/biome-config/biome.json"],
 	"files": {
-		"includes": ["**", "!**/routeTree.gen.ts", "!**/_generated"]
+		"includes": ["src/**", "*.ts", "*.json", "!**/routeTree.gen.ts", "!**/_generated"]
+	},
+	"css": {
+		"parser": {
+			"tailwindDirectives": true
+		}
 	}
 }

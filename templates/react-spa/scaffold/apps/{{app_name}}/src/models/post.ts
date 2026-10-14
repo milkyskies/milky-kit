@@ -6,25 +6,22 @@ type GetPostResponse = InferResponseType<(typeof api.api.posts)[":id"]["$get"], 
 
 export type PostApi = GetPostResponse
 
-export interface Post {
+export class Post extends Data.Class<{
 	readonly id: string
 	readonly title: string
 	readonly body: string
 	readonly publishedAt: Date | undefined
 	readonly createdAt: Date
 	readonly updatedAt: Date
-}
-
-export const Post = {
-	make: Data.case<Post>(),
-
-	fromApi: (dto: PostApi): Post =>
-		Post.make({
+}> {
+	static fromApi(dto: PostApi): Post {
+		return new Post({
 			id: dto.id,
 			title: dto.title,
 			body: dto.body,
 			publishedAt: dto.publishedAt ? new Date(dto.publishedAt) : undefined,
 			createdAt: new Date(dto.createdAt),
 			updatedAt: new Date(dto.updatedAt),
-		}),
+		})
+	}
 }
