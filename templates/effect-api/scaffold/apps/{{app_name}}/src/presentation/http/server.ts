@@ -1,40 +1,26 @@
-import { McpServer } from "@effect/ai"
-import { HttpApiSwagger, HttpLayerRouter } from "@effect/platform"
 import { BunHttpServer } from "@effect/platform-bun"
 import { Effect, Layer } from "effect"
-import { AppConfig } from "@/infrastructure/config"
-import { MCP_SERVER_INFO, McpToolkitsLive } from "@/presentation/mcp/toolkits"
-import { PostsApi } from "./api"
+import { HttpRouter } from "effect/http"
+import { HttpApiBuilder, HttpApiScalar } from "effect/http-api"
+import { AppConfig } from "../../infrastructure/config"
+import { McpServerHttpLive } from "../mcp/server"
+import { Api } from "./api"
 import { PostsHandlersLive } from "./post-handlers"
 
-/**
- * One Bun server, two surfaces on one port, composed on a single HttpLayerRouter:
- *   - REST API under /api (OpenAPI spec at /api/openapi.json, Swagger UI at /api/docs)
- *     — the web-client seam. Everything API-related stays under /api so the root
- *     namespace is free for the web client.
- *   - MCP over Streamable HTTP at /mcp — the same tools the stdio server exposes,
- *     so a running server is reachable by an HTTP MCP client.
- *
- * The stdio MCP transport stays in presentation/mcp/server.ts for local Claude
- * Code; it can't share this process because stdout is its protocol wire.
- */
-const ApiRoutes = HttpLayerRouter.addHttpApi(PostsApi, {
-	openapiPath: "/api/openapi.json",
-}).pipe(Layer.provide(PostsHandlersLive))
-
-const McpRoutes = McpToolkitsLive.pipe(
-	Layer.provide(McpServer.layerHttpRouter({ ...MCP_SERVER_INFO, path: "/mcp" })),
+const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }).pipe(
+	Layer.provide(PostsHandlersLive),
 )
 
-const SwaggerRoutes = HttpApiSwagger.layerHttpLayerRouter({ api: PostsApi, path: "/api/docs" })
+const DocsRoutes = HttpApiScalar.layerCdn(Api, { path: "/api/docs" })
 
-export const HttpServerLive = HttpLayerRouter.serve(
-	Layer.mergeAll(ApiRoutes, McpRoutes, SwaggerRoutes),
+export const HttpServerLive = HttpRouter.serve(
+	Layer.mergeAll(ApiRoutes, DocsRoutes, McpServerHttpLive),
 ).pipe(
 	Layer.provide(
-		Layer.unwrapEffect(
+		Layer.unwrap(
 			Effect.gen(function* () {
 				const config = yield* AppConfig
+
 				return BunHttpServer.layer({ port: config.port })
 			}),
 		),

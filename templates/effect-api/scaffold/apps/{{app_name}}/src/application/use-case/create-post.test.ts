@@ -1,8 +1,8 @@
 import { describe, expect, it } from "@effect/vitest"
 import { Effect, Layer, Option } from "effect"
-import { Post } from "@/domain/models/post"
-import { PostRepository } from "@/domain/repositories/post-repository"
-import { IdGenerator } from "@/domain/services/id-generator"
+import { Post } from "../../domain/models/post"
+import { PostRepository } from "../../domain/repositories/post-repository"
+import { IdGenerator } from "../../domain/services/id-generator"
 import { createPost } from "./create-post"
 
 const testId = "01902d4e-7a1c-7c3f-bf2a-1e9d8c4a2b10"

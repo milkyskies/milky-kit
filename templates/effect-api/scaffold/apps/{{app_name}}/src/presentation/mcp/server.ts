@@ -1,19 +1,19 @@
-import { McpServer } from "@effect/ai"
-import { BunSink, BunStream } from "@effect/platform-bun"
+import { BunStdio } from "@effect/platform-bun"
 import { Layer } from "effect"
-import { MCP_SERVER_INFO, McpToolkitsLive } from "./toolkits"
+import { McpProtocol, McpServer } from "effect/ai"
+import { McpToolkitsLive } from "./toolkits"
 
-/**
- * MCP over stdio — the transport Claude Code / Claude Desktop launch as a
- * subprocess. The running HTTP server exposes the same tools over HTTP at /mcp
- * (see presentation/http/server.ts); both share McpToolkitsLive.
- */
-export const McpServerLive = McpToolkitsLive.pipe(
-	Layer.provide(
-		McpServer.layerStdio({
-			...MCP_SERVER_INFO,
-			stdin: BunStream.stdin,
-			stdout: BunSink.stdout,
-		}),
-	),
+const SERVER_INFO = {
+	name: "{{project_name}}-api",
+	version: "0.0.0",
+	protocols: [McpProtocol.v2025_11_25],
+} as const
+
+export const McpServerHttpLive = McpToolkitsLive.pipe(
+	Layer.provide(McpServer.layerHttp({ ...SERVER_INFO, path: "/mcp" })),
+)
+
+export const McpServerStdioLive = McpToolkitsLive.pipe(
+	Layer.provide(McpServer.layerStdio(SERVER_INFO)),
+	Layer.provide(BunStdio.layer),
 )

@@ -1,6 +1,6 @@
 # Production image for apps/{{app_name}} — serves REST (/api) + MCP (/mcp).
 # Bun is the runtime; pnpm resolves the workspace install. Migrations run on start
-# via drizzle-orm's programmatic migrator (Bun-native), so the image needs neither
+# via drizzle-orm's effect-postgres migrator, so the image needs neither
 # Node nor drizzle-kit — see apps/{{app_name}}/scripts/migrate.ts.
 FROM oven/bun:1.2.10
 
