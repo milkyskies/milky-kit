@@ -7,49 +7,51 @@ paths:
 
 # Consuming an effect-api from a React frontend
 
-Use this rule only when the project's API is the milky-kit `effect-api` template (or another `@effect/platform`-based service). It documents the three bridges from a normal React + TanStack Query frontend to a typed Effect backend.
+Use this rule only when the project's API is the milky-kit `effect-api` template (or another `effect/http-api` service). It documents the three bridges from a normal React + TanStack Query frontend to a typed Effect backend.
 
-## 0. First make the API importable (the `@/` alias barrier)
+## 0. The relative-import barrier
 
-The api package uses `@/*` path aliases internally (`@/domain/...`, `@/application/...`). Those aliases are resolved by **the importing project's** tsconfig/Vite, so the moment the web client imports an api source file that uses `@/`, resolution points at the *client's* `src/` and breaks — at typecheck and at bundle time. "Import directly across workspace boundaries" only works for an api surface that is **alias-free**.
+The web client compiles the API's `HttpApi` definition and every Schema it references: payloads, success models, and error classes. Path aliases resolve against **the importing project's** tsconfig, so an `@/` alias inside the api package would point at the client's own `src/` and break at typecheck with "cannot find module".
 
-So the effect-api template ships a dedicated browser-safe entry, `src/client.ts`, that re-exports only what the client needs using **relative** imports, and declares it in `package.json`:
+So the effect-api template uses **relative imports only**, has no `baseUrl` and no `paths` in its tsconfig, and ships a dedicated entry, `src/client.ts`, declared in `package.json`:
 
 ```jsonc
 // apps/api/package.json
 "exports": { "./client": "./src/client.ts" }
 ```
 ```ts
-// apps/api/src/client.ts — only modules that import nothing but `effect`.
-export { Post, PostId } from "./domain/models/post"
+// apps/api/src/client.ts — every module reachable from here imports only `effect` and relative paths.
+export { CreatePostInput } from "./application/use-case/create-post"
+export { Post } from "./domain/models/post"
+export { PostNotFound } from "./domain/models/post-not-found"
+export { Api } from "./presentation/http/api"
 ```
 
-The client imports `@<project>/api/client`. Which bridge below you reach for depends on what crosses the boundary:
+The client imports `@<project>/api/client` and needs no build step, because the package exports TypeScript source directly. Keep the barrier intact:
 
-- **Domain schemas** (`Post`, value objects, input `Schema.Struct`s) import only `effect`, so they cross with no build step — re-export them from `src/client.ts` freely.
-- **The `HttpApi` definition value** (`PostsApi`) transitively pulls the `@/`-aliased handler/use-case graph. To use bridge #1 (`HttpApiClient`, below) you must **build the api** to alias-free output (e.g. `tsdown`/`tsup` resolving the paths) and point `./client` at `dist`. If you'd rather skip a build step, prefer bridge #3 (share the schemas, call `fetch` yourself) — lighter, still fully typed on the domain.
+- Nothing reachable from `client.ts` may import Drizzle, `@effect/sql-*`, Cloudflare types, or the Bun runtime. Handlers, repositories, and infrastructure stay outside the reachable set because `api.ts` imports only schemas.
+- Error classes live in their own relative-import module (`post-not-found.ts`), not in the repository file.
+- In a monorepo, declare the dependency as `"@<project>/api": "workspace:*"`.
 
 ## 1. Typed client via `HttpApiClient`
 
-The effect-api template exports an `HttpApi` definition (e.g. `PostsApi`). With the api built to alias-free output (see §0), importing it across the workspace boundary gives the frontend a typed client with zero codegen:
+The `Api` definition exported from `client.ts` gives the frontend a typed client with zero codegen:
 
 ```ts
 // apps/web/src/services/api/client.ts
-import { HttpApiClient } from "@effect/platform"
-import { FetchHttpClient } from "@effect/platform"
-import { Effect, Layer } from "effect"
-import { PostsApi } from "@<project>/api"
-
-const ClientLayer = FetchHttpClient.layer
+import { Effect } from "effect"
+import { FetchHttpClient } from "effect/http"
+import { HttpApiClient } from "effect/http-api"
+import { Api } from "@<project>/api/client"
 
 export const client = await Effect.runPromise(
-	HttpApiClient.make(PostsApi, { baseUrl: import.meta.env.VITE_API_URL }).pipe(
-		Effect.provide(ClientLayer),
+	HttpApiClient.make(Api, { baseUrl: import.meta.env.VITE_API_URL }).pipe(
+		Effect.provide(FetchHttpClient.layer),
 	),
 )
 ```
 
-`client.posts.getPost({ id })` returns `Effect<Post, PostNotFound | HttpClientError>`. The `Post` is the same `Schema.Class` defined in the backend's `domain/models/post.ts` — decoded on receive, fully typed at the call site.
+`client.posts.getPost({ params: { id } })` returns `Effect<Post, PostNotFound | HttpClientError | SchemaError>`. The `Post` is the same `Schema.Class` defined in the backend's `domain/models/post.ts` — decoded on receive, fully typed at the call site. Payloads go in `payload`, query strings in `query`.
 
 ## 2. Bridging Effect to TanStack Query
 
@@ -62,7 +64,7 @@ import { client } from "@/services/api/client"
 
 export const getPostQueryOptions = (id: string) => ({
 	queryKey: ["posts", id] as const,
-	queryFn: () => Effect.runPromise(client.posts.getPost({ id })),
+	queryFn: () => Effect.runPromise(client.posts.getPost({ params: { id } })),
 })
 ```
 
@@ -73,7 +75,7 @@ Caveat: TanStack Query types the `error` as the unstructured `Error`. The typed 
 ```ts
 queryFn: () =>
 	Effect.runPromise(
-		client.posts.getPost({ id }).pipe(
+		client.posts.getPost({ params: { id } }).pipe(
 			Effect.match({
 				onFailure: (error) => ({ kind: "error" as const, error }),
 				onSuccess: (post) => ({ kind: "ok" as const, post }),
@@ -86,28 +88,26 @@ The result is a tagged union the component can `Match` on. Annoying but it works
 
 ## 3. `Schema` for form validation
 
-The frontend can reuse the same `Schema.Class` (or `Schema.Struct`) the backend uses for input validation. `CreatePostInput` defined in `application/use-case/create-post.ts` is importable directly:
+The frontend can reuse the same `Schema.Class` (or `Schema.Struct`) the backend uses for input validation. `CreatePostInput` defined in `application/use-case/create-post.ts` is re-exported from `client.ts` and importable directly. Decoding yields the Type side, so `publishedAt` arrives as an `Option<Date>`:
 
 ```ts
-import { Schema } from "effect"
-import { CreatePostInput } from "@<project>/api"
+import { Result, Schema } from "effect"
+import { CreatePostInput } from "@<project>/api/client"
 
-const result = Schema.decodeUnknownEither(CreatePostInput)(formData)
-if (result._tag === "Left") {
-	// render result.left (ParseError) — has formatted error tree
-	return showFormErrors(result.left)
-}
-// result.right is a typed CreatePostInput
-submit(result.right)
+const result = Schema.decodeUnknownResult(CreatePostInput)(formData)
+
+if (Result.isFailure(result)) return showFormErrors(result.failure)
+
+submit(result.success)
 ```
 
-This is the lightest-touch use of Effect on the frontend — `Schema` alone, no full Effect runtime. For React Hook Form / Formik integration, write a custom resolver that calls `Schema.decodeUnknownEither` and maps the `ParseError` paths to form field errors.
+This is the lightest-touch use of Effect on the frontend — `Schema` alone, no full Effect runtime. For React Hook Form / Formik integration, write a custom resolver that calls `Schema.decodeUnknownResult` and maps the issue paths to form field errors.
 
 ## What this rule does NOT cover
 
-- **Fully-Effect frontends** (replacing TanStack Query with `@effect-rx/rx-react`). That's a different paradigm and would need its own template (`effect-react-spa`). Not currently shipped.
+- **Fully-Effect frontends** (replacing TanStack Query with an Effect-native reactive store). That's a different paradigm and would need its own template (`effect-react-spa`). Not currently shipped.
 - **Server-side rendering**. The react-spa template is client-rendered. SSR would need a different platform setup.
-- **WebSocket / SSE streams** through Effect's `Stream` module. Possible (`@effect/platform`'s `Socket` works), but no scaffolded example yet.
+- **WebSocket / SSE streams** through Effect's `Stream` module. Possible (`effect/socket` works), but no scaffolded example yet.
 
 ## Convention
 

@@ -1,6 +1,6 @@
 {
 	"compilerOptions": {
-		"target": "ES2022",
+		"target": "ES2023",
 		"module": "ESNext",
 		"moduleResolution": "bundler",
 		"types": ["bun"],
@@ -15,16 +15,10 @@
 		"isolatedModules": true,
 		"verbatimModuleSyntax": true,
 		"resolveJsonModule": true,
-		"esModuleInterop": true,
 		"forceConsistentCasingInFileNames": true,
 
 		"noEmit": true,
-		"skipLibCheck": true,
-
-		"baseUrl": ".",
-		"paths": {
-			"@/*": ["./src/*"]
-		}
+		"skipLibCheck": true
 	},
 	"include": ["src/**/*", "scripts/**/*", "drizzle.config.ts", "vitest.config.ts"],
 	"exclude": ["node_modules", "drizzle/migrations"]

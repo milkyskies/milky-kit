@@ -1,8 +1,8 @@
 import { Option, Schema } from "effect"
 
 export class Post extends Schema.Class<Post>("Post")({
-	id: Schema.UUID,
-	title: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(200)),
+	id: Schema.String.check(Schema.isUUID()),
+	title: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200)),
 	body: Schema.String,
 	publishedAt: Schema.OptionFromNullOr(Schema.Date),
 	createdAt: Schema.Date,
@@ -12,6 +12,3 @@ export class Post extends Schema.Class<Post>("Post")({
 		return Option.isSome(this.publishedAt)
 	}
 }
-
-export const PostId = Schema.UUID.pipe(Schema.brand("PostId"))
-export type PostId = typeof PostId.Type

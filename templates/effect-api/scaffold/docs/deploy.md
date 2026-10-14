@@ -38,7 +38,7 @@ database/user/password; Dokploy shows an **internal connection string** like
 ## 3. Migrations run automatically
 
 The container migrates on every start (`scripts/migrate.ts` via drizzle-orm's
-Bun-native migrator) before the server boots:
+`effect-postgres` migrator) before the server boots:
 
 - **Fresh DB**: the first deploy creates the whole schema.
 - **Existing DB**: applied migrations are skipped (tracked in

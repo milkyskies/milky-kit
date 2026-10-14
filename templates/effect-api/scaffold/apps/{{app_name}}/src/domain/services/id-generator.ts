@@ -1,14 +1,11 @@
 import { Context, Effect, Layer } from "effect"
 
-/**
- * Generates new entity IDs. Wrapped as a service so tests can inject deterministic IDs.
- */
-export class IdGenerator extends Context.Tag("IdGenerator")<
+export class IdGenerator extends Context.Service<
 	IdGenerator,
 	{
 		readonly nextId: () => Effect.Effect<string>
 	}
->() {}
+>()("IdGenerator") {}
 
 export const IdGeneratorLive = Layer.succeed(IdGenerator, {
 	nextId: () => Effect.sync(() => Bun.randomUUIDv7()),

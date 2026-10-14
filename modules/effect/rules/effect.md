@@ -8,6 +8,27 @@ paths:
 
 This rule is the paradigm core + the universal clean-architecture layout for every Effect-TS project. Compose with adapter modules (`effect-http`, `effect-mcp`) and infrastructure modules (`effect-sql`) as the project needs them. Effect-TS supersedes the paradigm-neutral TypeScript rules in `modules/ts/rules/`; pick one paradigm per project, never both.
 
+## Effect 4
+
+This kit targets Effect 4 (`effect@^4.0.4`). Every example in the effect rules uses Effect 4 names, so older tutorials and training data will mislead. Check a name against `node_modules/effect/dist/*.d.ts` before using it.
+
+The packages `@effect/platform` and `@effect/sql` no longer exist as separate packages: their code lives in `effect` and imports from `effect/http`, `effect/http-api`, and `effect/sql`. Driver packages stay separate and share the `effect` version: `@effect/sql-pg`, `@effect/sql-d1`, `@effect/platform-bun`, `@effect/platform-node`, `@effect/vitest`.
+
+Names that were removed or renamed in Effect 4, each with its replacement:
+
+- Removed in Effect 4: `Context.Tag("X")<X, Shape>()`. Use `Context.Service<X, Shape>()("X")`.
+- Removed in Effect 4: `Effect.catchAll`. Use `Effect.catch`.
+- Removed in Effect 4: `Effect.fork`. Use `Effect.forkChild`, `Effect.forkDetach`, `Effect.forkScoped`.
+- Removed in Effect 4: `Layer.scoped`. Use `Layer.effect` (it already provides a `Scope`).
+- Removed in Effect 4: `Schema.decodeUnknown`. Use `Schema.decodeUnknownEffect`.
+- Removed in Effect 4: `Schema.transform`. Use `Schema.decodeTo`.
+- Removed in Effect 4: `Schema.minLength(1)` and other pipe filters. Use `.check(Schema.isMinLength(1))`.
+- Removed in Effect 4: `Schema.UUID`. Use `Schema.String.check(Schema.isUUID())`.
+- Removed in Effect 4: `Option.fromNullable`. Use `Option.fromNullishOr`.
+- Removed in Effect 4: `Either`. Use `Result`.
+- Removed in Effect 4: `Config.redacted`, `Config.integer`, `Config.literal`. Use `Config.Redacted`, `Config.Int` or `Config.Port`, `Config.Literals`.
+- Removed in Effect 4: `@effect/sql-drizzle` (no 4.x release). Use Drizzle's native `drizzle-orm/effect-*` drivers.
+
 ## Strong typing baseline
 
 These hold regardless of paradigm, but they matter especially here because Effect's typed channels rely on them:
@@ -36,13 +57,13 @@ src/                                  (flat — single-app project)
 apps/<app>/src/                       (monorepo — multi-app project)
 ├── domain/                           Pure types and rules. No I/O.
 │   ├── models/<resource>.ts          Schema.Class for the domain entity. Encode/decode in one place.
-│   ├── services/<concept>.ts         Multi-entity / pure-business algorithms. Context.Tag + Layer.
-│   └── repositories/<resource>.ts    Repository interface as Context.Tag.
+│   ├── services/<concept>.ts         Multi-entity / pure-business algorithms. Context.Service + Layer.
+│   └── repositories/<resource>.ts    Repository interface as Context.Service.
 ├── application/
 │   └── use-case/<verb>-<resource>.ts The Effect + its Input/Output Schemas, colocated.
 │                                     Every adapter (http, mcp, matrix, cli) imports these.
 ├── infrastructure/                   Adapters out. Knows about external systems.
-│   ├── config.ts                     Config-based env (Config.string, Config.redacted).
+│   ├── config.ts                     Config-based env (Config.String, Config.Redacted).
 │   └── logger.ts                     Logger Layer.
 │   (effect-sql adds db/schema.ts + db/<resource>-repository.ts)
 └── presentation/                     Adapters in. One subdirectory per inbound protocol.
@@ -84,21 +105,21 @@ A presentation file with an `Effect.gen` block longer than 3 lines is a code sme
 
 - `Effect.fail(new PostNotFound({ id }))` to fail. Never `throw` in business logic. A thrown value is a defect (bug), not an application error.
 - Handle expected errors with `Effect.catchTag("PostNotFound", (err) => ...)` or `Effect.catchTags({ PostNotFound: ..., DbError: ... })` near where the error becomes meaningful — not at the top.
-- Never swallow errors silently (`Effect.catchAll(() => Effect.void)` is almost always wrong). If you cannot act on a failure, propagate it with context via `Effect.mapError`.
+- Never swallow errors silently (`Effect.catch(() => Effect.void)` is almost always wrong). If you cannot act on a failure, propagate it with context via `Effect.mapError`.
 - At each adapter boundary, format errors for the consumer: human messages to users, structured JSON to machines, full traces to logs. Each adapter module describes its own error-mapping mechanism.
 - Don't catch errors you cannot handle. Let them reach a boundary that can.
 
 ## Optionals
 
 - `Option.Option<T>` for absent values in domain code. Never `T | null` or `T | undefined`.
-- At decode boundaries land directly in `Option<T>` using `Schema.OptionFromNullOr(...)`, `Schema.OptionFromUndefinedOr(...)`, or `Schema.OptionFromNullishOr(...)`. Don't decode to nullable and then `Option.fromNullable` it.
+- At decode boundaries land directly in `Option<T>` using `Schema.OptionFromNullOr(...)`, `Schema.OptionFromUndefinedOr(...)`, or `Schema.OptionFromNullishOr(...)`. Don't decode to nullable and then `Option.fromNullishOr` it.
 - Convert to nullable at the wire boundary by encoding the domain Schema — never hand-massage Options.
 - Function parameters where omission means "default behavior" use `?: T`, not `Option<T>` — the Option rule is for stored fields and return types.
 
 ## Value objects
 
 - Domain primitives are branded, never raw `string` / `number`. IDs use `Brand.nominal<UserId>()`; constrained primitives (Email, Title, Air, etc.) use `Schema.brand` with the validation rule baked in. Multi-field values (Location, Money) use `Schema.Class`.
-- Brand at the inbound boundary (HTTP body, DB row) via `Schema.decodeUnknown`; encode back to primitive at the outbound boundary. The middle of the codebase never sees the raw primitive.
+- Brand at the inbound boundary (HTTP body, DB row) via `Schema.decodeUnknownEffect`; encode back to primitive at the outbound boundary. The middle of the codebase never sees the raw primitive.
 
 ## Pattern matching
 
@@ -110,8 +131,8 @@ A presentation file with an `Effect.gen` block longer than 3 lines is a code sme
 ## Schema everywhere at boundaries
 
 - Define domain types with `Schema.Class` (or `Schema.Struct`). The same schema drives decode (wire → domain) and encode (domain → wire) — there is no separate "DTO type" in the common case.
-- All boundary parsing (HTTP body, env vars, file contents, LLM output, external event, DB row when the row shape is untrusted) goes through `Schema.decodeUnknown` so you get a typed value or a typed `ParseError`, never `any`.
-- When the wire shape genuinely differs from the encoded domain (renamed fields, computed fields, omitted fields), express it as `Schema.transform(DomainSchema, WireSchema, { decode, encode })` in `presentation/<adapter>/dto/<resource>.ts`. Only then.
+- All boundary parsing (HTTP body, env vars, file contents, LLM output, external event, DB row when the row shape is untrusted) goes through `Schema.decodeUnknownEffect` so you get a typed value or a typed `SchemaError`, never `any`.
+- When the wire shape genuinely differs from the encoded domain (renamed fields, computed fields, omitted fields), express it as `WireSchema.pipe(Schema.decodeTo(DomainSchema, { decode, encode }))` in `presentation/<adapter>/dto/<resource>.ts`. Only then.
 - Use case Input/Output Schemas live next to the use case and are shared between adapters. One schema, every protocol.
 
 ## Sums, discriminated unions, and `_tag` discipline
@@ -131,7 +152,7 @@ A presentation file with an `Effect.gen` block longer than 3 lines is a code sme
 | Compare two tagged values for equality | `Equal.equals(a, b)` — structural, exhaustive, free with `Data.*` and `Schema.Class` | `a._tag === b._tag && a.foo === b.foo && ...` |
 | Use a tagged value as a key in a map / set | `HashMap` / `HashSet` from `effect` (uses `Hash` automatically) | `Map` / `Set` keyed by stringified `_tag` |
 
-If the value is a plain object with a `_tag` field (not built via `Data.taggedEnum`, `Data.case`, `Data.struct`, or `Schema.Class`), the upstream type definition is the bug. Convert the producer first; do not bridge with manual `_tag` checks.
+If the value is a plain object with a `_tag` field (not built via `Data.taggedEnum`, `Data.TaggedClass`, or `Schema.Class`), the upstream type definition is the bug. Convert the producer first; do not bridge with manual `_tag` checks.
 
 Anti-pattern in the wild:
 
@@ -160,21 +181,21 @@ const authsEqual = (a: AuthState, b: AuthState) => Equal.equals(a, b)
 
 ## Dependency injection via Layer / Context
 
-- Every service is a `Context.Tag` with a structural interface. No classes for services beyond `Schema.Class` for data.
+- Every service is a `Context.Service` with a structural interface. No classes for services beyond `Schema.Class` for data.
 
   ```ts
-  class PostRepository extends Context.Tag("PostRepository")<
+  class PostRepository extends Context.Service<
     PostRepository,
     {
       readonly findById: (id: string) => Effect.Effect<Option.Option<Post>, DbError>
       readonly create: (input: NewPost) => Effect.Effect<Post, DbError>
     }
-  >() {}
+  >()("PostRepository") {}
   ```
 
-- Provide implementations as `Layer.effect` (needs other services) or `Layer.scoped` (owns acquire/release). Compose with `Layer.mergeAll` and `Layer.provide` to order dependencies.
+- Provide implementations as `Layer.effect` (needs other services) or `Layer.effect` with `Effect.acquireRelease` inside (owns acquire/release; `Layer.scoped` was removed in Effect 4 because `Layer.effect` already provides a `Scope`). Compose with `Layer.mergeAll` and `Layer.provide` to order dependencies.
 - Business logic reaches services via the `R` channel (`const repo = yield* PostRepository`) — never as function parameters. Function-parameter DI works but defeats the type-level wiring.
-- External clients (HTTP, queue, mailer, third-party SDK) are services, not free functions. Each gets a `Tag` and a `Layer` built from `Config`. Tests swap the Layer for a stub: `Layer.succeed(MyService, mockImplementation)`.
+- External clients (HTTP, queue, mailer, third-party SDK) are services, not free functions. Each gets a `Context.Service` and a `Layer` built from `Config`. Tests swap the Layer for a stub: `Layer.succeed(MyService, mockImplementation)`.
 
 ## Config
 
@@ -183,24 +204,23 @@ const authsEqual = (a: AuthState, b: AuthState) => Equal.equals(a, b)
 
   ```ts
   const AppConfig = Config.all({
-    databaseUrl: Config.redacted("DATABASE_URL"),
-    port: Config.integer("PORT").pipe(Config.withDefault(3000)),
-    logLevel: Config.literal("debug", "info", "warn", "error")("LOG_LEVEL")
-      .pipe(Config.withDefault("info" as const)),
+    databaseUrl: Config.Redacted("DATABASE_URL"),
+    port: Config.Port("PORT").pipe(Config.withDefault(3000)),
+    logLevel: Config.LogLevel("LOG_LEVEL").pipe(Config.withDefault("Info" as const)),
   })
   ```
 
-- Secrets go through `Config.redacted` so they cannot be printed or logged by accident. Unwrap with `Redacted.value(secret)` only at the exact call site that needs the raw value.
+- Secrets go through `Config.Redacted` so they cannot be printed or logged by accident. Unwrap with `Redacted.value(secret)` only at the exact call site that needs the raw value.
 - Config reads are Effects; failures are typed `ConfigError`s and surface at app boot.
 
 ## Concurrency
 
 - `Effect.all` with explicit `{ concurrency }` — never `Promise.all`. Pick a number, `"unbounded"`, or `"inherit"` deliberately.
-- Long-running work: `Effect.fork` / `Fiber`. Streams of effects: the `Stream` module.
+- Long-running work: `Effect.forkChild`, `Effect.forkDetach`, or `Effect.forkScoped` with `Fiber`. Streams of effects: the `Stream` module.
 
 ## Resources
 
-- Anything with acquire/release uses `Effect.acquireRelease` or `Layer.scoped`. Never `try/finally`.
+- Anything with acquire/release uses `Effect.acquireRelease`, inside `Layer.effect` when it backs a service. Never `try/finally`.
 
 ## Retries and scheduling
 
@@ -217,12 +237,12 @@ const authsEqual = (a: AuthState, b: AuthState) => Equal.equals(a, b)
 
 The 3-tier model + Gherkin spec convention lives in `modules/core/rules/testing.md`. Below is the Effect-flavor tool layer for the universal tiers; adapter modules (`effect-http`, `effect-mcp`) add their own E2E patterns.
 
-- Tests use `@effect/vitest`. Replace `it` / `test` with `it.effect`, `it.scoped`, or `it.live` — test bodies are Effects, assertions compose with the system under test.
+- Tests use `@effect/vitest`. Replace `it` / `test` with `it.effect` or `it.live` (both run with a `Scope`, so `it.scoped` no longer exists) — test bodies are Effects, assertions compose with the system under test.
 - **Run vitest under Bun**: the `test` script is `bunx --bun vitest run`, not plain `vitest run`. effect-api runs on Bun (`@effect/platform-bun`), so its tests must too — vitest's default Node workers throw `ReferenceError: Bun is not defined` the moment a test exercises a Bun-only platform API (e.g. `HttpServerResponse.file`). Running tests on the production runtime also keeps them honest.
 - **Domain tier** (`domain/models/*.test.ts`, `domain/services/*.test.ts`, `application/use-case/*.test.ts`): no real I/O. Build a `Layer.mergeAll(StubPostRepository, StubIdGenerator, ...)` per test or per `describe` block. Provide it via `Effect.provide(TestLive)` on the test body. Required for every use case — non-negotiable.
 - **Integration tier** (`tests/integration/`): provide the real infrastructure Layer (e.g. `SqlLive` against a fresh test database) and exercise use cases through it. Each infrastructure module describes its own setup.
-- Time-dependent code: `TestClock.adjust(Duration.seconds(5))` advances time deterministically. Never `vi.useFakeTimers` or `sinon`.
-- Random-dependent code: `TestRandom` provides reproducible seeds.
+- Time-dependent code: `TestClock.adjust(Duration.seconds(5))` (imported from `effect/testing`) advances time deterministically. Never `vi.useFakeTimers` or `sinon`.
+- Random-dependent code: wrap the effect in `Random.withSeed("seed")` for reproducible values.
 - Service mocking: `Layer.succeed(MyService, mockImpl)` always, never `vi.mock` for Effect services.
 - Test files colocated for domain tier (`createPost.ts` + `createPost.test.ts`). Integration + E2E live under `tests/`.
 - **Scenario codes in test names** when a `docs/test/<feature>.md` spec exists: `it.effect("POST-001 rejects empty title", () => ...)`. `grep POST-001` finds the test from the spec or the spec from the test.

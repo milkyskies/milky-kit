@@ -1,6 +1,6 @@
 import { Effect, Schema } from "effect"
-import type { Post } from "@/domain/models/post"
-import { type DbError, PostRepository } from "@/domain/repositories/post-repository"
+import type { Post } from "../../domain/models/post"
+import { type DbError, PostRepository } from "../../domain/repositories/post-repository"
 
 export const ListPostsInput = Schema.Struct({})
 export type ListPostsInput = typeof ListPostsInput.Type

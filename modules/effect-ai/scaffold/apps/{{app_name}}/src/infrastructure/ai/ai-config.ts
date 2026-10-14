@@ -1,10 +1,5 @@
-/**
- * AI provider config. OpenRouter (cloud) and a self-hosted Ollama both
- * speak the OpenAI-compatible API, so one OpenAI client + a base URL
- * covers both. Switch provider by changing `AI` to another preset; change
- * the model by editing its `model`. Each preset names the env var holding
- * its key (see .env.example). Ollama ignores the key — any value works.
- */
+// OpenRouter and a self-hosted Ollama both speak the OpenAI-compatible API, so one client plus a base URL covers both.
+// Ollama ignores the key, so any value works.
 const PROVIDERS = {
 	openrouter: {
 		baseUrl: "https://openrouter.ai/api/v1",

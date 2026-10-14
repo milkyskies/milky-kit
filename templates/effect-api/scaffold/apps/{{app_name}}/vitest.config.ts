@@ -6,9 +6,4 @@ export default defineConfig({
 		setupFiles: [],
 		globals: false,
 	},
-	resolve: {
-		alias: {
-			"@": new URL("./src", import.meta.url).pathname,
-		},
-	},
 })

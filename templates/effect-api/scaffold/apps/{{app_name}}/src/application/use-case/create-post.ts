@@ -1,12 +1,12 @@
 import { Effect, Option, Schema } from "effect"
-import type { Post } from "@/domain/models/post"
-import { type DbError, PostRepository } from "@/domain/repositories/post-repository"
-import { IdGenerator } from "@/domain/services/id-generator"
+import type { Post } from "../../domain/models/post"
+import { type DbError, PostRepository } from "../../domain/repositories/post-repository"
+import { IdGenerator } from "../../domain/services/id-generator"
 
 export const CreatePostInput = Schema.Struct({
-	title: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(200)),
+	title: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200)),
 	body: Schema.String,
-	publishedAt: Schema.OptionFromNullishOr(Schema.DateFromSelf, null),
+	publishedAt: Schema.OptionFromOptionalNullOr(Schema.Date),
 })
 export type CreatePostInput = typeof CreatePostInput.Type
 
