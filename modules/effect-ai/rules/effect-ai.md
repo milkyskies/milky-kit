@@ -4,9 +4,9 @@ paths:
   - "**/*.tsx"
 ---
 
-# AI: provider-agnostic LLM via `@effect/ai`
+# AI: provider-agnostic LLM via `effect/ai`
 
-This module adds LLM access as a single Effect service. The point is that call sites
+This module adds LLM access as a single Effect service. The `LanguageModel`, `Tool`, and `Toolkit` modules ship inside `effect` at `effect/ai`; only the provider package (`@effect/ai-openai-compat`) is a separate install. The point is that call sites
 never know which provider/model is behind it — that lives in one config constant.
 
 ## Shape
@@ -23,8 +23,8 @@ src/infrastructure/ai/
   OpenAI-compatible endpoint, or change the model, by editing `ai-config.ts` only.
   Never hardcode a model id or base URL at a call site.
 - **Depend on `AiService`, never on a provider.** Business logic yields `AiService`
-  and calls `complete` / `structured`. No use case imports `@effect/ai-openai` or
-  builds an HTTP client. Provide `AiService.Default` once at the composition root.
+  and calls `complete` / `structured`. No use case imports `@effect/ai-openai-compat` or
+  builds an HTTP client. Provide `AiService.layer` once at the composition root.
 - **Keys via `Config.redacted`.** The provider key is read through `Config` from the
   env var named in the preset — never `process.env` directly, never a plain string.
 - **`structured` for anything parsed.** When you need fields back, pass a `Schema` to
