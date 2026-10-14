@@ -14,9 +14,8 @@
 		"noUncheckedIndexedAccess": true,
 		"noImplicitOverride": true,
 		"types": ["bun"],
-		"baseUrl": ".",
 		"paths": {
-			"@/*": ["src/*"]
+			"@/*": ["./src/*"]
 		}
 	},
 	"include": ["src/**/*.ts"]
