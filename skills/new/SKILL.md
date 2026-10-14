@@ -118,8 +118,23 @@ User says any of: "scaffold a new project", "set up an Effect API", "new milky-k
    **`[tasks.dev]` block** — adapt to the app count:
 
    - 1 app → single command: `mise run dev:<app_name>` (no tmux split).
-   - 2 apps → vertical tmux split (`dev:<app1>` top, `dev:<app2>` bottom). Match the adoba pattern: pane targeting without explicit indices, accepts an optional worktree number argument.
-   - 3-4 apps → 2x2 tmux grid.
+   - 2 apps → vertical tmux split (`dev:<app1>` top, `dev:<app2>` bottom). Match the adoba pattern: pane targeting without explicit indices, accepts an optional worktree number argument. Outside tmux, fall back to running both tasks in parallel in one terminal:
+
+     ```toml
+     [tasks.dev]
+     run = """
+     if [ -n "${TMUX:-}" ]; then
+     	tmux split-window -v "mise run dev:<app2>"
+     	tmux select-pane -U
+     	mise run dev:<app1>
+     else
+     	mise run --jobs 2 dev:<app1> ::: dev:<app2>
+     fi
+     """
+     ```
+
+     The `:::` separator is required. `mise run dev:<app1> dev:<app2>` passes `dev:<app2>` to the first task as an argument, so Vite starts with `dev:<app2>` as its root folder, every page returns 404, and the second app never starts.
+   - 3-4 apps → 2x2 tmux grid. The non-tmux fallback chains every task with `:::` the same way.
    - 5+ apps → emit a `# TODO: customize` comment in the dev task and tell the user.
    - bun-scripts → no `dev` task at all (scripts are one-off).
 
