@@ -40,7 +40,7 @@ Check with `pnpm config get <setting>` when in doubt. A `[WARN] The "pnpm" field
 
 ## Install-script allowlist
 
-`pnpm-workspace.yaml` declares `onlyBuiltDependencies`. pnpm disables `preinstall`/`install`/`postinstall` scripts by default; only the listed packages can run them. Adding a new package to the list requires a PR.
+`pnpm-workspace.yaml` declares `allowBuilds`, a map of package name to `true` or `false`. pnpm disables `preinstall`/`install`/`postinstall` scripts by default; only packages set to `true` can run them. pnpm 11 ignores the older `onlyBuiltDependencies` list. Adding a new package to the map requires a PR.
 
 The risky moment is bumping an already-allowlisted package — a compromised version inherits the allowance. The cooldown + safe-chain mitigate that.
 
@@ -68,8 +68,8 @@ For legitimate exceptions: `trustPolicyExclude` (package names that bypass) or `
 
 ```yaml
 overrides:
-  # GHSA-67mh-4wv8-2f99 - esbuild < 0.25.0 lets any website send requests to the dev server.
-  esbuild: "^0.25.0"
+  # GHSA-gv7w-rqvm-qjhr - esbuild < 0.28.1 has a dev-server request smuggling flaw.
+  esbuild: "^0.28.1"
 ```
 
 Each override should:

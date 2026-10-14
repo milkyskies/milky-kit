@@ -4,21 +4,25 @@ packages:
 
 # These settings used to live under the `pnpm` key in package.json. pnpm 11 stopped reading that key and reports it only as a warning during install, so anything left there is silently ignored. Keep them in this file.
 
-# Packages allowed to run install scripts. pnpm disables preinstall/install/postinstall by default; only what is listed here may run them. Each entry fetches or compiles a native binary and is useless without it. Adding to this list requires a PR.
-onlyBuiltDependencies:
-  - "@biomejs/biome"
-  - "@tailwindcss/oxide"
-  - esbuild
-  - sharp
-  - workerd
+# Packages allowed to run install scripts. pnpm disables preinstall/install/postinstall by default; only what is listed here as true may run them. pnpm 11 replaced onlyBuiltDependencies with this map and ignores the old key. Each entry fetches or compiles a native binary and is useless without it. Adding to this list requires a PR.
+allowBuilds:
+  "@biomejs/biome": true
+  "@tailwindcss/oxide": true
+  esbuild: true
+  sharp: true
+  workerd: true
 
 # Refuse install if a package's trust level decreased from a prior version, for example a version that previously shipped provenance and no longer does. Catches the common compromise pattern where an attacker republishes from a stolen account without the original publisher's signing setup.
 trustPolicy: no-downgrade
+
+# semver@6.3.1 is the npm team's 2023 ReDoS fix for the 6.x line, published before provenance existed; every @babel/core 7.x depends on semver ^6.3.1.
+trustPolicyExclude:
+  - semver@6.3.1
 
 # Refuse transitive deps from non-registry sources (git URLs, tarballs, local paths). Direct deps may still use exotic sources when explicitly declared, but a transitive dep is never allowed to drag in code from outside the registry.
 blockExoticSubdeps: true
 
 # Pins transitive dep versions across the whole graph. Use when a vulnerability is identified in a transitive dep that direct deps have not patched yet. Every pin gets a comment naming the advisory, and is removed once upstream catches up, because a stale override locks you out of legitimate version bumps. See .claude/rules/pnpm-security.md.
 overrides:
-  # GHSA-67mh-4wv8-2f99 - esbuild < 0.25.0 lets any website send requests to the dev server. Some older deps (vite plugins, drizzle-kit) still pull an older esbuild transitively.
-  esbuild: "^0.25.0"
+  # GHSA-gv7w-rqvm-qjhr - esbuild < 0.28.1 has a dev-server request smuggling flaw. wrangler and tsx (via drizzle-kit) pull esbuild 0.28 on their own, and this floor keeps older transitive copies from resolving below the fix.
+  esbuild: "^0.28.1"
