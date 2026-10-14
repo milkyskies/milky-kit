@@ -39,7 +39,7 @@ See `.claude/rules/hono-patterns.md` for full conventions.
 
 ```
 src/
-├── domain/          # pure: models (Effect Data.case + Option), repository interfaces
+├── domain/          # pure: models (Effect Data.Class + Option), repository interfaces
 ├── application/     # use cases — orchestration, no I/O imports
 ├── infrastructure/  # drizzle schema, D1 repository impls
 └── presentation/    # Hono routes — thin handlers, edge conversions

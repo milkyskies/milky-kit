@@ -8,11 +8,11 @@ import { postsTable } from "./schema"
 type PostRow = typeof postsTable.$inferSelect
 
 const fromRow = (row: PostRow): Post =>
-	Post.make({
+	new Post({
 		id: row.id,
 		title: row.title,
 		body: row.body,
-		publishedAt: Option.fromNullable(row.publishedAt),
+		publishedAt: Option.fromNullishOr(row.publishedAt),
 		createdAt: row.createdAt,
 		updatedAt: row.updatedAt,
 	})

@@ -8,12 +8,12 @@ import { usersTable } from "./schema"
 type UserRow = typeof usersTable.$inferSelect
 
 const fromRow = (row: UserRow): User =>
-	User.make({
+	new User({
 		id: row.id,
-		firebaseUid: Option.fromNullable(row.firebaseUid),
-		email: Option.fromNullable(row.email),
+		firebaseUid: Option.fromNullishOr(row.firebaseUid),
+		email: Option.fromNullishOr(row.email),
 		displayName: row.displayName,
-		avatarUrl: Option.fromNullable(row.avatarUrl),
+		avatarUrl: Option.fromNullishOr(row.avatarUrl),
 		createdAt: row.createdAt,
 		updatedAt: row.updatedAt,
 	})
