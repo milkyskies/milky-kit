@@ -38,8 +38,8 @@ export const authMiddleware = createMiddleware<{
 	}
 
 	context.set("firebaseUid", firebaseToken.uid)
-	context.set("firebaseEmail", Option.fromNullable(firebaseToken.email ?? null))
-	context.set("firebaseName", Option.fromNullable(firebaseToken.name ?? null))
-	context.set("firebasePicture", Option.fromNullable(firebaseToken.picture ?? null))
+	context.set("firebaseEmail", Option.fromNullishOr(firebaseToken.email))
+	context.set("firebaseName", Option.fromNullishOr(firebaseToken.name))
+	context.set("firebasePicture", Option.fromNullishOr(firebaseToken.picture))
 	await next()
 })

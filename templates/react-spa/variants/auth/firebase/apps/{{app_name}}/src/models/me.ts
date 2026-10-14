@@ -1,14 +1,5 @@
 import { Data, Option } from "effect"
 
-export interface Me {
-	readonly id: string
-	readonly email: Option.Option<string>
-	readonly displayName: string
-	readonly avatarUrl: Option.Option<string>
-	readonly createdAt: Date
-	readonly updatedAt: Date
-}
-
 export type MeApiDto = {
 	id: string
 	email: string | null
@@ -18,16 +9,22 @@ export type MeApiDto = {
 	updatedAt: string
 }
 
-export const Me = {
-	make: Data.case<Me>(),
-
-	fromApi: (dto: MeApiDto): Me =>
-		Me.make({
+export class Me extends Data.Class<{
+	readonly id: string
+	readonly email: Option.Option<string>
+	readonly displayName: string
+	readonly avatarUrl: Option.Option<string>
+	readonly createdAt: Date
+	readonly updatedAt: Date
+}> {
+	static fromApi(dto: MeApiDto): Me {
+		return new Me({
 			id: dto.id,
-			email: Option.fromNullable(dto.email),
+			email: Option.fromNullishOr(dto.email),
 			displayName: dto.displayName,
-			avatarUrl: Option.fromNullable(dto.avatarUrl),
+			avatarUrl: Option.fromNullishOr(dto.avatarUrl),
 			createdAt: new Date(dto.createdAt),
 			updatedAt: new Date(dto.updatedAt),
-		}),
+		})
+	}
 }

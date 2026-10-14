@@ -3,6 +3,6 @@
 		"db:migrate": "drizzle-kit migrate"
 	},
 	"dependencies": {
-		"@neondatabase/serverless": "^1.0.0"
+		"@neondatabase/serverless": "^1.2.0"
 	}
 }

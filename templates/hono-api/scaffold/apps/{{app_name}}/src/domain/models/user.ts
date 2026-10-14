@@ -1,6 +1,6 @@
 import { Data, type Option } from "effect"
 
-export interface User {
+export class User extends Data.Class<{
 	readonly id: string
 	readonly firebaseUid: Option.Option<string>
 	readonly email: Option.Option<string>
@@ -8,8 +8,4 @@ export interface User {
 	readonly avatarUrl: Option.Option<string>
 	readonly createdAt: Date
 	readonly updatedAt: Date
-}
-
-export const User = {
-	make: Data.case<User>(),
-}
+}> {}

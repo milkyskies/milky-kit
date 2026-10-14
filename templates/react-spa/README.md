@@ -30,7 +30,7 @@ Suspense-first means: components call `useSuspenseQuery`, never `useQuery` + `is
 
 - **Runtime**: browser (Vite dev server, static deploy in prod)
 - **Language**: TypeScript with strict + `noUncheckedIndexedAccess`
-- **Build**: Vite 6
+- **Build**: Vite 8
 - **Routing**: TanStack Router (`@tanstack/router-plugin/vite` generates `routeTree.gen.ts`)
 - **Data**: TanStack Query 5 (`queryOptions` from `@tanstack/react-query`, no custom wrapper)
 - **Styling**: Tailwind CSS v4 (`@tailwindcss/vite`)

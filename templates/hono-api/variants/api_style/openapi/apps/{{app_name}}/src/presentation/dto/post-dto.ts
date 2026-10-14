@@ -49,10 +49,10 @@ export const toPostDto = (post: Post): PostDto => ({
 export const fromCreatePostDto = (dto: CreatePostDto): CreatePostInput => ({
 	title: dto.title,
 	body: dto.body,
-	publishedAt: Option.map(Option.fromNullable(dto.publishedAt ?? null), (value) => new Date(value)),
+	publishedAt: Option.map(Option.fromNullishOr(dto.publishedAt), (value) => new Date(value)),
 })
 
 export const fromUpdatePostDto = (dto: UpdatePostDto): PostPatch => ({
-	title: Option.fromNullable(dto.title ?? null),
-	body: Option.fromNullable(dto.body ?? null),
+	title: Option.fromNullishOr(dto.title),
+	body: Option.fromNullishOr(dto.body),
 })

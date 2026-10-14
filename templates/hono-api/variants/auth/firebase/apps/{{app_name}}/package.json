@@ -1,7 +1,7 @@
 {
 	"dependencies": {
-		"@hono/zod-validator": "^0.4.0",
+		"@hono/zod-validator": "^0.9.1",
 		"firebase-auth-cloudflare-workers": "^2.0.6",
-		"zod": "^3.23.0"
+		"zod": "^4.6.7"
 	}
 }

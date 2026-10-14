@@ -24,8 +24,8 @@ export function createOptimisticMutationHook<
 		} = options ?? {}
 
 		type InternalContext = {
-			userContext?: TContext
-			savedData?: TSavedData
+			userContext?: TContext | undefined
+			savedData?: TSavedData | undefined
 		}
 
 		return useMutation<TData, Error, TVariables, InternalContext>({

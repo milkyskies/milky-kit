@@ -18,20 +18,20 @@
 		"check": "pnpm lint && pnpm typecheck && pnpm test"
 	},
 	"dependencies": {
-		"date-fns": "^4.1.0",
-		"drizzle-orm": "^0.45.2",
-		"effect": "^3.20.0",
-		"hono": "^4.12.10",
-		"nanoid": "^5.1.7"
+		"date-fns": "^4.4.0",
+		"drizzle-orm": "^0.45.4",
+		"effect": "^4.0.4",
+		"hono": "^4.13.13",
+		"nanoid": "^6.0.2"
 	},
 	"devDependencies": {
 		"@{{project_name}}/tsconfig": "workspace:*",
-		"@biomejs/biome": "^2.4.15",
+		"@biomejs/biome": "^2.5.15",
 		"@milkyskies/biome-config": "^0.1.2",
-		"@cloudflare/workers-types": "^4.20260404.1",
-		"drizzle-kit": "^0.31.10",
-		"typescript": "^5.7.0",
-		"vitest": "^3.0.0",
-		"wrangler": "^4.4.0"
+		"@cloudflare/workers-types": "^5.20261014.1",
+		"drizzle-kit": "^0.31.11",
+		"typescript": "^7.0.2",
+		"vitest": "^5.0.4",
+		"wrangler": "^4.150.0"
 	}
 }

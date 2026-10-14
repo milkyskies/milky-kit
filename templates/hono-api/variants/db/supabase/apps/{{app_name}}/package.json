@@ -3,6 +3,6 @@
 		"db:migrate": "drizzle-kit migrate"
 	},
 	"dependencies": {
-		"postgres": "^3.4.4"
+		"postgres": "^3.4.9"
 	}
 }

@@ -12,7 +12,7 @@ Clean-architecture DDD split. Each layer depends only on inner layers.
 ```
 apps/api/src/
 ├── domain/               # pure types, no I/O
-│   ├── models/           # Data.case + Option — pure interface, no row/DTO knowledge
+│   ├── models/           # Data.Class + Option — pure interface, no row/DTO knowledge
 │   └── repositories/     # repository interfaces (types)
 ├── application/
 │   └── use-case/         # orchestration, takes repo by parameter
@@ -31,7 +31,7 @@ apps/api/src/
 
 ## Domain models
 
-- Live in `apps/api/src/domain/models/`. Use `Data.case` + `Option` per `models.md`.
+- Live in `apps/api/src/domain/models/`. Use `Data.Class` + `Option` per `models.md`.
 - **Pure** — no row shape, no DTO type, no converters. The model file imports nothing from `infrastructure/` or `presentation/`.
 - Nullable DB columns become `Option.Option<T>` in the model; consumers never see `null` in domain code.
 - `Date` columns stay as `Date` in the model — Drizzle already parses them via the timestamp mode.
@@ -77,10 +77,10 @@ apps/api/src/
   type SnippetRow = typeof snippetsTable.$inferSelect;
 
   const fromRow = (row: SnippetRow): Snippet =>
-    Snippet.make({
+    new Snippet({
       id: row.id,
       code: row.code,
-      expiresAt: Option.fromNullable(row.expiresAt),
+      expiresAt: Option.fromNullishOr(row.expiresAt),
       // ...
     });
 
