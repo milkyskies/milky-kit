@@ -23,7 +23,7 @@ A thin wrapper around the regular code-edit workflow that adds a guaranteed post
 
 1. **Plan the edit** with the user. If non-trivial, use the planning tools to confirm scope before touching files.
 2. **Apply the changes** via `Edit` / `Write` / refactor steps. Make the diff. Run typecheck/lint after each substantive change.
-3. **Commit the change** with a clear scope: `feat(<scope>): <what>` referencing any glb issue numbers.
+3. **Commit the change** with a clear scope: `feat(<scope>): <what>` referencing any issue numbers.
 4. **Invoke `realign`** as a follow-up step on the changed files. Realign scans the just-touched paths against current rules and proposes any needed cleanup.
 5. **Apply realign's proposals** one at a time, committing each as `refactor(<scope>): realign — <rule>`.
 6. **Final check**: `pnpm -r typecheck && pnpm -r lint && pnpm -r test`. Report pass/fail.
@@ -46,4 +46,4 @@ A thin wrapper around the regular code-edit workflow that adds a guaranteed post
 
 - **No PRs, no worktrees.** Work directly on `main`.
 - **Commit per logical change.** A feature edit + its realign-driven refactor each get their own commit.
-- **Reference glb issue numbers** in commit messages when the user has issues tracking the change.
+- **Reference issue numbers** in commit messages when the user has issues tracking the change.

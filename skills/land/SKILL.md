@@ -38,10 +38,11 @@ The mode determines which steps below run.
 ## Step 2: Close the issue (all modes)
 
 ```bash
-glb close <num>
+gh issue edit <num> --add-label stage:done --remove-label stage:check
+gh issue close <num> --comment "Merged."
 ```
 
-If the merged PR's body included `closes #<num>` GitHub already closed the issue; `glb close` is idempotent.
+If the merged PR's body included `closes #<num>` GitHub already closed the issue; the label edit still moves the stage, and closing an already closed issue changes nothing.
 
 ## Step 3: Mode-specific cleanup
 
@@ -78,15 +79,6 @@ git fetch origin
 
 Do NOT `cd` to the root and `git checkout main` — that would yank whoever is there off their branch.
 
-**Close the herdr tab too, if the task came from autopilot.** The dispatcher deliberately leaves it open from spawn until merge, so the sidebar shows `working` versus `done` as a queue and the agent stays reachable for a follow-up. This is the point where that stops being useful, so this is where it closes:
-
-```bash
-herdr tab list --workspace <ws>      # find the tab labelled "#<num> ..."
-herdr tab close <tab_id>
-```
-
-Read the id back from `tab list` rather than remembering one — ids compact when tabs close. Skip this outside herdr (`HERDR_ENV` unset).
-
 **Landing the lead's own root branch** — you finished a feature branch in the root checkout. Land it exactly like `branch` mode:
 
 ```bash
@@ -100,10 +92,12 @@ git branch -d <feature-branch>
 If this was a sub-issue, check whether all sub-issues of the parent epic are now closed:
 
 ```bash
-glb sub list <epic-num>
+gh api repos/{owner}/{repo}/issues/<epic-num> --jq '.sub_issues_summary'
 ```
 
-If all sub-issues are done, tell the user the epic is ready to be finalized. (Sub-issue / epic workflow does not apply in `main` mode.)
+The result carries `total`, `completed`, and `percent_completed`. If the branch name does not reveal the epic, read the parent with `gh api repos/{owner}/{repo}/issues/<num>/parent --jq .number`.
+
+If `completed` equals `total`, tell the user the epic is ready to be finalized. (Sub-issue / epic workflow does not apply in `main` mode.)
 
 ## Step 5: Report
 

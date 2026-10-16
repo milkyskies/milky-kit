@@ -20,10 +20,10 @@ Compose the PR description for this branch. Output the markdown body only — `/
 
 ## Procedure
 
-1. Infer the issue number from the branch (`feature/#123.foo` → `123`); confirm via `git log`/diff what actually changed. Get the issue title from `glb show <num>`.
+1. Infer the issue number from the branch (`feature/#123.foo` → `123`); confirm via `git log`/diff what actually changed. Get the issue title from `gh issue view <num> --json title --jq .title`.
 2. Classify changed files into layers (presentation / application / domain / infrastructure, or frontend / api / backend) — this drives Contents.
 3. **Call `/arch-diagrams`** and embed its output as the Architecture diagrams section.
-4. Read the issue (`glb show <num>`) and any referenced ADR/doc to fill Overview and Design decisions accurately.
+4. Read the issue (`gh issue view <num>`) and any referenced ADR/doc to fill Overview and Design decisions accurately.
 5. Emit the body below. **The first line must be `closes #<num>`** so GitHub auto-closes the issue on merge.
 
 ## Section template (markdown `##` headers)
@@ -62,7 +62,7 @@ Required: Overview, Architecture diagrams, Contents, Verification. Others when t
 
 ## Ticket linking
 
-The kit tracks work in **GitHub issues** (via glb), so the body **must start with `closes #<num>`** on the first line — GitHub auto-closes on merge. The PR *title* is `[#<num>] <issue title>` (sub-issue: `[#<epic>/#<num>] <issue title>`); that's set on `gh pr create`, not in the body.
+The kit tracks work in **GitHub issues**, so the body **must start with `closes #<num>`** on the first line — GitHub auto-closes on merge. The PR *title* is `[#<num>] <issue title>` (sub-issue: `[#<epic>/#<num>] <issue title>`); that's set on `gh pr create`, not in the body.
 
 ## Skeleton
 

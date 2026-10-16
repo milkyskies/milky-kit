@@ -11,7 +11,7 @@ argument-hint: "[issue number (optional, inferred from branch)] [--review | --co
 
 Full pipeline. Shape depends on the project's workflow mode (see `modules/core/rules/workflow.md`):
 
-- **`main` mode**: quality gates → push to main → `glb done`. No PR.
+- **`main` mode**: quality gates → push to main → close the issue. No PR.
 - **`branch` or `worktrees` mode**: quality gates → PR → CI loop → mark ready. Full flow below.
 
 **No review pass runs unless you ask for one.** They rewrite code or spend real time, and whether a diff is worth that is the author's call, not this skill's.
@@ -53,7 +53,7 @@ mode=$(cat .milky-kit-mode 2>/dev/null || echo "branch")
 
 ## Step 2: Verify against issue
 
-**MANDATORY — produce the checklist below as visible output.** Run `glb show <num>` and list every requirement, acceptance criterion, and sub-task from the issue body. Mark each:
+**MANDATORY — produce the checklist below as visible output.** Run `gh issue view <num>` and list every requirement, acceptance criterion, and sub-task from the issue body. Mark each:
 
 - ✓ `<requirement>` — implemented in `<file:line>`
 - ✗ `<requirement>` — MISSING, implementing now
@@ -121,7 +121,13 @@ gh pr create --draft --base feature/#<epic-num>.<summary> \
   --title "[#<epic-num>/#<num>] <issue title>" --body-file /tmp/pr-body.md
 ```
 
-Get the issue title from `glb show <num>`. Do **not** hand-write the body here — `/write-pr` owns it, and guarantees the `closes #<num>` first line.
+Get the issue title from `gh issue view <num> --json title --jq .title`. Do **not** hand-write the body here — `/write-pr` owns it, and guarantees the `closes #<num>` first line.
+
+Once the PR exists, move the issue to the check stage:
+
+```bash
+gh issue edit <num> --add-label stage:check --remove-label stage:working
+```
 
 **On re-runs where the change grew**, re-invoke `/write-pr` and update the body: `gh pr edit <pr-number> --body-file /tmp/pr-body.md`.
 
@@ -188,7 +194,7 @@ If not on `main`, stop and tell the user the mode is wrong for this branch.
 
 ### M2: Verify against the issue
 
-Same as Step 2 above — produce the ✓/✗/⊘ checklist from `glb show <num>`. Finish any ✗ before proceeding.
+Same as Step 2 above — produce the ✓/✗/⊘ checklist from `gh issue view <num>`. Finish any ✗ before proceeding.
 
 ### M3: Code review + quality gates
 
@@ -205,10 +211,11 @@ If push fails (someone else pushed first), `git pull --rebase` and retry. **No `
 ### M5: Close the issue
 
 ```bash
-glb done <num> --comment "<short summary>"
+gh issue edit <num> --add-label stage:done --remove-label stage:working
+gh issue close <num> --comment "<short summary>"
 ```
 
-If the most recent commit's body includes `closes #<num>`, GitHub will also close the issue on push — `glb done` is idempotent and keeps the metadata in sync.
+If the most recent commit's body includes `closes #<num>`, GitHub will also close the issue on push. The label edit and `gh issue close` are idempotent and keep the stage in sync.
 
 ### M6: Report
 

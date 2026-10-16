@@ -3,12 +3,12 @@ name: todo
 description: >
   File an issue from one rough sentence. Drafts the house body format, asks only what
   cannot be inferred, shows it for approval, then creates it with the `autopilot` label.
-  Something the user has not decided yet gets filed on `Needs Decision` with the open
+  Something the user has not decided yet gets filed on `stage:needs-you` with the open
   question instead of a fake spec.
   TRIGGER when: the user says "/todo", "make an issue for...", "file a task", "add a todo",
   or describes work they want tracked rather than done now.
   DO NOT TRIGGER when: the user wants the work done immediately (just do it), or is asking
-  what is already on the board (`glb list`, `glb ready`).
+  what is already open (`gh issue list --label stage:ready`).
 argument-hint: "<rough description> [--no-autopilot]"
 ---
 
@@ -16,9 +16,9 @@ argument-hint: "<rough description> [--no-autopilot]"
 
 Turn a sentence into a filed issue an agent can pick up cold.
 
-The point is the **shape**, not the saved typing. An issue in the house format can be claimed by a worker who was not part of this conversation; one that just restates the sentence gets claimed, read, and parked on `Needs Decision` — which works, but costs a whole agent spawn to discover the spec was thin.
+The point is the **shape**, not the saved typing. An issue in the house format can be claimed by a worker who was not part of this conversation; one that just restates the sentence gets claimed, read, and parked on `stage:needs-you` — which works, but costs a whole agent spawn to discover the spec was thin.
 
-`glb.md` owns the formats, the points scale, the priority scale, and the type labels. This skill owns the procedure. Where the two ever disagree, `glb.md` wins.
+`issues.md` owns the formats, the labels, the points scale, the priority scale, and the type labels. This skill owns the procedure. Where the two ever disagree, `issues.md` wins.
 
 ## Steps
 
@@ -26,17 +26,17 @@ The point is the **shape**, not the saved typing. An issue in the house format c
 
 **A task** — the user knows what they want built, even roughly. Goes to step 2.
 
-**An undecided thing** — an idea, an unresolved fork, a half-thought. Goes to the "Filing something you have not decided" skeleton in `glb.md`: `## Problem` plus `## Open questions`, filed with `--status "Needs Decision"`, no points, no `autopilot` label, no acceptance criteria.
+**An undecided thing** — an idea, an unresolved fork, a half-thought. Goes to the "Filing something you have not decided" skeleton in `issues.md`: `## Problem` plus `## Open questions`, filed with the `stage:needs-you` label, no points, no `autopilot` label, no acceptance criteria.
 
 The tell is whether you can write a binary acceptance criterion without inventing the decision behind it. If every criterion you draft depends on a fork the user has not resolved, it is undecided — file it as one, and say so in a line. Do not resolve the fork on their behalf and file a task.
 
-Filing an undecided thing costs nothing later: answering the question and flipping the status to `Todo` graduates it into a normal issue.
+Filing an undecided thing costs nothing later: answering the question and moving the stage to `stage:ready` graduates it into a normal issue.
 
 ### 2. Infer before asking
 
 Read the code for whatever area the sentence names. Look at how similar things are already built, what tests exist near them, what would have to change.
 
-Draft the sections from `glb.md` off that reading. Most of what a questionnaire would ask is answerable by looking. Three of them can only be written well right now, while the code is in front of you:
+Draft the sections from `issues.md` off that reading. Most of what a questionnaire would ask is answerable by looking. Three of them can only be written well right now, while the code is in front of you:
 
 - **`## Area`** — the path globs this will touch. Autopilot picks an implementation tier before the work exists, so it cannot inspect a diff. Match the granularity of the project's `## Implementation tiers` table in `CLAUDE.md`.
 - **`## Out of scope`** — the neighbouring code an executor would plausibly wander into. You just saw what sits next to the change; name it here.
@@ -52,11 +52,11 @@ A question is worth asking when two plausible designs exist, a scope boundary is
 
 ### 4. Assign points, priority, and a type label
 
-**Set all three. Do not ask.** The scales live in `glb.md` — points, priorities, and the `type:*` table. State your reasoning in one line each so a wrong call is cheap to correct: a number you can argue with beats a question you have to answer.
+**Set all three. Do not ask.** The scales live in `issues.md` — points, priorities, and the `type:*` table. State your reasoning in one line each so a wrong call is cheap to correct: a number you can argue with beats a question you have to answer.
 
-You just read the code, so the points estimate is yours to make. Priority is not in the code, so default to `P2` unless the user's sentence says otherwise.
+You just read the code, so the points estimate is yours to make. Priority is not in the code, so default to `priority:P2` unless the user's sentence says otherwise.
 
-If the project has no `type:*` labels, skip the label rather than inventing them.
+If the project has no `type:*` labels yet, run `.github/scripts/setup-labels.sh` or skip the label rather than inventing names.
 
 ### 5. Show it, then file
 
@@ -64,27 +64,29 @@ Print the full body and wait. Never file silently — the user is the only one w
 
 ```bash
 # A task
-glb create --autopilot --title "<title>" --body "$(cat /tmp/todo-body.md)" \
-  --priority P2 --points 3 --status Todo --label "type:change"
+gh issue create --title "<title>" --body-file /tmp/todo-body.md \
+  --label request,stage:ready,priority:P2,points:3,type:change,autopilot
 
 # An undecided thing
-glb create --title "<title>" --body "$(cat /tmp/todo-body.md)" \
-  --priority P2 --status "Needs Decision"
+gh issue create --title "<title>" --body-file /tmp/todo-body.md \
+  --label request,stage:needs-you,priority:P2
 ```
 
-`--no-autopilot` in `$ARGUMENTS` drops the flag and files it human-only.
+Every issue carries exactly one label from each group: kind, stage, priority, and type. A task also carries points. Add an `ask:*` label only when the user named one.
 
-**No em or en dashes in the title** — `glb create` rejects them. Use a hyphen or a colon.
+`--no-autopilot` in `$ARGUMENTS` drops the `autopilot` label and files the task human-only.
+
+**No em or en dashes in the title.** Use a hyphen or a colon.
 
 ### 6. Confirm it will actually be picked up
 
 Tasks only. An undecided issue is meant to sit out of the queue, so skip this for one.
 
 ```bash
-glb ready --autopilot --explain
+gh issue list --label stage:ready --label autopilot
 ```
 
-Report the issue number and the line the new issue appears on. If it is in the skipped list, say why — usually a blocker or a status other than `Todo`.
+Report the issue number and whether it appears in the list. If it is missing, say why — usually a missing label.
 
 ## Rules
 
