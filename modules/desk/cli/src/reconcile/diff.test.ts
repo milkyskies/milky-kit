@@ -1,0 +1,302 @@
+import { describe, expect, test } from "bun:test"
+import { reconcile } from "./diff.ts"
+import {
+	claim,
+	decision,
+	HOSTS,
+	input,
+	issue,
+	minutesAgo,
+	release,
+	result,
+	SECTION,
+	task,
+	worker,
+} from "./testing/fixtures.ts"
+
+const READY = ["request", "autopilot", "stage:ready"]
+const WORKING = ["request", "autopilot", "stage:working"]
+const CHECK = ["request", "autopilot", "stage:check"]
+const NEEDS_YOU = ["request", "autopilot", "stage:needs-you"]
+
+function codes(...args: Parameters<typeof input>) {
+	return reconcile(input(...args)).map((mismatch) => [mismatch.issue, mismatch.code])
+}
+
+describe("desk reconcile", () => {
+	test("dispatch: a ready, eligible request with no worker", () => {
+		const [mismatch] = reconcile(input({ issues: [issue(12, READY)] }))
+
+		expect(mismatch).toMatchObject({ issue: 12, code: "dispatch", machine: "Minerva", attempts: 0 })
+	})
+
+	test("dispatch: skips a request without autopilot, with a blocker, or with an open sub-issue", () => {
+		const issues = [
+			issue(1, ["request", "stage:ready"]),
+			issue(2, READY, [], { openBlockers: [9] }),
+			issue(3, READY, [], { openSubIssues: [10] }),
+		]
+
+		expect(codes({ issues })).toEqual([])
+	})
+
+	test("dispatch: stops at the machine's worker limit, highest priority first", () => {
+		const issues = [
+			issue(1, [...READY, "priority:P3"]),
+			issue(2, [...READY, "priority:P0"]),
+			issue(3, [...READY, "priority:P2"]),
+		]
+		const section = { ...SECTION, machines: [{ name: "Minerva", workers: 2, repo: undefined }] }
+
+		expect(codes({ issues, section })).toEqual([
+			[2, "dispatch"],
+			[3, "dispatch"],
+		])
+	})
+
+	test("dispatch: live workers on a machine use up its slots", () => {
+		const section = { ...SECTION, machines: [{ name: "Minerva", workers: 1, repo: undefined }] }
+		const workers = [worker({ dispatchId: "ctx_other", taskId: "task_other" })]
+
+		expect(codes({ issues: [issue(5, READY)], workers, section })).toEqual([])
+	})
+
+	test("dispatch: a remote machine with a free slot takes the request", () => {
+		const section = {
+			...SECTION,
+			machines: [
+				{ name: "Minerva", workers: 0, repo: undefined },
+				{ name: "zeus", workers: 1, repo: "~/Code/kit" },
+			],
+		}
+
+		const [mismatch] = reconcile(input({ issues: [issue(5, READY)], section }))
+
+		expect(mismatch?.machine).toBe("zeus")
+	})
+
+	test("escalate: a ready request with two attempts", () => {
+		const bodies = [
+			claim("c_1", "ctx_1"),
+			composeFailure("c_1"),
+			claim("c_2", "ctx_2"),
+			composeFailure("c_2"),
+		]
+
+		const [mismatch] = reconcile(input({ issues: [issue(12, READY, bodies)] }))
+
+		expect(mismatch).toMatchObject({ code: "escalate", attempts: 2 })
+	})
+
+	test("orphan-claim: the claim names an absent dispatch and is older than 10 minutes", () => {
+		const issues = [issue(12, WORKING, [claim("c_1", "ctx_gone", minutesAgo(11))])]
+
+		const [mismatch] = reconcile(input({ issues }))
+
+		expect(mismatch).toMatchObject({ code: "orphan-claim", claim: "c_1", worker: "ctx_gone" })
+	})
+
+	test("orphan-claim: an exited worker counts, a young claim does not", () => {
+		const gone = worker({ verdict: "exited", terminalState: "released" })
+
+		expect(
+			codes({
+				issues: [issue(12, WORKING, [claim("c_1", "ctx_y", minutesAgo(11))])],
+				workers: [gone],
+			}),
+		).toEqual([[12, "orphan-claim"]])
+		expect(
+			codes({
+				issues: [issue(12, WORKING, [claim("c_1", "ctx_y", minutesAgo(5))])],
+				workers: [gone],
+			}),
+		).toEqual([])
+	})
+
+	test("unclaimed-worker: a ready request with a live worker started 10 minutes ago", () => {
+		const workers = [worker()]
+		const tasks = [task("task_y", "#12 Add greet", 11)]
+
+		const [mismatch] = reconcile(input({ issues: [issue(12, READY)], workers, tasks }))
+
+		expect(mismatch).toMatchObject({ code: "unclaimed-worker", worker: "ctx_y" })
+	})
+
+	test("unclaimed-worker: a worker started a minute ago is left alone", () => {
+		const tasks = [task("task_y", "#12 Add greet", 1)]
+
+		expect(codes({ issues: [issue(12, READY)], workers: [worker()], tasks })).toEqual([])
+	})
+
+	test("unrecorded-result: the claimed worker sits idle at its prompt", () => {
+		const workers = [worker({ activity: "done", workerState: "succeeded" })]
+		const issues = [issue(12, WORKING, [claim("c_1", "ctx_y")])]
+
+		const [mismatch] = reconcile(input({ issues, workers }))
+
+		expect(mismatch).toMatchObject({ code: "unrecorded-result", terminalGone: false })
+	})
+
+	test("unrecorded-result: a finished worker whose terminal is gone is released as stopped", () => {
+		const workers = [
+			worker({ verdict: "exited", terminalState: "released", workerState: "succeeded" }),
+		]
+		const issues = [issue(12, WORKING, [claim("c_1", "ctx_y", minutesAgo(2))])]
+
+		const [mismatch] = reconcile(input({ issues, workers }))
+
+		expect(mismatch).toMatchObject({ code: "unrecorded-result", terminalGone: true })
+	})
+
+	test("a worker still working on its claim is no mismatch", () => {
+		const issues = [issue(12, WORKING, [claim("c_1", "ctx_y")])]
+
+		expect(codes({ issues, workers: [worker()] })).toEqual([])
+	})
+
+	test("parked-worker: a needs-you request whose claimed worker is still live", () => {
+		const workers = [worker({ activity: "done", workerState: "succeeded" })]
+		const issues = [issue(12, NEEDS_YOU, [claim("c_1", "ctx_y"), decision()])]
+
+		const [mismatch] = reconcile(input({ issues, workers }))
+
+		expect(mismatch).toMatchObject({ code: "parked-worker", worker: "ctx_y", claim: "c_1" })
+	})
+
+	test("a needs-you request with no worker needs nothing", () => {
+		const issues = [issue(12, NEEDS_YOU, [claim("c_1", "ctx_y"), decision()])]
+
+		expect(codes({ issues })).toEqual([])
+	})
+
+	test("looks-good: the newest human comment after the result starts with looks good", () => {
+		const issues = [issue(12, CHECK, [claim("c_1", "ctx_y"), result("c_1"), "Looks good, ship it"])]
+
+		expect(codes({ issues })).toEqual([[12, "looks-good"]])
+	})
+
+	test("looks-good: a looks good older than the result does not count", () => {
+		const issues = [issue(12, CHECK, [claim("c_1", "ctx_y"), "looks good", result("c_1")])]
+
+		expect(codes({ issues })).toEqual([])
+	})
+
+	test("rejected: the newest human comment's first word is no", () => {
+		const issues = [
+			issue(12, CHECK, [claim("c_1", "ctx_y"), result("c_1"), "no, because the count starts at 0"]),
+		]
+
+		expect(codes({ issues })).toEqual([[12, "rejected"]])
+	})
+
+	test("rejected: not sure is a conversation, never a rejection", () => {
+		const issues = [issue(12, CHECK, [claim("c_1", "ctx_y"), result("c_1"), "not sure about this"])]
+
+		expect(codes({ issues })).toEqual([[12, "conversation"]])
+	})
+
+	test("conversation: forwards to the live worker, or asks for a reply-only worker", () => {
+		const issues = [issue(12, CHECK, [claim("c_1", "ctx_y"), result("c_1"), "why a loop here?"])]
+		const settled = worker({ activity: "done", workerState: "succeeded" })
+
+		expect(reconcile(input({ issues, workers: [settled] }))[0]).toMatchObject({
+			code: "conversation",
+			worker: "ctx_y",
+		})
+		expect(reconcile(input({ issues }))[0]).toMatchObject({
+			code: "conversation",
+			worker: undefined,
+		})
+	})
+
+	test("conversation: a human comment on a parked request", () => {
+		const issues = [
+			issue(12, NEEDS_YOU, [claim("c_1", "ctx_y"), decision(), "what does the cache hold?"]),
+		]
+
+		expect(codes({ issues })).toEqual([[12, "conversation"]])
+	})
+
+	test("conversation: an answered comment is no longer pending", () => {
+		const reply = release("c_1", "stopped")
+		const issues = [issue(12, CHECK, [claim("c_1", "ctx_y"), result("c_1"), "why a loop?", reply])]
+
+		expect(codes({ issues })).toEqual([])
+	})
+
+	test("merged: a merged pull request on a request that is not done", () => {
+		const pullRequests = [{ number: 45, state: "MERGED", isDraft: false, mergeable: "UNKNOWN" }]
+
+		expect(codes({ issues: [issue(12, CHECK, [], { pullRequests })] })).toEqual([[12, "merged"]])
+	})
+
+	test("merged: a request already at done is left alone", () => {
+		const pullRequests = [{ number: 45, state: "MERGED", isDraft: false, mergeable: "UNKNOWN" }]
+		const done = issue(12, ["request", "stage:done"], [], { pullRequests, open: false })
+
+		expect(codes({ issues: [done] })).toEqual([])
+	})
+
+	test("check-red: a conflicting pull request, with the live worker or without one", () => {
+		const pullRequests = [{ number: 45, state: "OPEN", isDraft: false, mergeable: "CONFLICTING" }]
+		const issues = [issue(12, CHECK, [claim("c_1", "ctx_y"), result("c_1")], { pullRequests })]
+		const settled = worker({ activity: "done", workerState: "succeeded" })
+
+		expect(reconcile(input({ issues, workers: [settled] }))[0]).toMatchObject({
+			code: "check-red",
+			worker: "ctx_y",
+		})
+		expect(reconcile(input({ issues }))[0]).toMatchObject({ code: "check-red", worker: undefined })
+	})
+
+	test("check-red outranks looks-good: the conflict is fixed first", () => {
+		const pullRequests = [{ number: 45, state: "OPEN", isDraft: false, mergeable: "CONFLICTING" }]
+		const issues = [
+			issue(12, CHECK, [claim("c_1", "ctx_y"), result("c_1"), "looks good"], { pullRequests }),
+		]
+
+		expect(codes({ issues })).toEqual([[12, "check-red"]])
+	})
+
+	test("stray-worker: a live worker on a closed request or one at done", () => {
+		const tasks = [task("task_y", "#12 Add greet")]
+		const closed = issue(12, ["request", "stage:done"], [], { open: false })
+		const doneOpen = issue(13, ["request", "stage:done"])
+
+		expect(codes({ issues: [closed], workers: [worker()], tasks })).toEqual([[12, "stray-worker"]])
+		expect(
+			codes({ issues: [doneOpen], workers: [worker()], tasks: [task("task_y", "#13 Other")] }),
+		).toEqual([[13, "stray-worker"]])
+	})
+
+	test("bad-labels: no stage label, or two of them; the program changes nothing", () => {
+		const issues = [issue(1, ["request"]), issue(2, ["request", "stage:ready", "stage:check"])]
+
+		expect(codes({ issues })).toEqual([
+			[1, "bad-labels"],
+			[2, "bad-labels"],
+		])
+	})
+
+	test("intake, backlog and done are ignored", () => {
+		const issues = [
+			issue(1, ["request", "stage:intake"]),
+			issue(2, ["request", "stage:backlog"]),
+			issue(3, ["request", "stage:done"], [], { open: false }),
+		]
+
+		expect(codes({ issues })).toEqual([])
+	})
+
+	test("the machine behind a worker comes from the host list", () => {
+		const section = { ...SECTION, machines: [{ name: "zeus", workers: 1, repo: "~/k" }] }
+		const remote = worker({ hostKind: "environment", hostId: "env-zeus" })
+
+		expect(HOSTS.some((host) => host.id === "env-zeus")).toBe(true)
+		expect(codes({ issues: [issue(5, READY)], workers: [remote], section })).toEqual([])
+	})
+})
+
+function composeFailure(claimId: string): string {
+	return `<!-- desk:failed claim=${claimId} attempt=1 -->\nNothing worked.\n\n<!-- desk:agent -->\n`
+}
