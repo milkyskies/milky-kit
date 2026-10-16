@@ -73,7 +73,7 @@ User says any of: "scaffold a new project", "set up an Effect API", "new milky-k
    ```
 
    Always-on rules (every template gets these):
-   - `~/.claude/kit/modules/core/rules/{general,comments,config-and-env,workflow,worktrees,testing}.md`
+   - `~/.claude/kit/modules/core/rules/{general,comments,config-and-env,workflow,worktrees,testing,talking-about-design,design-docs,cards,working-habits}.md`
 
    Template-specific rules (read the template's `rules/` directory).
 
@@ -94,6 +94,10 @@ User says any of: "scaffold a new project", "set up an Effect API", "new milky-k
    ```md
    - `@.claude/rules/general.md` — general practices (libraries, formatting, commit conventions)
    - `@.claude/rules/comments.md` — when to write a comment (default: no)
+   - `@.claude/rules/talking-about-design.md` — how to talk about design with the user
+   - `@.claude/rules/design-docs.md` — how design docs are written and kept
+   - `@.claude/rules/cards.md` — how an agent asks the user a decision
+   - `@.claude/rules/working-habits.md` — habits learned from mistakes (check main, re-merge, stop a hunt)
    - `@.claude/rules/effect.md` — Effect-TS paradigm + universal clean architecture
    - `@.claude/rules/effect-http.md` — `@effect/platform` HttpApi adapter
    - …
