@@ -4,7 +4,7 @@ The kill test proves that killing the desk coordinator mid-run and starting a fr
 
 The coordinator was killed with all three requests in flight and the fresh one finished the work without any handoff. Ten assertions were checked: eight held and two failed. Both failures have one cause, which is that `desk land` cannot remove a worktree that holds untracked files. Two checks need Milky's phone and stay pending.
 
-**Status.** run three times end to end; the third run passed every assertion and both variants, and the scratch repository is deleted · **Owns.** the observed state of each kill test step
+**Status.** run three times end to end; the third run passed every assertion and both variants, and the scratch repository waits for deletion · **Owns.** the observed state of each kill test step
 
 ## How the run was set up
 
@@ -184,7 +184,7 @@ None. No issue was filed.
 
 ### Cleanup
 
-`~/.config/desk/.env` deleted, receiver stopped, every worker released, and the scratch repository `milkyskies/desk-killtest` deleted with `gh repo delete`.
+`~/.config/desk/.env` deleted, receiver stopped, every worker released, and every run artifact removed. The scratch repository `milkyskies/desk-killtest` is not deleted yet: `gh repo delete` fails with HTTP 403 because the token lacks the `delete_repo` scope. Milky runs `gh auth refresh -h github.com -s delete_repo`, then `gh repo delete milkyskies/desk-killtest --yes`.
 
 ## Open
 
