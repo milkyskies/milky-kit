@@ -85,7 +85,7 @@ For each answered issue:
 ~/.claude/kit/modules/desk/bin/desk answer <num> --body <file> --decision "<one line>"
 ```
 
-`desk answer` posts the answer with no agent marker, appends `- <date>: <decision>` to the body's `## Decisions` section, moves the stage to `stage:ready`, and reads the issue back to confirm. It writes the comment first, so a failed stage move leaves the answer on the issue; a non-zero exit means the state is not what was meant, so report the stderr line and stop. The one-line decision is the user's answer said back, in their words.
+`desk answer` posts the answer with no agent marker, appends `- <date>: <decision>` to the body's `## Decisions` section, moves the stage to `stage:ready`, releases the parked claim with `desk:release reason=answered`, and reads the issue back to confirm. It writes the comment first, so a failed stage move leaves the answer on the issue; a non-zero exit means the state is not what was meant, so report the stderr line and stop. The one-line decision is the user's answer said back, in their words.
 
 A **self-filed** issue answered this way reaches `stage:ready` still carrying only `## Problem` and the answered question: no acceptance criteria, no tests, and no `autopilot` label, so no agent claims it. Say so, and offer `/todo` to write the spec now that the fork is resolved.
 
