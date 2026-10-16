@@ -278,6 +278,16 @@ describe("desk reconcile", () => {
 		])
 	})
 
+	test("human-claimed: a working request with no claim comment is reported and nothing else", () => {
+		const labels = [...WORKING]
+		const tasks = [task("task_y", "#12 Add greet", 30)]
+
+		expect(codes({ issues: [issue(12, labels)] })).toEqual([[12, "human-claimed"]])
+		expect(codes({ issues: [issue(12, labels, ["I am on this one"])], workers: [worker()], tasks })).toEqual([
+			[12, "human-claimed"],
+		])
+	})
+
 	test("intake, backlog and done are ignored", () => {
 		const issues = [
 			issue(1, ["request", "stage:intake"]),

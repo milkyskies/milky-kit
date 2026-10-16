@@ -292,6 +292,7 @@ The coordinator is a Sonnet session at medium effort (plan), started with `/milk
 | `merged` | linked pull request merged, stage not `stage:done` | any | `desk land`. |
 | `check-red` | `stage:check`, pull request `CONFLICTING` | any | Send the request back to its worker if live, otherwise dispatch a merge worker (Sonnet, low effort). |
 | `stray-worker` | issue closed or `stage:done` | a live worker for `#n` | `worker-stop`, then `worker-release`. |
+| `human-claimed` | `stage:working` with no `desk:claim` comment | any | Change nothing. Report it in the digest pass. A person or another session claimed it with plain `gh`, and desk does not own work it did not claim: never release, requeue or dispatch it. |
 | `bad-labels` | an open issue with no `stage:*` label, or more than one | any | Change nothing. Report it in the digest. The program does not guess which stage is right. |
 
 `stage:intake`, `stage:backlog`, `proposed` and `stage:done` are ignored. A `stage:needs-you` issue with no worker needs nothing but the digest.
@@ -672,3 +673,7 @@ Each line can be overturned.
 - Auto-decided: the coordinator, not this design, files the build tasks as issues, because issue filing belongs to the run that schedules them.
 - Auto-decided: `desk answer` releases the parked claim, over `desk claim` treating old claims as stale, because every state change stays an explicit comment.
 - Auto-decided: the result comment splits `Checked before done` into `Verified by desk` and `Worker says` (a required `--checked` flag), over one line the program writes, because the program can prove only the conflict state and main's ancestry, and the judgment checks must not read as verified.
+- Auto-decided: `desk merge` records `ci=pending` when check runs exist but have not finished or none exist yet, over waiting or leaving it out, because the push has usually created no runs yet and merging never waits on checks.
+- Auto-decided: idle detection reads `projection.stage.activity` from `worker-list`, over `orca worktree ps`, because both come from the same agent status and `worker-list` also covers remote workers.
+- Auto-decided: `desk digest` keeps a local `badlabels-pinged.json` so a `bad-labels` issue pings once per label set, over a marker on GitHub, because the issue has no comment to mark, and a lost file only repeats a ping.
+- Auto-decided: the ntfy sender and the merge helpers live in `src/ping/` and `src/merge/`, over `src/watch/`, because neither belongs to the watchdog.

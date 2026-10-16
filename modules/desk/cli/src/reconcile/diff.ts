@@ -153,7 +153,13 @@ function classifyWorking(
 	byDispatch: Map<string, Worker>,
 ): Mismatch | undefined {
 	const claim = owningClaim(issue.comments)
-	if (!claim) return undefined
+	if (!claim) {
+		return {
+			issue: issue.number,
+			code: "human-claimed",
+			detail: "the request is working with no desk claim, so a person or another session took it: report it, never release, requeue or dispatch it",
+		}
+	}
 
 	const worker = byDispatch.get(claim.dispatch)
 	const claimAge = input.now.getTime() - Date.parse(claim.at)
