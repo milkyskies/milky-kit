@@ -96,10 +96,7 @@ export async function landIssue(deps: LandDeps, context: Context, number: number
 	}
 
 	const claim = owningClaim(after.comments)
-	const failures =
-		claim === undefined
-			? []
-			: await cleanUpWorker(deps, runId, claim.dispatch)
+	const failures = claim === undefined ? [] : await cleanUpWorker(deps, runId, claim.dispatch)
 	if (failures.length > 0) {
 		throw new DeskError(
 			EXIT.external,

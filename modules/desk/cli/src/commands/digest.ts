@@ -4,6 +4,9 @@ import { parseArgs } from "node:util"
 import { parseOrUsage } from "../args.ts"
 import type { Command, Context } from "../context.ts"
 import { DeskError, EXIT } from "../errors.ts"
+import { repoSlug } from "../github/gh.ts"
+import { type OrcaDeps, realOrcaDeps } from "../orca/deps.ts"
+import { requireRun } from "../orca/runs.ts"
 import {
 	collectDigest,
 	digestMessage,
@@ -13,9 +16,6 @@ import {
 } from "../ping/digest.ts"
 import { type PingDeps, realPingDeps, sendPing } from "../ping/ntfy.ts"
 import { projectStateDirectory } from "../project/paths.ts"
-import { repoSlug } from "../github/gh.ts"
-import { type OrcaDeps, realOrcaDeps } from "../orca/deps.ts"
-import { requireRun } from "../orca/runs.ts"
 import { reconcile } from "../reconcile/diff.ts"
 import { gatherInput } from "../reconcile/gather.ts"
 import { fileLedger, type Ledger } from "../watch/ledger.ts"
@@ -86,7 +86,10 @@ export async function runWith(deps: DigestDeps, args: string[], context: Context
 	}
 
 	if (digest.badLabels.length > 0 || digest.needsLook.length > 0) {
-		const stillBad = [...collected.badLabels, ...reportOnly].map((entry) => [String(entry.issue), entry.labels])
+		const stillBad = [...collected.badLabels, ...reportOnly].map((entry) => [
+			String(entry.issue),
+			entry.labels,
+		])
 		await deps.ledger.write(BAD_LABELS_FILE, Object.fromEntries(stillBad))
 	}
 
