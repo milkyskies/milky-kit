@@ -227,7 +227,29 @@ describe("desk reconcile", () => {
 	test("merged: a merged pull request on a request that is not done", () => {
 		const pullRequests = [{ number: 45, state: "MERGED", isDraft: false, mergeable: "UNKNOWN" }]
 
-		expect(codes({ issues: [issue(12, CHECK, [], { pullRequests })] })).toEqual([[12, "merged"]])
+		const issues = [issue(12, CHECK, [claim("c_1", "ctx_y"), result("c_1")], { pullRequests })]
+
+		expect(codes({ issues })).toEqual([[12, "merged"]])
+	})
+
+	test("merged: an old merged pull request on a reopened request is not a merge", () => {
+		const pullRequests = [{ number: 45, state: "MERGED", isDraft: false, mergeable: "UNKNOWN" }]
+		const reopened = [
+			claim("c_1", "ctx_y"),
+			result("c_1"),
+			`<!-- desk:reopen comment=9 -->\nno, because\n\n<!-- desk:agent -->\n`,
+		]
+
+		expect(codes({ issues: [issue(12, READY, reopened, { pullRequests })] })).toEqual([
+			[12, "dispatch"],
+		])
+	})
+
+	test("merged: only the pull request the newest result names counts", () => {
+		const pullRequests = [{ number: 44, state: "MERGED", isDraft: false, mergeable: "UNKNOWN" }]
+		const issues = [issue(12, CHECK, [claim("c_1", "ctx_y"), result("c_1", "45")], { pullRequests })]
+
+		expect(codes({ issues })).toEqual([])
 	})
 
 	test("merged: a request already at done is left alone", () => {

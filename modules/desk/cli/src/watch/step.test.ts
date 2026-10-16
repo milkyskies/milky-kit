@@ -3,7 +3,7 @@ import { describe, expect, test } from "bun:test"
 import type { IssueState } from "../github/issue.ts"
 import type { Message } from "../orca/inbox.ts"
 import type { Worker } from "../orca/workers.ts"
-import { claim, issue, minutesAgo, NOW, worker } from "../reconcile/testing/fixtures.ts"
+import { claim, issue, minutesAgo, NOW, result, worker } from "../reconcile/testing/fixtures.ts"
 import { memoryLedger } from "./ledger.ts"
 import { parseDuration, watchLoop } from "./loop.ts"
 import { newWatchState, step, type WatchDeps } from "./step.ts"
@@ -54,6 +54,7 @@ class Harness {
 	}
 }
 
+const RESULT = result("c_1", "45")
 const WORKING = ["request", "autopilot", "stage:working"]
 const FRESH = (id: string, dispatch: string) => claim(id, dispatch, minutesAgo(1))
 
@@ -235,11 +236,13 @@ describe("desk watch", () => {
 	test("merged: a linked pull request that newly merged", async () => {
 		const h = new Harness()
 		const open = { number: 45, state: "OPEN", isDraft: false, mergeable: "MERGEABLE" }
-		h.issues = [issue(12, ["request", "stage:check"], [], { pullRequests: [open] })]
+		h.issues = [issue(12, ["request", "stage:check"], [RESULT], { pullRequests: [open] })]
 		await h.poll()
 		h.advance(1)
 		h.issues = [
-			issue(12, ["request", "stage:check"], [], { pullRequests: [{ ...open, state: "MERGED" }] }),
+			issue(12, ["request", "stage:check"], [RESULT], {
+				pullRequests: [{ ...open, state: "MERGED" }],
+			}),
 		]
 
 		expect(await h.poll()).toEqual([{ event: "merged", issue: 12 }])

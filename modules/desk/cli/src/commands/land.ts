@@ -7,6 +7,7 @@ import { readIssue, stageOf } from "../github/issue.ts"
 import { editLabels } from "../github/writes.ts"
 import { verifyStage } from "../guards.ts"
 import { listWorktrees, releaseWorker, removeWorktree } from "../orca/cleanup.ts"
+import { landedPullRequest } from "../reconcile/landed.ts"
 import { type OrcaDeps, realOrcaDeps } from "../orca/deps.ts"
 import { listHosts, machineOfHost } from "../orca/hosts.ts"
 import { OrcaError } from "../orca/runner.ts"
@@ -56,8 +57,8 @@ export async function landIssue(deps: LandDeps, context: Context, number: number
 	const { gh, repo } = context
 	const before = await readIssue(gh, repo, number)
 
-	if (!before.pullRequests.some((pr) => pr.state === "MERGED")) {
-		throw refusal("land", number, "no linked pull request is merged", "a merged pull request")
+	if (landedPullRequest(before) === undefined) {
+		throw refusal("land", number, "the pull request named by the newest result is not merged, or the request was reopened since", "a merged result pull request")
 	}
 
 	const stage = stageOf(before)

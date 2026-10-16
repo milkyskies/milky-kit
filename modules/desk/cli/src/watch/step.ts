@@ -2,6 +2,7 @@ import { owningClaim } from "../github/derive.ts"
 import { type IssueState, stageOf } from "../github/issue.ts"
 import type { Message } from "../orca/inbox.ts"
 import { isLive, type Worker } from "../orca/workers.ts"
+import { landedPullRequest } from "../reconcile/landed.ts"
 import { type Ledger, stringList } from "./ledger.ts"
 
 const MINUTE = 60_000
@@ -85,7 +86,7 @@ function baselineOf(issues: readonly IssueState[]): GithubBaseline {
 		),
 		merged: new Set(
 			issues
-				.filter((issue) => issue.pullRequests.some((pr) => pr.state === "MERGED"))
+				.filter((issue) => landedPullRequest(issue) !== undefined)
 				.map((issue) => issue.number),
 		),
 		humanComments: new Set(

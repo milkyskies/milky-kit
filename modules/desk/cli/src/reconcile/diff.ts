@@ -4,6 +4,7 @@ import { machineOfHost } from "../orca/hosts.ts"
 import { issueNumberOfTitle } from "../orca/tasks.ts"
 import { isBusy, isGone, isLive, isSettled, type Worker } from "../orca/workers.ts"
 import { workerMachines } from "../project/section.ts"
+import { landedPullRequest } from "./landed.ts"
 import type { Mismatch, ReconcileInput } from "./types.ts"
 
 const MINUTE = 60_000
@@ -264,7 +265,7 @@ function classifyIssue(
 	}
 
 	const label = stage.kind === "one" ? stage.label : undefined
-	const merged = issue.pullRequests.find((pr) => pr.state === "MERGED")
+	const merged = landedPullRequest(issue)
 
 	if (merged && label !== "stage:done") {
 		return {
