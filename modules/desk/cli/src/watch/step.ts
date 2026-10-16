@@ -35,6 +35,7 @@ export type WatchDeps = {
 	issues: () => Promise<IssueState[]>
 	reachability: (machine: string) => Promise<Reachability>
 	release: (issue: number, claimId: string) => Promise<void>
+	startupWork: () => Promise<number[]>
 	localMachine: string
 	ledger: Ledger
 }
@@ -298,6 +299,9 @@ export async function step(
 		try {
 			const issues = await deps.issues()
 			if (state.baseline) events.push(...githubEvents(issues, state.baseline))
+			else {
+				for (const issue of await deps.startupWork()) events.push({ event: "ready", issue })
+			}
 
 			state.snapshot = issues
 			state.baseline = baselineOf(issues)

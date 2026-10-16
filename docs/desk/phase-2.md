@@ -416,6 +416,7 @@ The watchdog polls GitHub once a minute, which is far under the rate limit:
 
 - A new human comment on a `stage:needs-you` or `stage:check` issue: `human-comment`.
 - An issue newly at `stage:ready`, such as a request Milky moved back after answering: `ready`.
+- A request that is dispatchable when the watchdog starts, such as one the coordinator just released: `ready`. A request held back because every worker slot is full does not wake it.
 - A linked pull request newly merged: `merged`.
 - Unseen mail from a worker: `mail`.
 - Nothing for `--max-wait` (default 30 minutes): `tick`. The coordinator runs a full pass anyway, so anything the watchdog missed is still found.
@@ -591,7 +592,7 @@ The kill test proves the done criterion: killing the coordinator mid-run and sta
 
 ### Variants
 
-- **A worker dies**: during step 7, close C's worker terminal. The fresh coordinator releases C (`orphan-claim`, attempt 1) and dispatches it again.
+- **A worker dies**: during step 7, close C's worker terminal. Orca reports a closed worker terminal as a finished worker, so the row is `unrecorded-result` and the action is `desk release --reason stopped`. The fresh coordinator releases C (attempt 1), and the watchdog it starts wakes at once with `ready`, so the coordinator dispatches C again without waiting for the tick.
 - **A machine dies** (needs zeus): put C on zeus, then stop Orca on zeus during step 7. After 15 minutes the watchdog releases C with `silent-machine`. Then start Orca on zeus again: the old worker's `desk done` refuses, because the claim moved.
 - **Two coordinators**: during step 9, start a second `/milky-kit:desk` on the same machine. Its preflight refuses and names the first session.
 

@@ -3,9 +3,19 @@ import { describe, expect, test } from "bun:test"
 import type { IssueState } from "../github/issue.ts"
 import type { Message } from "../orca/inbox.ts"
 import type { Worker } from "../orca/workers.ts"
-import { claim, issue, minutesAgo, NOW, result, worker } from "../reconcile/testing/fixtures.ts"
+import {
+	claim,
+	input,
+	issue,
+	minutesAgo,
+	NOW,
+	result,
+	SECTION,
+	worker,
+} from "../reconcile/testing/fixtures.ts"
 import { memoryLedger } from "./ledger.ts"
 import { parseDuration, watchLoop } from "./loop.ts"
+import { dispatchableAtStart } from "./startup.ts"
 import { newWatchState, step, type WatchDeps } from "./step.ts"
 
 const MAX_WAIT = 30 * 60_000
@@ -21,6 +31,7 @@ class Harness {
 	unknown = false
 	githubReads = 0
 	ledger = memoryLedger()
+	section = SECTION
 
 	readonly deps: WatchDeps = {
 		now: () => this.clock,
@@ -40,6 +51,15 @@ class Harness {
 			if (this.failRelease) throw new Error("refused")
 			this.releases.push([number, claimId])
 		},
+		startupWork: async () =>
+			dispatchableAtStart(
+				input({
+					issues: this.issues,
+					workers: this.workers,
+					section: this.section,
+					now: this.clock,
+				}),
+			),
 		localMachine: "Minerva",
 		ledger: this.ledger,
 	}
@@ -250,20 +270,33 @@ describe("desk watch", () => {
 		expect(await h.poll()).toEqual([])
 	})
 
-	test("ready: a request that newly reaches stage:ready; one ready at the start does not", async () => {
+	test("ready: a request that newly reaches stage:ready", async () => {
 		const h = new Harness()
-		h.issues = [
-			issue(1, ["request", "autopilot", "stage:ready"]),
-			issue(2, ["request", "stage:needs-you"]),
-		]
+		h.issues = [issue(1, ["request", "stage:ready"]), issue(2, ["request", "stage:needs-you"])]
 		expect(await h.poll()).toEqual([])
 		h.advance(1)
 		h.issues = [
-			issue(1, ["request", "autopilot", "stage:ready"]),
+			issue(1, ["request", "stage:ready"]),
 			issue(2, ["request", "autopilot", "stage:ready"]),
 		]
 
 		expect(await h.poll()).toEqual([{ event: "ready", issue: 2 }])
+	})
+
+	test("released_request_does_not_wait_for_the_tick", async () => {
+		const h = new Harness()
+		h.issues = [issue(34, ["request", "autopilot", "stage:ready"])]
+
+		expect(await h.poll()).toEqual([{ event: "ready", issue: 34 }])
+	})
+
+	test("full_slots_do_not_wake_the_coordinator", async () => {
+		const h = new Harness()
+		h.section = { ...SECTION, machines: [{ name: "Minerva", workers: 1, repo: undefined }] }
+		h.issues = [issue(34, ["request", "autopilot", "stage:ready"])]
+		h.workers = [worker({ dispatchId: "ctx_other", taskId: "task_other" })]
+
+		expect(await h.poll()).toEqual([])
 	})
 
 	test("merged: a linked pull request that newly merged", async () => {

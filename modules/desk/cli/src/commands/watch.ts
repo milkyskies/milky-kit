@@ -11,22 +11,24 @@ import { OrcaError } from "../orca/runner.ts"
 import { requireRun } from "../orca/runs.ts"
 import { listWorkers } from "../orca/workers.ts"
 import { projectStateDirectory } from "../project/paths.ts"
+import { gatherInput } from "../reconcile/gather.ts"
 import { loadIssues } from "../reconcile/load.ts"
 import { fileLedger } from "../watch/ledger.ts"
 import { parseDuration, watchLoop } from "../watch/loop.ts"
+import { dispatchableAtStart } from "../watch/startup.ts"
 import type { WatchDeps } from "../watch/step.ts"
 import { run as releaseRun } from "./release.ts"
 
 const DEFAULT_MAX_WAIT = "30m"
 
-export type WatchCommandDeps = Pick<OrcaDeps, "orca"> & {
+export type WatchCommandDeps = Pick<OrcaDeps, "orca" | "loadSection"> & {
 	sleep: (ms: number) => Promise<void>
 	ledgerDirectory: (context: Context) => string
 }
 
 export function realWatchDeps(): WatchCommandDeps {
 	return {
-		orca: realOrcaDeps().orca,
+		...realOrcaDeps(),
 		sleep: (ms) => Bun.sleep(ms),
 		ledgerDirectory: (context) => projectStateDirectory(homedir(), context.repo),
 	}
@@ -67,6 +69,17 @@ export async function runWith(
 				...context,
 				out: () => undefined,
 			}),
+		startupWork: async () =>
+			dispatchableAtStart(
+				await gatherInput(
+					context.gh,
+					context.repo,
+					orca,
+					await deps.loadSection(),
+					context.now(),
+					run,
+				),
+			),
 		localMachine: local?.name ?? "",
 		ledger: fileLedger(deps.ledgerDirectory(context)),
 	}
