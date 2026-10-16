@@ -7,7 +7,13 @@ import { canonicalCard, cardProblems } from "../github/cards.ts"
 import { readIssue } from "../github/issue.ts"
 import { composeComment } from "../github/markers.ts"
 import { moveStage, postComment } from "../github/writes.ts"
-import { requireOwnedClaim, requireStage, verifyCommentCount, verifyStage } from "../guards.ts"
+import {
+	requireOwnedClaim,
+	requireStage,
+	verifyCommentsPosted,
+	verifyStage,
+	verifyStillOwned,
+} from "../guards.ts"
 
 export const run: Command = async (args, context) => {
 	const { values, positionals } = parseOrUsage("park", () =>
@@ -51,24 +57,28 @@ export const run: Command = async (args, context) => {
 			? undefined
 			: await readInputFile("park", context, proposedBodyPath)
 
+	const postedIds: number[] = []
 	for (const card of cards) {
-		await postComment(gh, repo, number, canonicalCard(card, claim.id))
+		postedIds.push(await postComment(gh, repo, number, canonicalCard(card, claim.id)))
 	}
 
 	if (proposedBody !== undefined) {
-		await postComment(
-			gh,
-			repo,
-			number,
-			composeComment("proposed-body", { claim: claim.id }, proposedBody),
+		postedIds.push(
+			await postComment(
+				gh,
+				repo,
+				number,
+				composeComment("proposed-body", { claim: claim.id }, proposedBody),
+			),
 		)
 	}
 
 	await moveStage(gh, repo, number, "stage:working", "stage:needs-you")
 
 	const after = await readIssue(gh, repo, number)
-	verifyCommentCount("park", before, after, cards.length + (proposedBody === undefined ? 0 : 1))
+	verifyCommentsPosted("park", before, after, postedIds)
 	verifyStage("park", before, after, "stage:needs-you")
+	verifyStillOwned("park", before, after, claim.id)
 
 	emit(
 		context,

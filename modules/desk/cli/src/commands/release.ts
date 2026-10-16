@@ -3,7 +3,7 @@ import { parseArgs } from "node:util"
 import { parseNumber, parseOrUsage, requireFlag } from "../args.ts"
 import { type Command, emit } from "../context.ts"
 import { refusal, usageError } from "../errors.ts"
-import { newestClaim } from "../github/derive.ts"
+import { owningClaim } from "../github/derive.ts"
 import { readIssue } from "../github/issue.ts"
 import { composeComment } from "../github/markers.ts"
 import { moveStage, postComment } from "../github/writes.ts"
@@ -30,7 +30,7 @@ export const run: Command = async (args, context) => {
 
 	requireStage("release", before, "stage:working")
 
-	const claim = newestClaim(before.comments)
+	const claim = owningClaim(before.comments)
 	if (!claim) {
 		throw refusal(
 			"release",

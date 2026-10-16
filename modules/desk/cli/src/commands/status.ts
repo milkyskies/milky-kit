@@ -2,7 +2,7 @@ import { parseArgs } from "node:util"
 
 import { parseNumber, parseOrUsage } from "../args.ts"
 import { type Command, emit } from "../context.ts"
-import { attemptCount, describeClaim, lastHumanComment, newestClaim } from "../github/derive.ts"
+import { attemptCount, describeClaim, lastHumanComment, owningClaim } from "../github/derive.ts"
 import { readIssue, stageText } from "../github/issue.ts"
 
 export const run: Command = async (args, context) => {
@@ -10,7 +10,7 @@ export const run: Command = async (args, context) => {
 	const number = parseNumber("status", positionals[0], "the issue number")
 
 	const issue = await readIssue(context.gh, context.repo, number)
-	const claim = newestClaim(issue.comments)
+	const claim = owningClaim(issue.comments)
 	const human = lastHumanComment(issue.comments)
 	const pullRequest = issue.pullRequests[0]
 	const attempts = attemptCount(issue.comments)

@@ -3,7 +3,7 @@ import { parseArgs } from "node:util"
 import { parseNumber, parseOrUsage, requireFlag } from "../args.ts"
 import { type Command, emit, isoDay } from "../context.ts"
 import { mismatch, refusal } from "../errors.ts"
-import { appendToSection, sectionLines } from "../github/body.ts"
+import { appendToSection, lostProgramLines, sectionLines } from "../github/body.ts"
 import { readIssue } from "../github/issue.ts"
 import { editBody } from "../github/writes.ts"
 import { requireOwnedClaim } from "../guards.ts"
@@ -39,16 +39,18 @@ export const run: Command = async (args, context) => {
 	requireOwnedClaim("note", before, dispatch)
 
 	const entry = `- ${isoDay(context.now())}: ${line}`
-	await editBody(gh, repo, number, appendToSection(before.body, "Small calls", entry))
+	const fresh = await readIssue(gh, repo, number)
+	await editBody(gh, repo, number, appendToSection(fresh.body, "Small calls", entry))
 
 	const after = await readIssue(gh, repo, number)
-	if (!sectionLines(after.body, "Small calls").includes(entry)) {
+	const lost = lostProgramLines(fresh.body, after.body)
+	if (!sectionLines(after.body, "Small calls").includes(entry) || lost.length > 0) {
 		throw mismatch(
 			"note",
 			number,
-			"body without the entry",
-			"body without the entry",
-			`## Small calls holding "${entry}"`,
+			"body as read before the edit",
+			lost.length > 0 ? `a body missing ${lost.join(" | ")}` : "a body without the entry",
+			`## Small calls holding "${entry}" and every earlier line`,
 		)
 	}
 

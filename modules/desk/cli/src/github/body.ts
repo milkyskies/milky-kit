@@ -39,3 +39,15 @@ export function appendToSection(body: string, heading: string, line: string): st
 
 	return `${before}\n${line}${gap}${after}`
 }
+
+export function lostProgramLines(freshBody: string, afterBody: string): string[] {
+	const kept = new Set([
+		...sectionLines(afterBody, "Small calls"),
+		...sectionLines(afterBody, "Decisions"),
+	])
+
+	return [
+		...sectionLines(freshBody, "Small calls"),
+		...sectionLines(freshBody, "Decisions"),
+	].filter((line) => !kept.has(line))
+}

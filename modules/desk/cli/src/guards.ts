@@ -1,9 +1,9 @@
 import { mismatch, refusal } from "./errors.ts"
-import { type Claim, describeClaim, newestClaim } from "./github/derive.ts"
+import { type Claim, describeClaim, owningClaim } from "./github/derive.ts"
 import { hasStage, type IssueState, stageText } from "./github/issue.ts"
 
 export function describeState(issue: IssueState): string {
-	const claim = newestClaim(issue.comments)
+	const claim = owningClaim(issue.comments)
 
 	return claim ? `${stageText(issue)} (${describeClaim(claim)})` : stageText(issue)
 }
@@ -19,12 +19,12 @@ export function requireStage(command: string, issue: IssueState, stage: string):
 }
 
 export function requireOwnedClaim(command: string, issue: IssueState, dispatch: string): Claim {
-	const claim = newestClaim(issue.comments)
+	const claim = owningClaim(issue.comments)
 	if (!claim) {
 		throw refusal(
 			command,
 			issue.number,
-			"there is no newest claim",
+			"there is no owning claim",
 			`a claim by dispatch ${dispatch}`,
 		)
 	}
@@ -33,7 +33,7 @@ export function requireOwnedClaim(command: string, issue: IssueState, dispatch: 
 		throw refusal(
 			command,
 			issue.number,
-			`the newest claim ${claim.id} belongs to dispatch ${claim.dispatch}`,
+			`the owning claim ${claim.id} belongs to dispatch ${claim.dispatch}`,
 			`dispatch ${dispatch}`,
 		)
 	}
@@ -52,19 +52,51 @@ export function verifyStage(
 	throw mismatch(command, after.number, describeState(before), describeState(after), expected)
 }
 
-export function verifyCommentCount(
+export function verifyCommentsPosted(
 	command: string,
 	before: IssueState,
 	after: IssueState,
-	added: number,
+	ids: readonly number[],
 ): void {
-	if (after.comments.length >= before.comments.length + added) return
+	const present = new Set(after.comments.map((comment) => comment.databaseId))
+	const missing = ids.filter((id) => !present.has(id))
+	if (missing.length === 0) return
 
 	throw mismatch(
 		command,
 		after.number,
 		`${before.comments.length} comments`,
-		`${after.comments.length} comments`,
-		`at least ${before.comments.length + added} comments`,
+		`${after.comments.length} comments without ${missing.join(", ")}`,
+		`comments ${ids.join(", ")} present`,
+	)
+}
+
+export function verifyStillOwned(
+	command: string,
+	before: IssueState,
+	after: IssueState,
+	claimId: string,
+): void {
+	const owner = owningClaim(after.comments)
+	if (owner?.id === claimId) return
+
+	throw mismatch(
+		command,
+		after.number,
+		describeState(before),
+		describeState(after),
+		`claim ${claimId} still owning the issue`,
+	)
+}
+
+export function verifyClaimReleased(command: string, before: IssueState, after: IssueState): void {
+	if (owningClaim(after.comments) === undefined) return
+
+	throw mismatch(
+		command,
+		after.number,
+		describeState(before),
+		describeState(after),
+		"no unreleased claim",
 	)
 }

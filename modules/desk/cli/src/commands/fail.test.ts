@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 
-import { newestClaim, parseComments } from "../github/derive.ts"
+import { owningClaim, parseComments } from "../github/derive.ts"
 import { makeHarness } from "../github/testing/fake-gh.ts"
 import { failureOf, seedWorking } from "../github/testing/seed.ts"
 import { run } from "./fail.ts"
@@ -18,7 +18,7 @@ describe("desk fail", () => {
 		expect(issue.comments.at(-1)?.body).toStartWith(
 			"<!-- desk:failed claim=c_first1 attempt=1 -->\nTried A",
 		)
-		expect(newestClaim(parseComments(issue.comments))).toBeUndefined()
+		expect(owningClaim(parseComments(issue.comments))).toBeUndefined()
 	})
 
 	test("refuses when the newest claim belongs to another dispatch", async () => {

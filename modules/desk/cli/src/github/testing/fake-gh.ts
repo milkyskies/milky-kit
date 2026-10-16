@@ -37,6 +37,7 @@ export class FakeGithub {
 	readonly calls: string[][] = []
 	readonly files = new Map<string, string>()
 	dropLabelWrites = false
+	commentPageSize = 100
 	afterNextRead: ((issue: FakeIssue) => void) | undefined
 	private commentCounter = 1000
 	private shaCounter = 0
@@ -113,7 +114,7 @@ export class FakeGithub {
 	}
 
 	private api(args: readonly string[], input: string | undefined): string {
-		if (args[1] === "graphql") return this.readIssue(this.numberArg(args))
+		if (args[1] === "graphql") return this.readIssue(this.numberArg(args), this.cursorArg(args))
 
 		const method = this.flag(args, "-X") ?? "GET"
 		const path = args.find((arg) => arg.startsWith("repos/")) ?? ""
@@ -128,9 +129,17 @@ export class FakeGithub {
 		return Number(pair?.split("=")[1])
 	}
 
-	private readIssue(number: number): string {
+	private cursorArg(args: readonly string[]): number | undefined {
+		const pair = args.find((arg) => arg.startsWith("before="))
+
+		return pair === undefined ? undefined : Number(pair.split("=")[1])
+	}
+
+	private readIssue(number: number, cursor?: number): string {
 		const issue = this.mustIssue(number)
 		const nodes = <T>(items: T[]) => ({ nodes: items })
+		const end = cursor ?? issue.comments.length
+		const start = Math.max(0, end - this.commentPageSize)
 		const payload = {
 			data: {
 				repository: {
@@ -140,7 +149,10 @@ export class FakeGithub {
 						body: issue.body,
 						labels: nodes(issue.labels.map((name) => ({ name }))),
 						assignees: nodes(issue.assignees.map((login) => ({ login }))),
-						comments: nodes(issue.comments),
+						comments: {
+							pageInfo: { hasPreviousPage: start > 0, startCursor: String(start) },
+							nodes: issue.comments.slice(start, end),
+						},
 						blockedBy: nodes(issue.blockedBy),
 						subIssues: nodes(issue.subIssues),
 						closedByPullRequestsReferences: nodes(
@@ -303,6 +315,7 @@ export function makeHarness(options: { json?: boolean } = {}): Harness {
 
 			return text
 		},
+		sleep: async () => {},
 		readBytes: async (path) => {
 			const text = fake.files.get(path)
 			if (text === undefined) throw new Error(`no such file ${path}`)

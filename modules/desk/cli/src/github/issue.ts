@@ -2,7 +2,7 @@ import { parseJson, readArray, readBoolean, readField, readNumber, readString } 
 import { type Comment, type ParsedComment, parseComments } from "./derive.ts"
 import { type Gh, type Repo, repoSlug } from "./gh.ts"
 
-const ISSUE_QUERY = `query($owner: String!, $name: String!, $number: Int!) {
+const ISSUE_QUERY = `query($owner: String!, $name: String!, $number: Int!, $before: String) {
   repository(owner: $owner, name: $name) {
     issue(number: $number) {
       number
@@ -10,7 +10,10 @@ const ISSUE_QUERY = `query($owner: String!, $name: String!, $number: Int!) {
       body
       labels(first: 50) { nodes { name } }
       assignees(first: 10) { nodes { login } }
-      comments(last: 100) { nodes { id databaseId body createdAt } }
+      comments(last: 100, before: $before) {
+        pageInfo { hasPreviousPage startCursor }
+        nodes { id databaseId body createdAt }
+      }
       blockedBy(first: 20) { nodes { number state } }
       subIssues(first: 50) { nodes { number state } }
       closedByPullRequestsReferences(first: 5, includeClosedPrs: true) {
@@ -104,8 +107,13 @@ export function parseIssue(raw: string): IssueState {
 	}
 }
 
-export async function readIssue(gh: Gh, repo: Repo, number: number): Promise<IssueState> {
-	const raw = await gh([
+async function readIssuePage(
+	gh: Gh,
+	repo: Repo,
+	number: number,
+	before: string | undefined,
+): Promise<{ issue: IssueState; previousCursor: string | undefined }> {
+	const args = [
 		"api",
 		"graphql",
 		"-f",
@@ -116,9 +124,33 @@ export async function readIssue(gh: Gh, repo: Repo, number: number): Promise<Iss
 		`name=${repo.name}`,
 		"-F",
 		`number=${number}`,
-	])
+	]
+	if (before !== undefined) args.push("-f", `before=${before}`)
 
-	return parseIssue(raw)
+	const raw = await gh(args)
+	const pageInfo = readField(
+		readField(readField(readField(parseJson(raw), "data"), "repository"), "issue"),
+		"comments",
+	)
+	const info = readField(pageInfo, "pageInfo")
+	const previousCursor =
+		readBoolean(info, "hasPreviousPage") === true ? readString(info, "startCursor") : undefined
+
+	return { issue: parseIssue(raw), previousCursor }
+}
+
+export async function readIssue(gh: Gh, repo: Repo, number: number): Promise<IssueState> {
+	const first = await readIssuePage(gh, repo, number, undefined)
+	let comments = first.issue.comments
+	let cursor = first.previousCursor
+
+	while (cursor !== undefined) {
+		const page = await readIssuePage(gh, repo, number, cursor)
+		comments = [...page.issue.comments, ...comments]
+		cursor = page.previousCursor
+	}
+
+	return { ...first.issue, comments }
 }
 
 export type PullRequestState = {

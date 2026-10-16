@@ -4,7 +4,7 @@ import {
 	activeClaims,
 	attemptCount,
 	lastHumanComment,
-	newestClaim,
+	owningClaim,
 	parseComments,
 } from "./derive.ts"
 import { composeComment, formatMarker, isAgentBody, parseMarker } from "./markers.ts"
@@ -50,7 +50,7 @@ describe("derived values", () => {
 			claim("c_3"),
 		])
 
-		expect(newestClaim(comments)?.id).toBe("c_3")
+		expect(owningClaim(comments)?.id).toBe("c_3")
 		expect(activeClaims(comments).map((entry) => entry.id)).toEqual(["c_3"])
 	})
 
@@ -60,7 +60,7 @@ describe("derived values", () => {
 			comment(2, composeComment("failed", { claim: "c_1", attempt: "1" }, "no")),
 		])
 
-		expect(newestClaim(comments)).toBeUndefined()
+		expect(owningClaim(comments)).toBeUndefined()
 	})
 
 	test("a human comment resets the attempt count", () => {

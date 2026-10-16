@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { newestClaim, parseComments } from "../github/derive.ts"
+import { owningClaim, parseComments } from "../github/derive.ts"
 import { makeHarness } from "../github/testing/fake-gh.ts"
 import { failureOf } from "../github/testing/seed.ts"
 import { run } from "./claim.ts"
@@ -19,7 +19,7 @@ describe("desk claim", () => {
 		expect(issue.assignees).toEqual(["milkyskies"])
 		expect(output).toEqual(["c_8f3a2b"])
 
-		const claim = newestClaim(parseComments(issue.comments))
+		const claim = owningClaim(parseComments(issue.comments))
 		expect(claim).toMatchObject({
 			id: "c_8f3a2b",
 			machine: "zeus",
@@ -124,6 +124,6 @@ describe("desk claim", () => {
 		const comments = parseComments(fake.issue(12).comments)
 		const release = comments.at(-1)?.marker
 		expect(release).toEqual({ kind: "release", attrs: { claim: "c_8f3a2b", reason: "lost-race" } })
-		expect(newestClaim(comments)?.id).toBe("c_early1")
+		expect(owningClaim(comments)?.id).toBe("c_early1")
 	})
 })

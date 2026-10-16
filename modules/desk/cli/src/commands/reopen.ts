@@ -3,6 +3,7 @@ import { parseArgs } from "node:util"
 import { parseNumber, parseOrUsage, requireFlag } from "../args.ts"
 import { type Command, emit } from "../context.ts"
 import { refusal } from "../errors.ts"
+import { owningClaim } from "../github/derive.ts"
 import { readIssue } from "../github/issue.ts"
 import { composeComment } from "../github/markers.ts"
 import { moveStage, postComment } from "../github/writes.ts"
@@ -44,12 +45,28 @@ export const run: Command = async (args, context) => {
 		.map((line) => `> ${line}`)
 		.join("\n")
 
+	const claim = owningClaim(before.comments)
+
 	await postComment(
 		gh,
 		repo,
 		number,
 		composeComment("reopen", { comment: String(commentId) }, `Sent back. Reason:\n\n${quoted}`),
 	)
+
+	if (claim) {
+		await postComment(
+			gh,
+			repo,
+			number,
+			composeComment(
+				"release",
+				{ claim: claim.id, reason: "reopened" },
+				`Released claim ${claim.id}: reopened.`,
+			),
+		)
+	}
+
 	await moveStage(gh, repo, number, "stage:check", "stage:ready")
 
 	const after = await readIssue(gh, repo, number)

@@ -6,7 +6,7 @@ import { attemptCount } from "../github/derive.ts"
 import { readIssue } from "../github/issue.ts"
 import { composeComment } from "../github/markers.ts"
 import { moveStage, postComment } from "../github/writes.ts"
-import { requireOwnedClaim, requireStage, verifyStage } from "../guards.ts"
+import { requireOwnedClaim, requireStage, verifyClaimReleased, verifyStage } from "../guards.ts"
 
 export const run: Command = async (args, context) => {
 	const { values, positionals } = parseOrUsage("fail", () =>
@@ -39,6 +39,7 @@ export const run: Command = async (args, context) => {
 
 	const after = await readIssue(gh, repo, number)
 	verifyStage("fail", before, after, "stage:ready")
+	verifyClaimReleased("fail", before, after)
 
 	emit(context, `#${number} → stage:ready (attempt ${attempt} failed)`, {
 		issue: number,

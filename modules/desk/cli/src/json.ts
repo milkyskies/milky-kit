@@ -39,5 +39,9 @@ export function readArray(value: unknown, key: string): unknown[] {
 }
 
 export function parseJson(text: string): unknown {
-	return JSON.parse(text)
+	try {
+		return JSON.parse(text)
+	} catch {
+		throw new ShapeError(`expected JSON, got "${text.trim().slice(0, 80)}"`)
+	}
 }
