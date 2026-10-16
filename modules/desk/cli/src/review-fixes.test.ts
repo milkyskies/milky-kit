@@ -417,3 +417,56 @@ describe("edit records on real GitHub: 0 at creation, 2 after the first edit, 3 
 		).toBe(4)
 	})
 })
+
+describe("re-review C: plain release closes later open claims", () => {
+	test("release without --claim also releases a lingering loser and returns to ready", async () => {
+		const { fake, context } = makeHarness()
+		seedWorking(fake, 12)
+		fake.addComment(12, claimBody("c_loser1", "ctx_loser"))
+
+		await release(["12", "--reason", "silent-machine"], context)
+
+		const comments = parseComments(fake.issue(12).comments)
+		expect(fake.issue(12).labels).toContain("stage:ready")
+		expect(owningClaim(comments)).toBeUndefined()
+		expect(comments.at(-1)?.marker?.attrs).toEqual({ claim: "c_loser1", reason: "lost-race" })
+	})
+})
+
+describe("re-review D: desk answer is idempotent on retry", () => {
+	test("a retry after a concurrent-edit failure posts neither the answer nor the decision twice", async () => {
+		const { fake, context } = makeHarness()
+		seedWorking(fake, 12).labels = ["request", "autopilot", "stage:needs-you"]
+		fake.addComment(12, "<!-- desk:decision claim=c_first1 -->\nQuestion?\n<!-- desk:agent -->")
+		fake.files.set("answer.md", "Go with five.")
+		fake.afterRead(2, (issue) => {
+			issue.body += "\n## Small calls\n\n- 2026-10-16: theirs\n"
+			recordBodyEdit(issue)
+		})
+
+		const first = await failureOf(
+			answer(["12", "--body", "answer.md", "--decision", "five"], context),
+		)
+		expect(first.code).toBe(4)
+
+		await answer(["12", "--body", "answer.md", "--decision", "five"], context)
+
+		const issue = fake.issue(12)
+		expect(issue.comments.filter((comment) => comment.body === "Go with five.")).toHaveLength(1)
+		expect(issue.body.match(/: five$/gm)).toHaveLength(1)
+		expect(issue.labels).toContain("stage:ready")
+		expect(owningClaim(parseComments(issue.comments))).toBeUndefined()
+	})
+
+	test("an identical answer to a later, new question is posted again", async () => {
+		const { fake, context } = makeHarness()
+		seedWorking(fake, 12).labels = ["request", "autopilot", "stage:needs-you"]
+		fake.addComment(12, "Go.")
+		fake.addComment(12, "<!-- desk:decision claim=c_first1 -->\nAgain?\n<!-- desk:agent -->")
+		fake.files.set("answer.md", "Go.")
+
+		await answer(["12", "--body", "answer.md", "--decision", "go"], context)
+
+		expect(fake.issue(12).comments.filter((comment) => comment.body === "Go.")).toHaveLength(2)
+	})
+})

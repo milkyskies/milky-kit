@@ -154,14 +154,14 @@ A comment the digest has pinged gets a trailing `<!-- desk:pinged at=<iso> -->` 
 
 **`desk release <n> --reason <silent-machine|no-worker|stopped|lost-race|answered|reopened> [--claim <id>]`**
 - Used by the coordinator and the watchdog, never by a worker on its own claim. `answered` is written only by `desk answer`, and `reopened` only by `desk reopen`.
-- Without `--claim`: precondition `stage:working`; releases the owning claim.
+- Without `--claim`: precondition `stage:working`; releases the owning claim. Releasing the owning claim also releases every later unreleased claim with reason `lost-race`, so a dead race loser never inherits the issue.
 - With `--claim <id>`: the claim must be unreleased, at any stage. This is how an orphaned claim is cleared when a worker died between its claim comment and its label write, which leaves `stage:ready` with a live claim.
 - Posts `<!-- desk:release claim=<id> reason=<reason> -->`. The stage moves from `stage:working` to `stage:ready` only when the issue is `stage:working` and no unreleased claim remains. Releasing a lingering race loser changes no label.
 - `desk fail`, `desk answer` and `desk reopen` close every unreleased claim, not only the owning one, so a race loser whose own release failed cannot take the issue over.
 
 **`desk note <n> --dispatch <d> "Auto-decided: X over Y because Z"`**
 - Precondition: the owning claim is `<d>`'s. The line must start with `Auto-decided:` and contain ` over ` and ` because `.
-- Appends `- <date>: <line>` to the body's `## Small calls` section, creating the section if it is missing. The program edits no other part of the body. The body is re-read right before the edit and again after it; if the body's `userContentEdits.totalCount` moved by anything but our own edit (GitHub records 0 at creation, 2 after the first edit because the first edit also stores the original body, then 1 per edit), or an earlier `## Small calls` or `## Decisions` line is gone, the command exits 4 (`desk answer` follows the same rule for `## Decisions`).
+- Appends `- <date>: <line>` to the body's `## Small calls` section, creating the section if it is missing. The program edits no other part of the body. The body is re-read right before the edit and again after it; if the body's `userContentEdits.totalCount` moved by anything but our own edit (GitHub records 0 at creation, 2 after the first edit because the first edit also stores the original body, then 1 per edit), or an earlier `## Small calls` or `## Decisions` line is gone, the command exits 4 (`desk answer` follows the same rule for `## Decisions`). `desk answer` is idempotent on retry: when the newest human comment after the latest decision card is already the same answer, and `## Decisions` already holds the decision, it skips those two writes and continues with the claim releases and the stage move.
 
 **`desk answer <n> --body <file> --decision "<one line>"`**
 - The human's side, called by `/decisions` and later by the desk app.
