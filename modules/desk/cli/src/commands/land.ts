@@ -67,6 +67,8 @@ export async function landIssue(deps: LandDeps, context: Context, number: number
 		)
 	}
 
+	const runId = await requireRun(deps.orca, repoSlug(repo))
+
 	const stage = stageOf(before)
 	const staleStages = (stage.kind === "one" ? [stage.label] : stage.labels).filter(
 		(label) => label !== "stage:done",
@@ -97,7 +99,7 @@ export async function landIssue(deps: LandDeps, context: Context, number: number
 	const failures =
 		claim === undefined
 			? []
-			: await cleanUpWorker(deps, await requireRun(deps.orca, repoSlug(repo)), claim.dispatch)
+			: await cleanUpWorker(deps, runId, claim.dispatch)
 	if (failures.length > 0) {
 		throw new DeskError(
 			EXIT.external,

@@ -102,6 +102,17 @@ describe("desk land", () => {
 		expect(fake.issue(12).labels).toEqual(["request", "stage:done"])
 	})
 
+	test("refuses before writing anything when the project has no Run", async () => {
+		const { fake, context, fakeOrca, deps } = setup()
+		fakeOrca.runs = []
+
+		const failure = await failureOf(landIssue(deps, context, 12))
+
+		expect(failure.code).toBe(1)
+		expect(fake.issue(12).labels).toContain("stage:check")
+		expect(fake.issue(12).state).toBe("OPEN")
+	})
+
 	test("never removes the main worktree", async () => {
 		const { context, fakeOrca, deps } = setup()
 		fakeOrca.worktrees = [{ path: "/work/12", isMainWorktree: true }]
