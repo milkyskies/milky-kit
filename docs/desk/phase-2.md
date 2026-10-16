@@ -189,14 +189,14 @@ A comment the digest has pinged gets a trailing `<!-- desk:pinged at=<iso> -->` 
   2. `git merge origin/main`. A conflict exits 1 with the conflicting files. The coordinator sends the request back to a worker (section 4).
   3. Run the project's check command from `## desk` (default `mise run check`). A failure exits 1 with the first failing line.
   4. Push.
-  5. Read the pushed commit's checks. No workflow configured: print `no CI configured`. Actions disabled or blocked by billing: print `CI blocked`. Either fact goes into the merge comment, and neither waits, because the local check in step 3 already ran (relayed). With workflows configured and not blocked, poll the pushed commit's check runs every 20 seconds until they finish. A failure exits 1, and so does `--ci-timeout` (default 20 minutes) running out.
+  5. Read the pushed commit's checks. No workflow configured: print `no CI configured`. Actions disabled or blocked by billing: print `CI blocked`. Either fact goes into the merge comment, and neither waits, because the local check in step 3 already ran (relayed). With workflows configured and not blocked, poll the pushed commit's check runs every 20 seconds until they finish. A failure exits 1, and so does `--ci-timeout` (default 20 minutes) running out on a run that started. When no check run exists for the commit after 2 minutes (path-filtered workflows), merge reports `no CI ran for this change` with `ci=none` and relies on the local check.
   6. Re-read the issue. Exit 1 unless it is still `stage:check` and the newest human comment is still a `looks good` newer than the result, because the local check takes minutes and a `no, because …` may have arrived meanwhile.
   7. `gh pr merge <pr> --merge --match-head-commit <sha>`, where `<sha>` is the commit that passed the check, so a push after the check cannot merge unchecked. Merge commits only; the kit never squashes or rebases.
   8. Post `<!-- desk:merge pr=<pr> ci=<passed|none|blocked> check=<passed> -->`, then run `desk land <n>`.
   9. Remove the temporary worktree.
 
 **`desk land <n>`**
-- Precondition: the pull request named by the newest `desk:result` comment is merged, and no `desk:reopen` or `desk:claim` comment is newer than that result. An old merged pull request on a reopened request never counts. Idempotent.
+- Precondition: for an open issue, the pull request named by the newest `desk:result` comment is merged, and no `desk:reopen` or `desk:claim` comment is newer than that result, so an old merged pull request on a reopened request never counts. For a closed issue, any merged linked pull request counts, which covers work merged by hand. The Orca Run is resolved before the first GitHub write. Idempotent.
 - Moves the stage to `stage:done` and closes the issue with `Merged.` if it is still open.
 - Releases the Orca worker named by the owning claim (`orca orchestration worker-release --dispatch <d>`) and removes its worktree (`orca worktree rm`). A failed Orca step prints its error and exits 3. The GitHub state is already correct, so the next pass retries only the cleanup.
 - Pressing Merge in the GitHub app ends here too: the next reconcile pass sees the merged pull request and runs `desk land` (relayed).
@@ -283,7 +283,7 @@ The coordinator is a Sonnet session at medium effort (plan), started with `/milk
 |---|---|---|---|
 | `dispatch` | `stage:ready`, `autopilot`, unblocked, no open sub-issue | no live worker for `#n` | Route (`reference/routing.md`), then `worker-start` (below). Only while live workers are under the machine's limit. |
 | `escalate` | as `dispatch`, attempts ≥ 2 | no live worker | Dispatch one tier up: Haiku to Sonnet. A Sonnet request at 2 attempts goes to the coordinator itself, which parks it with a card listing what was tried (plan). |
-| `orphan-claim` | `stage:working`, owning claim names dispatch D | D is `exited`, released or absent, and the claim is older than 10 minutes. A claim on a remote machine whose worker row is absent waits for the silent-machine rule instead, because a missing remote row may only mean the remote listing is incomplete. | `desk release --claim <id> --reason no-worker`. It becomes `dispatch` or `escalate` on the next pass. |
+| `orphan-claim` | `stage:working`, owning claim names dispatch D | D is `exited`, released or absent, and the claim is older than 10 minutes. A claim on a remote machine whose worker row is absent becomes `remote-claim-unseen` instead: report only, because a missing remote row may only mean the remote listing is incomplete, and the silent-machine rule releases the claim if the machine goes silent. | `desk release --claim <id> --reason no-worker`. It becomes `dispatch` or `escalate` on the next pass. |
 | `unclaimed-worker` | `stage:ready` | a live worker titled `#n`, started more than 10 minutes ago | The worker never claimed. Read the tail of its terminal, `worker-stop` it, and let the next pass dispatch again. |
 | `unrecorded-result` | `stage:working`, claim names D | D sent `worker_done`, or sits idle at its prompt | Send to D's terminal: "Record your result on #n with desk done, desk park or desk fail, then send worker_done again." If the terminal is gone, `desk release --reason stopped`. |
 | `parked-worker` | `stage:needs-you`, claim names D | D is live | `worker-release --dispatch D`. The worktree stays for the next attempt. |
@@ -294,6 +294,7 @@ The coordinator is a Sonnet session at medium effort (plan), started with `/milk
 | `check-red` | `stage:check`, pull request `CONFLICTING` | any | Send the request back to its worker if live, otherwise dispatch a merge worker (Sonnet, low effort). |
 | `stray-worker` | issue closed or `stage:done` | a live worker for `#n` | `worker-stop`, then `worker-release`. |
 | `human-claimed` | `stage:working` with no `desk:claim` comment | any | Change nothing. Report it in the digest pass. A person or another session claimed it with plain `gh`, and desk does not own work it did not claim: never release, requeue or dispatch it. |
+| `remote-claim-unseen` | `stage:working`, owning claim on a remote machine | no row for dispatch D | Change nothing. The digest reports it once. |
 | `bad-labels` | an open issue with no `stage:*` label, or more than one | any | Change nothing. Report it in the digest. The program does not guess which stage is right. |
 
 `stage:intake`, `stage:backlog`, `proposed` and `stage:done` are ignored. A `stage:needs-you` issue with no worker needs nothing but the digest.
@@ -395,7 +396,7 @@ The same set of failed checks on the same machine pings once per 6 hours. The re
 | A worker never started | idle for 10 minutes from the start of the watch | wakes: `worker-idle` |
 | A worker hung | working, but no heartbeat for 20 minutes (the preamble sends one every 5) | wakes: `worker-hung` |
 | A worker gone | `projection.liveness.verdict` is `exited` | wakes: `worker-gone` |
-| A machine gone | `orca status --environment <m>` unreachable on every poll for 15 minutes. A poll counts only when the local `orca status` answered and reachable; a failing local Orca skips the poll, because it says nothing about the remote machine. | runs `desk release --claim <id> --reason silent-machine` for each claim on that machine, then wakes: `machine-silent` |
+| A machine gone | `orca status --environment <m>` unreachable on every poll for 15 minutes. A poll counts only when the local `orca status` answered and reachable; a failing local Orca skips the poll and clears the machine's unreachable start, so silence must be confirmed for a full 15 minutes again, because it says nothing about the remote machine. | runs `desk release --claim <id> --reason silent-machine` for each claim on that machine, then wakes: `machine-silent` |
 
 A reachable machine whose worker is merely quiet is the stalled-worker case, never a hand-back (relayed).
 
@@ -437,7 +438,7 @@ https://github.com/milkyskies/kansai-2/issues?q=is:open+label:stage:needs-you,st
 
 ### One digest per pass
 
-`desk digest` collects every `desk:decision` and `desk:result` comment without a pinged marker, plus every `bad-labels` issue. With `--send` it sends one ping covering all of them, and only after ntfy accepts the ping does it append `<!-- desk:pinged at=<iso> -->` to each comment. A failed send marks nothing, so the next pass retries. A crash between the send and the marks costs one repeated ping, never a missed one.
+`desk digest` collects every `desk:decision` and `desk:result` comment without a pinged marker, plus every `bad-labels`, `human-claimed` and `remote-claim-unseen` issue. With `--send` it sends one ping covering all of them, and only after ntfy accepts the ping does it append `<!-- desk:pinged at=<iso> -->` to each comment. A failed send marks nothing, so the next pass retries. A crash between the send and the marks costs one repeated ping, never a missed one.
 
 The pinged marker sits on GitHub, so a fresh coordinator never re-pings what the old one sent.
 
