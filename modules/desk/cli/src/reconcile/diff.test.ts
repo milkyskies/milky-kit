@@ -96,6 +96,21 @@ describe("desk reconcile", () => {
 		expect(mismatch).toMatchObject({ code: "orphan-claim", claim: "c_1", worker: "ctx_gone" })
 	})
 
+	test("a remote claim whose worker row is missing waits for the silent-machine rule", () => {
+		const remote = [issue(12, WORKING, [claim("c_1", "ctx_gone", minutesAgo(30), "zeus")])]
+		const local = [issue(12, WORKING, [claim("c_1", "ctx_gone", minutesAgo(30), "Minerva")])]
+
+		expect(codes({ issues: remote })).toEqual([])
+		expect(codes({ issues: local })).toEqual([[12, "orphan-claim"]])
+	})
+
+	test("orphan-claim: a remote worker that is listed as exited still counts", () => {
+		const gone = worker({ verdict: "exited", terminalState: "released", hostKind: "environment" })
+		const issues = [issue(12, WORKING, [claim("c_1", "ctx_y", minutesAgo(30), "zeus")])]
+
+		expect(codes({ issues, workers: [gone] })).toEqual([[12, "orphan-claim"]])
+	})
+
 	test("orphan-claim: an exited worker counts, a young claim does not", () => {
 		const gone = worker({ verdict: "exited", terminalState: "released" })
 

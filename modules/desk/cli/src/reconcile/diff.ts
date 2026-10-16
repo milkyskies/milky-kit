@@ -190,6 +190,9 @@ function classifyWorking(
 		}
 	}
 
+	const remote = claim.machine !== input.section.coordinator.machine
+	if (!worker && remote) return undefined
+
 	if ((!worker || isGone(worker)) && claimAge > CLAIM_GRACE_MS) {
 		return {
 			issue: issue.number,
