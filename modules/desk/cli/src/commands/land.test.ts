@@ -91,6 +91,17 @@ describe("desk land", () => {
 		expect(fake.issue(12).labels).toContain("stage:ready")
 	})
 
+	test("lands a closed request whose pull request was merged by hand, with no result", async () => {
+		const { fake, context, deps } = setup()
+		fake.issue(12).comments = []
+		fake.issue(12).state = "CLOSED"
+		fake.issue(12).labels = ["request", "stage:working"]
+
+		await landIssue(deps, context, 12)
+
+		expect(fake.issue(12).labels).toEqual(["request", "stage:done"])
+	})
+
 	test("never removes the main worktree", async () => {
 		const { context, fakeOrca, deps } = setup()
 		fakeOrca.worktrees = [{ path: "/work/12", isMainWorktree: true }]

@@ -1,6 +1,8 @@
 import type { IssueState, LinkedPullRequest } from "../github/issue.ts"
 
 export function landedPullRequest(issue: IssueState): LinkedPullRequest | undefined {
+	if (!issue.open) return issue.pullRequests.find((pr) => pr.state === "MERGED")
+
 	const resultIndex = issue.comments.findLastIndex((comment) => comment.marker?.kind === "result")
 	const result = issue.comments[resultIndex]
 	if (!result) return undefined

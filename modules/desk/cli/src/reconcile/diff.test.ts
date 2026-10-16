@@ -260,6 +260,13 @@ describe("desk reconcile", () => {
 		])
 	})
 
+	test("merged: a closed request whose pull request was merged by hand, with no result, still lands", () => {
+		const pullRequests = [{ number: 45, state: "MERGED", isDraft: false, mergeable: "UNKNOWN" }]
+		const closed = issue(12, ["request", "stage:working"], [], { pullRequests, open: false })
+
+		expect(codes({ issues: [closed] })).toEqual([[12, "merged"]])
+	})
+
 	test("merged: only the pull request the newest result names counts", () => {
 		const pullRequests = [{ number: 44, state: "MERGED", isDraft: false, mergeable: "UNKNOWN" }]
 		const issues = [
