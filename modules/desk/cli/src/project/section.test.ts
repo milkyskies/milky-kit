@@ -1,9 +1,11 @@
 import { describe, expect, test } from "bun:test"
 import { readFileSync } from "node:fs"
+import { mkdtemp, rm, writeFile } from "node:fs/promises"
+import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 import { DESK_SECTION } from "../preflight/testing/world.ts"
-import { parseDeskSection, remoteMachines, workerMachines } from "./section.ts"
+import { parseDeskSection, readDeskSection, remoteMachines, workerMachines } from "./section.ts"
 
 function parsed(markdown: string) {
 	const result = parseDeskSection(markdown)
@@ -92,5 +94,25 @@ describe("parseDeskSection", () => {
 		)
 
 		expect(section.coordinator.machine).toBe("Minerva")
+	})
+})
+
+describe("readDeskSection", () => {
+	test("reads the section from a file and throws an error naming the bad line", async () => {
+		const directory = await mkdtemp(join(tmpdir(), "desk-section-"))
+		const path = join(directory, "CLAUDE.md")
+
+		try {
+			await writeFile(path, DESK_SECTION)
+			expect((await readDeskSection(path)).coordinator.machine).toBe("Minerva")
+
+			await writeFile(path, DESK_SECTION.replace("- ask: ask:choices\n", ""))
+			await expect(readDeskSection(path)).rejects.toThrow("### Coordinator needs ask set to one of")
+
+			await writeFile(path, "# project\n")
+			await expect(readDeskSection(path)).rejects.toThrow("has no ## desk section")
+		} finally {
+			await rm(directory, { recursive: true, force: true })
+		}
 	})
 })

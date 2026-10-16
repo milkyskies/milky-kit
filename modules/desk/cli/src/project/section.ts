@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises"
+
 export const ASK_SETTINGS = ["ask:everything", "ask:choices", "ask:own-feel"]
 export const DEFAULT_CHECK_COMMAND = "mise run check"
 export const DEFAULT_WORKER_LIMIT = 3
@@ -256,4 +258,15 @@ export function workerMachines(section: DeskSection): Machine[] {
 
 export function remoteMachines(section: DeskSection): Machine[] {
 	return section.machines.filter((machine) => machine.name !== section.coordinator.machine)
+}
+
+export async function readDeskSection(claudeMdPath: string): Promise<DeskSection> {
+	const result = parseDeskSection(await readFile(claudeMdPath, "utf8"))
+
+	if (result.kind === "ok") return result.section
+	if (result.kind === "missing") throw new Error(`${claudeMdPath} has no ## desk section`)
+
+	const lines = result.issues.map((issue) => describeIssue(claudeMdPath, issue))
+
+	throw new Error(`## desk section is invalid: ${lines.join("; ")}`)
 }
