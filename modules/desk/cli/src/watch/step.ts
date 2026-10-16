@@ -239,7 +239,10 @@ async function machineEvents(
 
 	for (const [machine, claims] of claimsByMachine) {
 		const reachability = await deps.reachability(machine)
-		if (reachability === "unknown") continue
+		if (reachability === "unknown") {
+			since.delete(machine)
+			continue
+		}
 
 		if (reachability === "reachable") {
 			since.delete(machine)

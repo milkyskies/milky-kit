@@ -165,6 +165,21 @@ describe("desk watch", () => {
 		expect(h.releases).toEqual([])
 	})
 
+	test("machine-silent: a poll the local Orca cannot answer wipes the earlier unreachable start", async () => {
+		const h = new Harness()
+		h.issues = [issue(12, WORKING, [claim("c_1", "ctx_a", minutesAgo(5), "zeus")])]
+		h.reachable.set("zeus", false)
+		await h.poll()
+		h.advance(5)
+		h.unknown = true
+		await h.poll()
+		h.advance(20)
+		h.unknown = false
+
+		expect(await h.poll()).toEqual([])
+		expect(h.releases).toEqual([])
+	})
+
 	test("machine-silent: a machine that answers in between starts the 15 minutes over", async () => {
 		const h = new Harness()
 		h.issues = [issue(12, WORKING, [claim("c_1", "ctx_a", minutesAgo(5), "zeus")])]
