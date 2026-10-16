@@ -2,10 +2,10 @@ import { type Gh, type Repo, repoSlug } from "../github/gh.ts"
 import { parseJson, readArray, readField, readNumber, readString } from "../json.ts"
 
 export type CiStatus =
-	| { kind: "none" }
+	| { kind: "none"; reason: "unconfigured" | "no-runs" }
 	| { kind: "blocked"; detail: string }
 	| { kind: "failing"; names: string[] }
-	| { kind: "pending" }
+	| { kind: "pending"; noRuns: boolean }
 	| { kind: "passed" }
 
 const BLOCKED_MESSAGE = /account is locked due to a billing issue/
@@ -35,7 +35,7 @@ export async function ciStatus(
 	sha: string,
 	hasWorkflows: boolean,
 ): Promise<CiStatus> {
-	if (!hasWorkflows) return { kind: "none" }
+	if (!hasWorkflows) return { kind: "none", reason: "unconfigured" }
 
 	const permissions = parseJson(await gh(["api", `repos/${repoSlug(repo)}/actions/permissions`]))
 	if (readField(permissions, "enabled") === false) {
@@ -67,5 +67,7 @@ export async function ciStatus(
 
 	const unfinished = runs.some((run) => readField(run, "status") !== "completed")
 
-	return runs.length === 0 || unfinished ? { kind: "pending" } : { kind: "passed" }
+	if (runs.length === 0) return { kind: "pending", noRuns: true }
+
+	return unfinished ? { kind: "pending", noRuns: false } : { kind: "passed" }
 }

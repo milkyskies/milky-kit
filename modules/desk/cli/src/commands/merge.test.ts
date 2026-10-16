@@ -187,15 +187,37 @@ describe("desk merge", () => {
 		expect(output[0]).toContain("CI passed")
 	})
 
-	test("refuses when CI never reports within the timeout, and merges nothing", async () => {
-		const { fake, context, clock, deps } = setup({ workflows: true })
+	test("refuses when a started CI run never finishes within the timeout, and merges nothing", async () => {
+		const { fake, context, extras, clock, deps } = setup({ workflows: true })
+		extras.checkRuns = [{ id: 9, name: "ci", status: "in_progress", conclusion: null }]
 
-		const failure = await failureOf(runWith(deps, ["12", "--ci-timeout", "2m"], context))
+		const failure = await failureOf(runWith(deps, ["12", "--ci-timeout", "5m"], context))
 
 		expect(failure.code).toBe(1)
-		expect(failure.message).toContain("did not finish within 2 minutes")
-		expect(clock.ms).toBeGreaterThanOrEqual(120_000)
+		expect(failure.message).toContain("did not finish within 5 minutes")
+		expect(clock.ms).toBeGreaterThanOrEqual(300_000)
 		expect(fake.callsMatching(["pr", "merge"])).toHaveLength(0)
+	})
+
+	test("treats a commit that no workflow ran for as no CI for this change, after a short grace", async () => {
+		const { fake, context, output, clock, deps } = setup({ workflows: true })
+
+		await runWith(deps, ["12"], context)
+
+		expect(clock.ms).toBe(120_000)
+		expect(output[0]).toContain("no CI ran for this change")
+		expect(fake.issue(12).comments.some((comment) => comment.body.includes("ci=none"))).toBe(true)
+	})
+
+	test("a run that appears during the grace period is waited on, not skipped", async () => {
+		const { context, output, extras, clock, deps } = setup({ workflows: true })
+		clock.onSleep = () => {
+			extras.checkRuns = [{ id: 9, name: "ci", status: "completed", conclusion: "success" }]
+		}
+
+		await runWith(deps, ["12"], context)
+
+		expect(output[0]).toContain("CI passed")
 	})
 
 	test("refuses when CI fails while it is being waited on", async () => {

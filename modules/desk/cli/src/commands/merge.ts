@@ -28,6 +28,7 @@ export type MergeDeps = OrcaDeps & {
 
 const CI_POLL_MS = 20_000
 const DEFAULT_CI_TIMEOUT = "20m"
+const NO_RUNS_GRACE_MS = 2 * 60_000
 
 export function realMergeDeps(): MergeDeps {
 	return {
@@ -50,7 +51,10 @@ export function realMergeDeps(): MergeDeps {
 function describeCi(status: CiStatus): { marker: string; text: string } {
 	switch (status.kind) {
 		case "none":
-			return { marker: "none", text: "no CI configured" }
+			return {
+				marker: "none",
+				text: status.reason === "no-runs" ? "no CI ran for this change" : "no CI configured",
+			}
 		case "blocked":
 			return { marker: "blocked", text: `CI blocked (${status.detail})` }
 		case "pending":
@@ -115,7 +119,8 @@ async function waitForCi(
 	hasWorkflows: boolean,
 	timeoutMs: number,
 ): Promise<CiStatus> {
-	const deadline = deps.nowMs() + timeoutMs
+	const start = deps.nowMs()
+	const deadline = start + timeoutMs
 
 	for (;;) {
 		const status = await ciStatus(context.gh, context.repo, sha, hasWorkflows)
@@ -123,6 +128,10 @@ async function waitForCi(
 			throw refusal("merge", number, describeCi(status).text, "no failing check")
 		}
 		if (status.kind !== "pending") return status
+
+		if (status.noRuns && deps.nowMs() - start >= NO_RUNS_GRACE_MS) {
+			return { kind: "none", reason: "no-runs" }
+		}
 
 		if (deps.nowMs() >= deadline) {
 			throw refusal(
