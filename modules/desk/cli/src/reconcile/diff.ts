@@ -191,7 +191,15 @@ function classifyWorking(
 	}
 
 	const remote = claim.machine !== input.section.coordinator.machine
-	if (!worker && remote) return undefined
+	if (!worker && remote) {
+		return {
+			issue: issue.number,
+			code: "remote-claim-unseen",
+			detail: `claim ${claim.id} on ${claim.machine} names dispatch ${claim.dispatch}, which has no worker row: report it, change nothing, the silent-machine rule releases it if ${claim.machine} goes silent`,
+			claim: claim.id,
+			worker: claim.dispatch,
+		}
+	}
 
 	if ((!worker || isGone(worker)) && claimAge > CLAIM_GRACE_MS) {
 		return {

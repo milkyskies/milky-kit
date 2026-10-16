@@ -3,6 +3,8 @@ import { describe, expect, test } from "bun:test"
 import { composeComment } from "../github/markers.ts"
 import { claimBody, failureOf } from "../github/testing/seed.ts"
 import { pingedAt } from "../ping/digest.ts"
+import { FakeOrca } from "../orca/testing/fake-orca.ts"
+import { SECTION } from "../reconcile/testing/fixtures.ts"
 import { makeListingHarness } from "../reconcile/testing/github.ts"
 import { memoryLedger } from "../watch/ledger.ts"
 import { runWith } from "./digest.ts"
@@ -13,7 +15,10 @@ function setup(status = 200) {
 	const harness = makeListingHarness()
 	const posted: Posted[] = []
 	const ledger = memoryLedger()
+	const fakeOrca = new FakeOrca()
 	const deps = {
+		orca: fakeOrca.orca,
+		loadSection: async () => SECTION,
 		ledger,
 		ping: {
 			loadEnv: async () => ({ DESK_NTFY_URL: "http://zeus:8090/", DESK_NTFY_TOPIC: "abc123" }),
@@ -25,7 +30,7 @@ function setup(status = 200) {
 		},
 	}
 
-	return { ...harness, posted, deps, ledger }
+	return { ...harness, posted, deps, ledger, fakeOrca }
 }
 
 function seedParked(harness: ReturnType<typeof setup>) {
@@ -121,6 +126,19 @@ describe("desk digest", () => {
 
 		expect(harness.posted).toHaveLength(1)
 		expect(harness.posted[0]?.body).toStartWith("kit: 1 issue with bad labels")
+	})
+
+	test("a remote claim with no worker row, and a request claimed by hand, are reported once", async () => {
+		const harness = setup()
+		harness.fake.addIssue({ number: 30, labels: ["request", "autopilot", "stage:working"] })
+		harness.fake.addComment(30, claimBody("c_9", "ctx_gone"))
+		harness.fake.addIssue({ number: 31, labels: ["request", "stage:working"] })
+
+		await runWith(harness.deps, ["--send"], harness.context)
+		await runWith(harness.deps, ["--send"], harness.context)
+
+		expect(harness.posted).toHaveLength(1)
+		expect(harness.posted[0]?.body).toStartWith("kit: 2 requests need a look")
 	})
 
 	test("the message holds the project, counts and a link, never issue text", async () => {

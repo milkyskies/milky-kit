@@ -15,7 +15,7 @@ export type DigestItem = {
 
 export type BadLabels = { issue: number; labels: string }
 
-export type Digest = { items: DigestItem[]; badLabels: BadLabels[] }
+export type Digest = { items: DigestItem[]; badLabels: BadLabels[]; needsLook: BadLabels[] }
 
 export function pingedAt(body: string): Date | undefined {
 	const match = PINGED_LINE.exec(body)
@@ -66,7 +66,7 @@ export function collectDigest(issues: readonly IssueState[], now: Date): Digest 
 		.filter((issue) => issue.open && stageOf(issue).kind === "ambiguous")
 		.map((issue) => ({ issue: issue.number, labels: stageLabelsKey(issue) }))
 
-	return { items, badLabels }
+	return { items, badLabels, needsLook: [] }
 }
 
 function stageLabelsKey(issue: IssueState): string {
@@ -88,6 +88,10 @@ export function digestMessage(repo: Repo, digest: Digest): string {
 	if (results > 0) parts.push(`${results} done to check`)
 	if (digest.badLabels.length > 0) {
 		parts.push(plural(digest.badLabels.length, "issue with bad labels", "issues with bad labels"))
+	}
+
+	if (digest.needsLook.length > 0) {
+		parts.push(plural(digest.needsLook.length, "request needs a look", "requests need a look"))
 	}
 
 	const labels = [

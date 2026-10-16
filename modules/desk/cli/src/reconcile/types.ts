@@ -19,6 +19,7 @@ export const MISMATCH_CODES = [
 	"stray-worker",
 	"bad-labels",
 	"human-claimed",
+	"remote-claim-unseen",
 ] as const
 
 export type MismatchCode = (typeof MISMATCH_CODES)[number]

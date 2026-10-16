@@ -100,7 +100,7 @@ describe("desk reconcile", () => {
 		const remote = [issue(12, WORKING, [claim("c_1", "ctx_gone", minutesAgo(30), "zeus")])]
 		const local = [issue(12, WORKING, [claim("c_1", "ctx_gone", minutesAgo(30), "Minerva")])]
 
-		expect(codes({ issues: remote })).toEqual([])
+		expect(codes({ issues: remote })).toEqual([[12, "remote-claim-unseen"]])
 		expect(codes({ issues: local })).toEqual([[12, "orphan-claim"]])
 	})
 

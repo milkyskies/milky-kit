@@ -13,15 +13,22 @@ import {
 } from "../ping/digest.ts"
 import { type PingDeps, realPingDeps, sendPing } from "../ping/ntfy.ts"
 import { projectStateDirectory } from "../project/paths.ts"
-import { loadIssues } from "../reconcile/load.ts"
+import { repoSlug } from "../github/gh.ts"
+import { type OrcaDeps, realOrcaDeps } from "../orca/deps.ts"
+import { requireRun } from "../orca/runs.ts"
+import { reconcile } from "../reconcile/diff.ts"
+import { gatherInput } from "../reconcile/gather.ts"
 import { fileLedger, type Ledger } from "../watch/ledger.ts"
 
 const BAD_LABELS_FILE = "badlabels-pinged.json"
 
-export type DigestDeps = { ping: PingDeps; ledger: Ledger }
+export type DigestDeps = OrcaDeps & { ping: PingDeps; ledger: Ledger }
+
+const REPORT_ONLY = ["human-claimed", "remote-claim-unseen"]
 
 export function realDigestDeps(context: Context): DigestDeps {
 	return {
+		...realOrcaDeps(),
 		ping: realPingDeps(),
 		ledger: fileLedger(projectStateDirectory(homedir(), context.repo)),
 	}
@@ -34,15 +41,26 @@ export async function runWith(deps: DigestDeps, args: string[], context: Context
 
 	const { gh, repo } = context
 	const now = context.now()
-	const issues = await loadIssues(gh, repo)
-	const collected = collectDigest(issues, now)
+	const input = await gatherInput(
+		gh,
+		repo,
+		deps.orca,
+		await deps.loadSection(),
+		now,
+		await requireRun(deps.orca, repoSlug(repo)),
+	)
+	const collected = collectDigest(input.issues, now)
+	const reportOnly = reconcile(input)
+		.filter((mismatch) => REPORT_ONLY.includes(mismatch.code))
+		.map((mismatch) => ({ issue: mismatch.issue, labels: mismatch.code }))
 	const badLedger = parseBadLabelLedger(await deps.ledger.read(BAD_LABELS_FILE))
 	const digest = {
 		items: collected.items,
 		badLabels: unseenBadLabels(collected.badLabels, badLedger),
+		needsLook: unseenBadLabels(reportOnly, badLedger),
 	}
 
-	if (digest.items.length === 0 && digest.badLabels.length === 0) {
+	if (digest.items.length === 0 && digest.badLabels.length === 0 && digest.needsLook.length === 0) {
 		context.out(context.json ? JSON.stringify({ sent: false, message: null }) : "nothing to ping")
 
 		return
@@ -67,8 +85,8 @@ export async function runWith(deps: DigestDeps, args: string[], context: Context
 		}
 	}
 
-	if (digest.badLabels.length > 0) {
-		const stillBad = collected.badLabels.map((entry) => [String(entry.issue), entry.labels])
+	if (digest.badLabels.length > 0 || digest.needsLook.length > 0) {
+		const stillBad = [...collected.badLabels, ...reportOnly].map((entry) => [String(entry.issue), entry.labels])
 		await deps.ledger.write(BAD_LABELS_FILE, Object.fromEntries(stillBad))
 	}
 
