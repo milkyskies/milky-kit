@@ -15,7 +15,7 @@
 <!-- Path globs that bring in the standing reviewer: "- `apps/api/drizzle/migrations/**`". -->
 
 ### Routing
-<!-- Extra rows, read before the kit's table and winning over it. -->
+<!-- Extra rows, read before the kit's table and winning over it. A line "- reuse landed workers: yes" lets the coordinator reuse a landed worker's terminal for a new request; see skills/desk/reference/routing.md. -->
 
 ### Preflight
 <!-- One command per line with its fix: "- `pg_isready -h localhost -p 5432` - fix: `docker compose up -d db`". Name MCP servers workers need beyond Serena: "- mcp: blender". -->

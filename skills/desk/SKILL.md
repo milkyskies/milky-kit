@@ -81,9 +81,9 @@ A worker's first two steps are `desk preflight --role worker --ping` and `desk c
 
 | File | Read it |
 |---|---|
-| `reference/routing.md` | before every `worker-start`, and when escalating |
-| `reference/review.md` | when a pull request touches a review path, and when choosing the review flag for a brief |
-| `reference/tokens.md` | before writing a brief or reusing a worker |
+| `reference/routing.md` | before every `worker-start`, when escalating, and when sending a follow-up to a live worker |
+| `reference/review.md` | before writing any brief (the self-check list), when a pull request touches a review path, when choosing the review flag, and when a pull request merges or a worker is stopped |
+| `reference/tokens.md` | before writing a brief, reusing a worker, or reading a worker's result |
 
 ## Machines and locks
 
