@@ -32,6 +32,17 @@ export function workerRow(worker: Worker) {
 	}
 }
 
+export type FakeWorktree = {
+	path: string
+	isMainWorktree: boolean
+	repoId?: string
+	hostId?: string
+	branch?: string
+	liveTerminalCount?: number
+}
+
+export const FAKE_REPO_ID = "repo_kit"
+
 export class FakeOrca {
 	workers: Worker[] = []
 	tasks: FakeTask[] = []
@@ -39,7 +50,8 @@ export class FakeOrca {
 	runs: FakeRun[] = [{ id: "run_kit", objective: "desk milkyskies/kit" }]
 	ignoreRunFlag = false
 	workerRuns = new Map<string, string>()
-	worktrees: { path: string; isMainWorktree: boolean }[] = []
+	worktrees: FakeWorktree[] = []
+	worktreesTruncated = false
 	hosts = [
 		{ kind: "local", id: "local", name: "this machine", machineName: "Minerva" },
 		{ kind: "environment", id: "env-zeus", name: "zeus" },
@@ -106,7 +118,23 @@ export class FakeOrca {
 
 		if (key === "orchestration run-use") return { run: { id: this.flag(args, "--id") } }
 		if (key === "host list") return { hosts: this.hosts }
-		if (key === "worktree ps") return { worktrees: this.worktrees }
+		if (key === "worktree ps") {
+			return {
+				worktrees: this.worktrees.map((row) => ({
+					path: row.path,
+					isMainWorktree: row.isMainWorktree,
+					repoId: row.repoId ?? FAKE_REPO_ID,
+					hostId: row.hostId ?? "local",
+					branch: row.branch ?? `refs/heads/milkyskies/${row.path.split("/").at(-1)}`,
+					liveTerminalCount: row.liveTerminalCount ?? 0,
+				})),
+				truncated: this.worktreesTruncated,
+			}
+		}
+
+		if (key === "worktree current") {
+			return { worktree: { repoId: FAKE_REPO_ID, hostId: "local" } }
+		}
 
 		if (key === "worktree rm") {
 			const path = String(this.flag(args, "--worktree")).replace("path:", "")

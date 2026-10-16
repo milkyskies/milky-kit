@@ -64,6 +64,27 @@ describe("desk reconcile command", () => {
 		])
 	})
 
+	test("never dispatches into a same-named worktree of another repository or host", async () => {
+		const { fake, context, output, fakeOrca, deps } = setup()
+		fake.addIssue({ number: 16, labels: ["request", "autopilot", "stage:ready"] })
+		fakeOrca.worktrees = [
+			{ path: "/scratch/16", isMainWorktree: false, repoId: "repo_scratch" },
+			{ path: "/remote/16", isMainWorktree: false, hostId: "env-zeus" },
+		]
+
+		await runWith(deps, [], context)
+
+		expect(JSON.parse(output[0] ?? "{}").mismatches[0].workerStart[1]).toBe("new-child")
+	})
+
+	test("refuses to reconcile when Orca truncated the worktree list", async () => {
+		const { fake, context, fakeOrca, deps } = setup()
+		fake.addIssue({ number: 16, labels: ["request", "autopilot", "stage:ready"] })
+		fakeOrca.worktreesTruncated = true
+
+		await expect(runWith(deps, [], context)).rejects.toThrow("truncated")
+	})
+
 	test("joins a live worker to its request through the task title", async () => {
 		const { fake, context, output, fakeOrca, deps } = setup()
 		fake.addIssue({ number: 12, labels: ["request", "autopilot", "stage:ready"] })

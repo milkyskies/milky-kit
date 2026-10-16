@@ -1,16 +1,46 @@
-import { readArray, readBoolean, readString } from "../json.ts"
+import { readArray, readBoolean, readField, readNumber, readString } from "../json.ts"
 import type { Shell } from "../merge/shell.ts"
 import type { Orca } from "./runner.ts"
 
-export type WorktreeRow = { path: string; isMain: boolean }
+export type WorktreeRow = {
+	path: string
+	isMain: boolean
+	repoId: string
+	hostId: string
+	branch: string
+	liveTerminalCount: number
+}
 
+const LIST_LIMIT = "1000"
+const LOCAL_HOST = "local"
+
+// Orca lists the worktrees of every repository it knows, so a caller that matches by name must narrow to its own repository first.
 export async function listWorktrees(orca: Orca): Promise<WorktreeRow[]> {
-	const result = await orca(["worktree", "ps"])
+	const result = await orca(["worktree", "ps", "--limit", LIST_LIMIT])
+
+	if (readField(result, "truncated") === true) {
+		throw new Error(
+			`desk: orca worktree ps truncated its list at ${LIST_LIMIT} rows, so a worktree could be missed: raise the limit or archive worktrees`,
+		)
+	}
 
 	return readArray(result, "worktrees").map((row) => ({
 		path: readString(row, "path"),
 		isMain: readBoolean(row, "isMainWorktree"),
+		repoId: readString(row, "repoId"),
+		hostId: readString(row, "hostId"),
+		branch: readString(row, "branch"),
+		liveTerminalCount: readNumber(row, "liveTerminalCount"),
 	}))
+}
+
+export async function ownWorktrees(orca: Orca): Promise<WorktreeRow[]> {
+	const current = await orca(["worktree", "current"])
+	const repoId = readString(readField(current, "worktree"), "repoId")
+
+	return (await listWorktrees(orca)).filter(
+		(row) => row.repoId === repoId && row.hostId === LOCAL_HOST,
+	)
 }
 
 export async function releaseWorker(orca: Orca, dispatchId: string): Promise<void> {

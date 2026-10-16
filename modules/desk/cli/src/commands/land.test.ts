@@ -163,6 +163,61 @@ describe("desk land", () => {
 		expect(fake.issue(12).comments.at(-1)?.body).toContain("worktree-kept: /work/12")
 	})
 
+	test("never removes a same-named worktree of another repository", async () => {
+		const { context, fakeOrca, fakeShell, deps } = setup()
+		fakeOrca.worktrees = [
+			{ path: "/work/12", isMainWorktree: false },
+			{ path: "/scratch/12", isMainWorktree: false, repoId: "repo_scratch" },
+			{ path: "/remote/12", isMainWorktree: false, hostId: "env-zeus" },
+		]
+		fakeShell.on("git -C /scratch/12 rev-list --count", ok("0\n"))
+		fakeShell.on("git -C /remote/12 rev-list --count", ok("0\n"))
+
+		await landIssue(deps, context, 12)
+
+		expect(fakeOrca.called("rm").map((call) => call.at(-1))).toEqual(["path:/work/12"])
+	})
+
+	test("skips an unused worktree with a live terminal in it", async () => {
+		const { context, fakeOrca, fakeShell, deps } = setup()
+		fakeOrca.workers = [worker({ worktreePath: "/work/12-2" })]
+		fakeOrca.worktrees = [
+			{ path: "/work/12", isMainWorktree: false, liveTerminalCount: 1 },
+			{ path: "/work/12-2", isMainWorktree: false },
+		]
+		fakeShell.on("git -C /work/12-2 rev-list --count", ok("0\n"))
+
+		await landIssue(deps, context, 12)
+
+		expect(fakeOrca.called("rm").map((call) => call.at(-1))).toEqual(["path:/work/12-2"])
+	})
+
+	test("does not sweep a hand-made 12-experiment worktree or one on another branch", async () => {
+		const { context, fakeOrca, fakeShell, deps } = setup()
+		fakeOrca.worktrees = [
+			{ path: "/work/12", isMainWorktree: false },
+			{ path: "/work/12-experiment", isMainWorktree: false },
+			{ path: "/work/12-3", isMainWorktree: false, branch: "refs/heads/someone/else" },
+		]
+		fakeShell.on("git -C /work/12-experiment rev-list --count", ok("0\n"))
+		fakeShell.on("git -C /work/12-3 rev-list --count", ok("0\n"))
+
+		await landIssue(deps, context, 12)
+
+		expect(fakeOrca.called("rm").map((call) => call.at(-1))).toEqual(["path:/work/12"])
+	})
+
+	test("refuses the cleanup when Orca truncated the worktree list", async () => {
+		const { fake, context, fakeOrca, deps } = setup()
+		fakeOrca.worktreesTruncated = true
+
+		const failure = await failureOf(landIssue(deps, context, 12))
+
+		expect(failure.code).toBe(3)
+		expect(failure.message).toContain("truncated")
+		expect(fake.issue(12).state).toBe("CLOSED")
+	})
+
 	test("removes the kept worktree when no worker row is left for the claim", async () => {
 		const { context, fakeOrca, deps } = setup()
 		fakeOrca.workers = []

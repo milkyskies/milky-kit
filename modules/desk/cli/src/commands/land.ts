@@ -12,7 +12,7 @@ import { spawnShell } from "../merge/shell.ts"
 import {
 	inspectWorktree,
 	isDirtyWorktreeRefusal,
-	listWorktrees,
+	ownWorktrees,
 	releaseWorker,
 	removeWorktree,
 } from "../orca/cleanup.ts"
@@ -52,8 +52,10 @@ async function cleanUpWorker(deps: LandDeps, runId: string, dispatch: string): P
 	if (path === undefined) return cleanup
 
 	if (worker.hostKind === "local") {
-		const row = (await listWorktrees(deps.orca)).find((candidate) => candidate.path === path)
-		if (row && !row.isMain) await run(() => removeLocalWorktree(deps, path, cleanup.report))
+		await run(async () => {
+			const row = (await ownWorktrees(deps.orca)).find((candidate) => candidate.path === path)
+			if (row && !row.isMain) await removeLocalWorktree(deps, path, cleanup.report)
+		})
 
 		return cleanup
 	}
@@ -111,14 +113,14 @@ async function removeIssueWorktrees(
 ): Promise<void> {
 	const alreadyKept = new Set(cleanup.report.kept.map((kept) => kept.path))
 
-	for (const row of worktreesOfIssue(await listWorktrees(deps.orca), number)) {
-		if (alreadyKept.has(row.path)) continue
+	try {
+		for (const row of worktreesOfIssue(await ownWorktrees(deps.orca), number)) {
+			if (alreadyKept.has(row.path) || row.liveTerminalCount > 0) continue
 
-		try {
 			await removeLocalWorktree(deps, row.path, cleanup.report)
-		} catch (error) {
-			cleanup.failures.push(error instanceof Error ? error.message : String(error))
 		}
+	} catch (error) {
+		cleanup.failures.push(error instanceof Error ? error.message : String(error))
 	}
 }
 
