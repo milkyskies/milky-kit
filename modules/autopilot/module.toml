@@ -1,11 +1,1 @@
-# Rules ship via the .claude/rules symlink; the /decisions and /autopilot skills ship with the plugin.
-# Only the bookkeeping workflow is copied into consuming projects.
-
-[[files]]
-src = "scaffold/.github/workflows/autopilot-bookkeeping.yml"
-dest = ".github/workflows/autopilot-bookkeeping.yml"
-
-[[files]]
-src = "scaffold/.github/scripts/autopilot-status.sh"
-dest = ".github/scripts/autopilot-status.sh"
-mode = "0755"
+# The autopilot module ships only its rule, which reaches projects through the .claude/rules symlink.
