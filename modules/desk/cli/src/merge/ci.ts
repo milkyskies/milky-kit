@@ -8,8 +8,7 @@ export type CiStatus =
 	| { kind: "pending" }
 	| { kind: "passed" }
 
-const BLOCKED_MESSAGE =
-	/account is locked due to a billing issue/
+const BLOCKED_MESSAGE = /account is locked due to a billing issue/
 const FAILED_CONCLUSIONS = [
 	"failure",
 	"timed_out",

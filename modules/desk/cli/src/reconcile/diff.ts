@@ -157,7 +157,8 @@ function classifyWorking(
 		return {
 			issue: issue.number,
 			code: "human-claimed",
-			detail: "the request is working with no desk claim, so a person or another session took it: report it, never release, requeue or dispatch it",
+			detail:
+				"the request is working with no desk claim, so a person or another session took it: report it, never release, requeue or dispatch it",
 		}
 	}
 
