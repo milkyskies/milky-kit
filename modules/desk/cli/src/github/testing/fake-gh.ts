@@ -29,6 +29,10 @@ export type FakePullRequest = {
 
 type FakeFile = { sha: string; content: string }
 
+export function recordBodyEdit(issue: FakeIssue): void {
+	issue.bodyEdits += issue.bodyEdits === 0 ? 2 : 1
+}
+
 export const FAKE_REPO = "milkyskies/kit"
 
 export class FakeGithub {
@@ -283,7 +287,7 @@ export class FakeGithub {
 		if (this.flag(args, "--add-assignee") === "@me") issue.assignees = ["milkyskies"]
 		if (args.includes("--body-file")) {
 			issue.body = input ?? ""
-			issue.bodyEdits += 1
+			recordBodyEdit(issue)
 		}
 
 		return ""

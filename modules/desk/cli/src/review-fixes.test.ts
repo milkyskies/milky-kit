@@ -11,7 +11,7 @@ import { run as reopen } from "./commands/reopen.ts"
 import { attemptCount, owningClaim, parseComments } from "./github/derive.ts"
 import { readIssue } from "./github/issue.ts"
 import { composeComment } from "./github/markers.ts"
-import { FakeGithub, makeHarness } from "./github/testing/fake-gh.ts"
+import { FakeGithub, makeHarness, recordBodyEdit } from "./github/testing/fake-gh.ts"
 import { claimBody, decisionCard, failureOf, seedWorking } from "./github/testing/seed.ts"
 import { main } from "./main.ts"
 
@@ -346,7 +346,7 @@ describe("re-review B: a write between the fresh read and the edit is detected",
 		seedWorking(fake, 12)
 		fake.afterRead(2, (issue) => {
 			issue.body += "\n## Decisions\n\n- 2026-10-16: use magic links\n"
-			issue.bodyEdits += 1
+			recordBodyEdit(issue)
 		})
 
 		const result = await failureOf(
@@ -354,7 +354,7 @@ describe("re-review B: a write between the fresh read and the edit is detected",
 		)
 
 		expect(result.code).toBe(4)
-		expect(result.message).toContain("2 body edits since the fresh read")
+		expect(result.message).toContain("3 body edit records since the fresh read (expected 2)")
 	})
 
 	test("desk answer exits 4 when another writer edits after the fresh read", async () => {
@@ -363,11 +363,57 @@ describe("re-review B: a write between the fresh read and the edit is detected",
 		fake.files.set("answer.md", "Go.")
 		fake.afterRead(2, (issue) => {
 			issue.body += "\n## Small calls\n\n- 2026-10-16: Auto-decided: x over y because z\n"
-			issue.bodyEdits += 1
+			recordBodyEdit(issue)
 		})
 
 		expect(
 			(await failureOf(answer(["12", "--body", "answer.md", "--decision", "go"], context))).code,
+		).toBe(4)
+	})
+})
+
+describe("edit records on real GitHub: 0 at creation, 2 after the first edit, 3 after the second", () => {
+	test("the first and second desk note on one issue both succeed", async () => {
+		const { fake, context } = makeHarness()
+		seedWorking(fake, 12)
+		expect(fake.issue(12).bodyEdits).toBe(0)
+
+		await note(["12", "--dispatch", "ctx_y", "Auto-decided: a over b because c"], context)
+		expect(fake.issue(12).bodyEdits).toBe(2)
+
+		await note(["12", "--dispatch", "ctx_y", "Auto-decided: d over e because f"], context)
+		expect(fake.issue(12).bodyEdits).toBe(3)
+	})
+
+	test("a first edit by another writer after the fresh read is still detected", async () => {
+		const { fake, context } = makeHarness()
+		seedWorking(fake, 12)
+		fake.afterRead(2, (issue) => {
+			issue.body += "\n## Decisions\n\n- 2026-10-16: theirs\n"
+			recordBodyEdit(issue)
+		})
+
+		const result = await failureOf(
+			note(["12", "--dispatch", "ctx_y", "Auto-decided: a over b because c"], context),
+		)
+
+		expect(result.code).toBe(4)
+	})
+
+	test("a later edit by another writer is detected on an already-edited body", async () => {
+		const { fake, context } = makeHarness()
+		seedWorking(fake, 12).bodyEdits = 2
+		fake.afterRead(2, (issue) => {
+			issue.body += "\n## Decisions\n\n- 2026-10-16: theirs\n"
+			recordBodyEdit(issue)
+		})
+
+		expect(
+			(
+				await failureOf(
+					note(["12", "--dispatch", "ctx_y", "Auto-decided: a over b because c"], context),
+				)
+			).code,
 		).toBe(4)
 	})
 })

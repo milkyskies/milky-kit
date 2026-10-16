@@ -100,7 +100,7 @@ desk: claim #12 refused: stage is stage:working (claim c_8f3a2b on zeus, 2026-10
 
 The line names the command, the issue, what the program saw, and what it expected. Where a fix exists, the line ends with ` Fix: <command>`. Success prints one line to stdout, or one JSON object with `--json`.
 
-Global flags: `--repo <owner/name>` (default: the repository of the current directory, from `gh repo view`), `--json`.
+Global flags: `--repo <owner/name>` (default: the repository of the current directory, from `gh repo view`), `--json`. The repository is resolved lazily, so a command that does not need it (`desk preflight`) runs and reports a logged-out `gh` or a missing repository itself.
 
 ### Marker grammar
 
@@ -161,7 +161,7 @@ A comment the digest has pinged gets a trailing `<!-- desk:pinged at=<iso> -->` 
 
 **`desk note <n> --dispatch <d> "Auto-decided: X over Y because Z"`**
 - Precondition: the owning claim is `<d>`'s. The line must start with `Auto-decided:` and contain ` over ` and ` because `.
-- Appends `- <date>: <line>` to the body's `## Small calls` section, creating the section if it is missing. The program edits no other part of the body. The body is re-read right before the edit and again after it; if GitHub's edit count for the body moved by anything but one, or an earlier `## Small calls` or `## Decisions` line is gone, the command exits 4 (`desk answer` follows the same rule for `## Decisions`).
+- Appends `- <date>: <line>` to the body's `## Small calls` section, creating the section if it is missing. The program edits no other part of the body. The body is re-read right before the edit and again after it; if the body's `userContentEdits.totalCount` moved by anything but our own edit (GitHub records 0 at creation, 2 after the first edit because the first edit also stores the original body, then 1 per edit), or an earlier `## Small calls` or `## Decisions` line is gone, the command exits 4 (`desk answer` follows the same rule for `## Decisions`).
 
 **`desk answer <n> --body <file> --decision "<one line>"`**
 - The human's side, called by `/decisions` and later by the desk app.
