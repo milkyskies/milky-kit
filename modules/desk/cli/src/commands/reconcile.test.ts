@@ -49,6 +49,21 @@ describe("desk reconcile command", () => {
 		])
 	})
 
+	test("a ready request with a kept worktree is dispatched into it, found from Orca's worktree list", async () => {
+		const { fake, context, output, fakeOrca, deps } = setup()
+		fake.addIssue({ number: 16, labels: ["request", "autopilot", "stage:ready"] })
+		fakeOrca.worktrees = [
+			{ path: "/work/main", isMainWorktree: true },
+			{ path: "/work/16", isMainWorktree: false },
+		]
+
+		await runWith(deps, [], context)
+
+		expect(JSON.parse(output[0] ?? "{}").mismatches).toMatchObject([
+			{ issue: 16, code: "dispatch", workerStart: ["--worktree", "path:/work/16"] },
+		])
+	})
+
 	test("joins a live worker to its request through the task title", async () => {
 		const { fake, context, output, fakeOrca, deps } = setup()
 		fake.addIssue({ number: 12, labels: ["request", "autopilot", "stage:ready"] })

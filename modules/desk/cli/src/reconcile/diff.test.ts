@@ -30,6 +30,92 @@ describe("desk reconcile", () => {
 		expect(mismatch).toMatchObject({ issue: 12, code: "dispatch", machine: "Minerva", attempts: 0 })
 	})
 
+	test("dispatch: starts the worker in a new worktree when the request has none", () => {
+		const [mismatch] = reconcile(input({ issues: [issue(16, READY)] }))
+
+		expect(mismatch?.workerStart).toEqual([
+			"--worktree",
+			"new-child",
+			"--name",
+			"16",
+			"--base-branch",
+			"main",
+		])
+	})
+
+	test("dispatch: starts the worker in the worktree a parked request kept", () => {
+		const worktrees = [
+			{ path: "/work/15", isMain: false },
+			{ path: "/work/16", isMain: false },
+		]
+
+		const [mismatch] = reconcile(input({ issues: [issue(16, READY)], worktrees }))
+
+		expect(mismatch?.workerStart).toEqual(["--worktree", "path:/work/16"])
+	})
+
+	test("dispatch: a kept worktree named <n>-<suffix> is found, and the plain <n> wins over it", () => {
+		const suffixed = [{ path: "/work/16-2", isMain: false }]
+		const both = [...suffixed, { path: "/work/16", isMain: false }]
+
+		const [onlySuffixed] = reconcile(input({ issues: [issue(16, READY)], worktrees: suffixed }))
+		const [preferred] = reconcile(input({ issues: [issue(16, READY)], worktrees: both }))
+
+		expect(onlySuffixed?.workerStart).toEqual(["--worktree", "path:/work/16-2"])
+		expect(preferred?.workerStart).toEqual(["--worktree", "path:/work/16"])
+	})
+
+	test("dispatch: a worktree of another issue or the main checkout is never reused", () => {
+		const worktrees = [
+			{ path: "/work/160", isMain: false },
+			{ path: "/work/1", isMain: false },
+			{ path: "/work/16", isMain: true },
+		]
+
+		const [mismatch] = reconcile(input({ issues: [issue(16, READY)], worktrees }))
+
+		expect(mismatch?.workerStart?.[1]).toBe("new-child")
+	})
+
+	test("escalate: carries the same worker-start arguments", () => {
+		const bodies = [
+			claim("c_1", "ctx_1"),
+			release("c_1", "stopped"),
+			claim("c_2", "ctx_2"),
+			release("c_2", "stopped"),
+		]
+		const worktrees = [{ path: "/work/12", isMain: false }]
+
+		const [mismatch] = reconcile(input({ issues: [issue(12, READY, bodies)], worktrees }))
+
+		expect(mismatch).toMatchObject({
+			code: "escalate",
+			workerStart: ["--worktree", "path:/work/12"],
+		})
+	})
+
+	test("dispatch: a remote machine starts a top-level worktree in its own repository", () => {
+		const section = {
+			...SECTION,
+			machines: [
+				{ name: "Minerva", workers: 0, repo: undefined },
+				{ name: "zeus", workers: 1, repo: "~/Code/kit" },
+			],
+		}
+		const worktrees = [{ path: "/work/5", isMain: false }]
+
+		const [mismatch] = reconcile(input({ issues: [issue(5, READY)], section, worktrees }))
+
+		expect(mismatch?.workerStart).toEqual([
+			"--on",
+			"zeus",
+			"--worktree",
+			"new-top-level",
+			"--repo",
+			"~/Code/kit",
+		])
+	})
+
 	test("dispatch: skips a request without autopilot, with a blocker, or with an open sub-issue", () => {
 		const issues = [
 			issue(1, ["request", "stage:ready"]),

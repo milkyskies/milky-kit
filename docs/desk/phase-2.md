@@ -198,8 +198,8 @@ A comment the digest has pinged gets a trailing `<!-- desk:pinged at=<iso> -->` 
 **`desk land <n>`**
 - Precondition: for an open issue, the pull request named by the newest `desk:result` comment is merged, and no `desk:reopen` or `desk:claim` comment is newer than that result, so an old merged pull request on a reopened request never counts. For a closed issue, any merged linked pull request counts, which covers work merged by hand. The Orca Run is resolved before the first GitHub write. Idempotent.
 - Moves the stage to `stage:done` and closes the issue with `Merged.` if it is still open.
-- Releases the Orca worker named by the owning claim (`orca orchestration worker-release --dispatch <d>`) and removes its worktree (`orca worktree rm`). A failed Orca step prints its error and exits 3. The GitHub state is already correct, so the next pass retries only the cleanup.
-- Before removing a local worktree, land inspects it with `git status --porcelain` and the branch's unpushed commits (against `@{upstream}`, or `origin/main` when there is no upstream). A clean worktree is removed. A worktree holding only untracked files is removed with `--force`; land lists the deleted paths in its output and in a comment on the issue. A worktree with modified tracked files or unpushed commits is kept: land prints `worktree-kept <path>: <reason>`, comments the reason on the issue once, and exits 0, because retrying cannot succeed.
+- Releases the Orca worker named by the owning claim (`orca orchestration worker-release --dispatch <d>`) and removes its worktree (`orca worktree rm`). It also removes every other local worktree of the issue, named `<n>` or `<n>-<suffix>`, such as the one a parked request kept, so no worktree for the issue number remains. A failed Orca step prints its error and exits 3. The GitHub state is already correct, so the next pass retries only the cleanup.
+- Before removing any local worktree, kept or not, land inspects it with `git status --porcelain` and the branch's unpushed commits (against `@{upstream}`, or `origin/main` when there is no upstream). A clean worktree is removed. A worktree holding only untracked files is removed with `--force`; land lists the deleted paths in its output and in a comment on the issue. A worktree with modified tracked files or unpushed commits is kept: land prints `worktree-kept <path>: <reason>` for each one kept, comments each reason on the issue once, and exits 0, because retrying cannot succeed.
 - Git cannot run on a remote machine from the coordinator, so a remote worktree is removed without `--force`. If Orca refuses because the worktree is dirty, it is kept with Orca's message as the reason. Any other failure (host offline, timeout) exits 3 and the next pass retries it.
 - Pressing Merge in the GitHub app ends here too: the next reconcile pass sees the merged pull request and runs `desk land` (relayed).
 
@@ -305,14 +305,22 @@ The coordinator is a Sonnet session at medium effort (plan), started with `/milk
 
 ### Starting a worker
 
+`desk reconcile` computes the worktree arguments, because a script moves state and the model executes (robustness rule 3). A `dispatch` or `escalate` mismatch carries `workerStart`:
+
+- A request that already has a worktree gets `--worktree path:<that worktree>`. The worktree is found in `orca worktree ps`, joined to the issue by its name: `<n>` or `<n>-<suffix>`, with the plain `<n>` preferred. The main checkout is never chosen.
+- Any other request on the coordinator's machine gets `--worktree new-child --name <n> --base-branch main`.
+- A request on another machine gets `--on <environment> --worktree new-top-level --repo <the repository selector from ## desk>`, because Orca refuses `new-child` remotely. The coordinator cannot list a remote machine's worktrees, so a remote request always starts a new one.
+
+The coordinator runs the command as given and adds only the model and effort from routing:
+
 ```
 orca orchestration worker-start \
   --spec "<brief>" --task-title "#<n> <issue title>" \
   --agent claude --model <model> --effort <effort> \
-  --worktree new-child --name <n> --base-branch main --json
+  <workerStart arguments> --json
 ```
 
-A worker on another machine adds `--on <environment>` and uses `--worktree new-top-level --repo <the repository selector from ## desk>` instead, because Orca refuses `new-child` remotely. Compare `launch.requested` with `launch.effective` in the receipt before reporting a model.
+Orca refuses `--model` with `--terminal`, not with an existing worktree. Compare `launch.requested` with `launch.effective` in the receipt before reporting a model.
 
 The brief carries paths, never file contents (plan). It names: the issue number and repository; the machine name to pass to `desk claim`; the full path of `desk`; the rule `.claude/rules/desk.md`; the ask setting from the issue's `ask:*` label or the project default; and, for a reopened request, the id of Milky's reason comment.
 

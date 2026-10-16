@@ -98,6 +98,7 @@ export function input(overrides: Partial<ReconcileInput> = {}): ReconcileInput {
 		issues: [],
 		workers: [],
 		tasks: [],
+		worktrees: [],
 		hosts: HOSTS,
 		section: SECTION,
 		now: NOW,

@@ -50,18 +50,20 @@ This session is Sonnet at medium effort. The human never talks to the coordinato
 
 ## Starting a worker
 
-Read `reference/tokens.md` first. Then:
+Read `reference/tokens.md` first. Then run the command below. The `dispatch` and `escalate` mismatches in `desk reconcile --json` carry `workerStart`, the exact worktree arguments for the request, and the coordinator pastes them in unchanged. Only the model and effort come from routing.
 
 ```bash
 orca orchestration worker-start \
   --spec "<brief>" --task-title "#<n> <issue title>" \
   --agent claude --model <model> --effort <effort> \
-  --worktree new-child --name <n> --base-branch main --json
+  <workerStart arguments> --json
 ```
+
+Never choose the worktree flag yourself. `workerStart` is `--worktree path:<kept worktree>` when the request already has a worktree, because a parked request keeps its worktree for the next attempt and a second one would sit unused. Otherwise it is `--worktree new-child --name <n> --base-branch main`. For a worker on another machine it is `--on <environment> --worktree new-top-level --repo <selector>`, because Orca refuses `new-child` remotely. Orca rejects `--model` only with `--terminal`, never with an existing worktree, so the model and effort flags stay.
 
 The task title must start with `#<n> `, because reconcile joins workers to issues by it.
 
-A worker on another machine adds `--on <environment>` and uses `--worktree new-top-level --repo <repository selector from ### Machines>` instead, because Orca refuses `new-child` remotely. Compare `launch.requested` with `launch.effective` in the receipt before reporting a model.
+Compare `launch.requested` with `launch.effective` in the receipt before reporting a model.
 
 ### The brief
 
