@@ -1,0 +1,6 @@
+#!/bin/sh
+if ! command -v bun >/dev/null 2>&1; then
+	echo "desk: bun is not installed on $(hostname -s). Fix: mise use -g bun" >&2
+	exit 127
+fi
+exec bun "$(dirname "$0")/../cli/src/main.ts" "$@"

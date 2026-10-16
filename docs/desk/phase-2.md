@@ -100,7 +100,7 @@ desk: claim #12 refused: stage is stage:working (claim c_8f3a2b on zeus, 2026-10
 
 The line names the command, the issue, what the program saw, and what it expected. Where a fix exists, the line ends with ` Fix: <command>`. Success prints one line to stdout, or one JSON object with `--json`.
 
-Global flags: `--repo <owner/name>` (default: the repository of the current directory, from `gh repo view`), `--json`.
+Global flags: `--repo <owner/name>` (default: the repository of the current directory, from `gh repo view`), `--json`. The repository is resolved lazily, so a command that does not need it (`desk preflight`) runs and reports a logged-out `gh` or a missing repository itself.
 
 ### Marker grammar
 
@@ -118,16 +118,16 @@ A comment the digest has pinged gets a trailing `<!-- desk:pinged at=<iso> -->` 
 
 `src/github/` computes these from the comments, so nothing else stores them:
 
-- **Newest claim**: the last `desk:claim` comment not followed by a `desk:release` or `desk:failed` naming its id.
-- **Attempts**: the count of `desk:release` and `desk:failed` comments after the newest human comment. A human answer resets the count, because the next attempt starts from new information.
+- **Owning claim**: the earliest `desk:claim` comment not followed by a `desk:release` or `desk:failed` naming its id. Every guard, `desk release --claim` and `desk status` use this one definition, and `desk claim` uses it to pick the winner of a race, so a loser whose `lost-race` release failed never owns the issue.
+- **Attempts**: the count of `desk:release` and `desk:failed` comments after the newest human comment, not counting releases with reason `lost-race`, `answered` or `reopened`. A human answer resets the count, because the next attempt starts from new information.
 - **Last human comment**: the newest comment without the agent marker.
 
 ### Commands
 
-`<n>` is an issue number. `--dispatch <d>` is the worker's Orca dispatch id, which every worker has in its preamble. It proves the worker owns the newest claim.
+`<n>` is an issue number. `--dispatch <d>` is the worker's Orca dispatch id, which every worker has in its preamble. It proves the worker owns the owning claim.
 
 **`desk claim <n> --machine <m> --task <t> --dispatch <d>`**
-- Precondition: open; `stage:ready`; label `autopilot`; no open `blocked_by` issue; no open sub-issue; no newest claim.
+- Precondition: open; `stage:ready`; label `autopilot`; no open `blocked_by` issue; no open sub-issue; no owning claim.
 - Writes a claim comment, then `--add-label stage:working --remove-label stage:ready --add-assignee @me`.
 - Comment:
   ```
@@ -139,32 +139,34 @@ A comment the digest has pinged gets a trailing `<!-- desk:pinged at=<iso> -->` 
 - Prints the claim id.
 
 **`desk park <n> --dispatch <d> --card <file> [--card <file>…] [--proposed-body <file>]`**
-- Precondition: `stage:working`; the newest claim's dispatch is `<d>`.
+- Precondition: `stage:working`; the owning claim's dispatch is `<d>`.
 - Validates each card before posting anything. The card shape is the decision comment in `desk.md`, which follows [the cards rule](../../modules/core/rules/cards.md): marker; `**Kind:** code-detail` or `**Kind:** design`; background; an `**Already checked:**` line; one question; at least two numbered options, or a line saying options cannot be enumerated. A code-detail card carries a `**Recommendation:**` line. A design card carries no recommendation line and does carry a `<details><summary>What would I pick?</summary>` block. A card that fails validation exits 1 and names the missing part.
 - Posts each card, then the proposed body, then moves `stage:working` to `stage:needs-you`.
 - The worktree stays. The next attempt resumes in it.
 
-**`desk done <n> --dispatch <d> --pr <number> --summary "<one sentence>" (--picture <url>… | --no-picture "<why>") [--see "<how to see it>"]`**
-- Precondition: `stage:working`; the newest claim is `<d>`'s; the pull request is open, not a draft, and its body's first line is `closes #<n>`; GitHub does not report it `CONFLICTING`.
-- Composes the result comment (section 3), posts it, then moves `stage:working` to `stage:check`.
+**`desk done <n> --dispatch <d> --pr <number> --summary "<one sentence>" (--picture <url>… | --no-picture "<why>") --checked "<text>" [--see "<how to see it>"]`**
+- Precondition: `stage:working`; the owning claim is `<d>`'s; the pull request is open, not a draft, and its body's first line is `closes #<n>`; GitHub does not report it `CONFLICTING`.
+- Composes the result comment (section 3), posts it, then moves `stage:working` to `stage:check`. Exits 2 without `--checked`.
 
 **`desk fail <n> --dispatch <d> --reason <file>`**
-- Precondition: `stage:working`; the newest claim is `<d>`'s.
+- Precondition: `stage:working`; the owning claim is `<d>`'s.
 - Posts `<!-- desk:failed claim=<id> attempt=<k> -->` with what was tried and why each try failed, then moves the stage back to `stage:ready`. The coordinator reads the attempt count and escalates (section 4).
 
-**`desk release <n> --reason <silent-machine|no-worker|stopped|lost-race> [--claim <id>]`**
-- Used by the coordinator and the watchdog, never by a worker on its own claim.
-- Precondition: `stage:working`. With `--claim`, the newest claim must be that id, so a release never hits a claim made after the caller looked.
-- Posts `<!-- desk:release claim=<id> reason=<reason> -->`, then moves the stage to `stage:ready`.
+**`desk release <n> --reason <silent-machine|no-worker|stopped|lost-race|answered|reopened> [--claim <id>]`**
+- Used by the coordinator and the watchdog, never by a worker on its own claim. `answered` is written only by `desk answer`, and `reopened` only by `desk reopen`.
+- Without `--claim`: precondition `stage:working`; releases the owning claim. Releasing the owning claim also releases every later unreleased claim with reason `lost-race`, so a dead race loser never inherits the issue.
+- With `--claim <id>`: the claim must be unreleased, at any stage. This is how an orphaned claim is cleared when a worker died between its claim comment and its label write, which leaves `stage:ready` with a live claim.
+- Posts `<!-- desk:release claim=<id> reason=<reason> -->`. The stage moves from `stage:working` to `stage:ready` only when the issue is `stage:working` and no unreleased claim remains. Releasing a lingering race loser changes no label.
+- `desk fail`, `desk answer` and `desk reopen` close every unreleased claim, not only the owning one, so a race loser whose own release failed cannot take the issue over.
 
 **`desk note <n> --dispatch <d> "Auto-decided: X over Y because Z"`**
-- Precondition: the newest claim is `<d>`'s. The line must start with `Auto-decided:` and contain ` over ` and ` because `.
-- Appends `- <date>: <line>` to the body's `## Small calls` section, creating the section if it is missing. The program edits no other part of the body.
+- Precondition: the owning claim is `<d>`'s. The line must start with `Auto-decided:` and contain ` over ` and ` because `.
+- Appends `- <date>: <line>` to the body's `## Small calls` section, creating the section if it is missing. The program edits no other part of the body. The body is re-read right before the edit and again after it; if the body's `userContentEdits.totalCount` moved by anything but our own edit (GitHub records 0 at creation, 2 after the first edit because the first edit also stores the original body, then 1 per edit), or an earlier `## Small calls` or `## Decisions` line is gone, the command exits 4 (`desk answer` follows the same rule for `## Decisions`). `desk answer` is idempotent on retry: when the newest human comment after the latest decision card is already the same answer, and `## Decisions` already holds the decision, it skips those two writes and continues with the claim releases and the stage move.
 
 **`desk answer <n> --body <file> --decision "<one line>"`**
 - The human's side, called by `/decisions` and later by the desk app.
 - Precondition: `stage:needs-you`.
-- Posts the answer with no agent marker, appends `- <date>: <decision>` to the body's `## Decisions` section, then moves the stage to `stage:ready`.
+- Posts the answer with no agent marker, appends `- <date>: <decision>` to the body's `## Decisions` section, posts `<!-- desk:release claim=<id> reason=answered -->` for the owning claim, then moves the stage to `stage:ready`. The release is what lets the next `desk claim` pass its "no owning claim" check. A release with `reason=answered` is not counted as an attempt.
 
 **`desk propose --from <n> --title "<title>" --type <type> --body <file>`**
 - Files a side topic as a proposed request. The body must contain `## Problem`.
@@ -178,7 +180,7 @@ A comment the digest has pinged gets a trailing `<!-- desk:pinged at=<iso> -->` 
 
 **`desk reopen <n> --comment <comment-id>`**
 - The "no, because…" path. Precondition: `stage:check`.
-- Posts `<!-- desk:reopen comment=<id> -->` quoting Milky's reason, then moves the stage to `stage:ready`. The next worker's brief carries the reason.
+- Posts `<!-- desk:reopen comment=<id> -->` quoting Milky's reason, posts `<!-- desk:release claim=<id> reason=reopened -->` for the owning claim, then moves the stage to `stage:ready`. The next worker's brief carries the reason.
 
 **`desk merge <n>`**
 - Precondition: `stage:check`; the newest human comment is newer than the result comment and starts with `looks good` (relayed).
@@ -195,10 +197,10 @@ A comment the digest has pinged gets a trailing `<!-- desk:pinged at=<iso> -->` 
 **`desk land <n>`**
 - Precondition: the linked pull request is merged. Idempotent.
 - Moves the stage to `stage:done` and closes the issue with `Merged.` if it is still open.
-- Releases the Orca worker named by the newest claim (`orca orchestration worker-release --dispatch <d>`) and removes its worktree (`orca worktree rm`). A failed Orca step prints its error and exits 3. The GitHub state is already correct, so the next pass retries only the cleanup.
+- Releases the Orca worker named by the owning claim (`orca orchestration worker-release --dispatch <d>`) and removes its worktree (`orca worktree rm`). A failed Orca step prints its error and exits 3. The GitHub state is already correct, so the next pass retries only the cleanup.
 - Pressing Merge in the GitHub app ends here too: the next reconcile pass sees the merged pull request and runs `desk land` (relayed).
 
-**`desk status <n>`**: read-only. Prints the stage, the newest claim, the attempt count, the last human comment, and the linked pull request.
+**`desk status <n>`**: read-only. Prints the stage, the owning claim, the attempt count, the last human comment, and the linked pull request.
 
 **`desk reconcile`**: read-only. Prints the mismatch list (section 4).
 
@@ -240,9 +242,10 @@ Two more things land on the Issue during the work, not at the end. Each small ca
 
 **See it yourself:** `mise run dev`, then open /login
 **Pull request:** #45
-**Decisions used:** the lines of `## Decisions` this work relied on, copied
+**Decisions used:** every line of `## Decisions` in the description, copied, or `none`
 **Small calls:** 3, listed under `## Small calls` in the description
-**Checked before done:** merged origin/main at abc1234 with no conflicts; nothing used was removed upstream; nothing contradicts `## Decisions`.
+**Verified by desk:** the pull request is not `CONFLICTING`, and its head contains main at abc1234 (`behind_by` 0).
+**Worker says:** nothing used was removed upstream; nothing contradicts `## Decisions`.
 **Proposed requests:** #51
 
 Reply `looks good` to merge, or `no, because …` to send it back.
@@ -250,7 +253,7 @@ Reply `looks good` to merge, or `no, because …` to send it back.
 <!-- desk:agent -->
 ```
 
-With `--no-picture`, the picture line reads `No picture: <why>`. The worker rule says visual work always has a picture.
+`Worker says` is the text of `--checked`, the worker's own statement of the judgment checks. `Verified by desk` holds only what the program proved itself, so the comment never presents a claim as verified that nobody checked. With `--no-picture`, the picture line reads `No picture: <why>`. The worker rule says visual work always has a picture.
 
 The `## Decisions` and `## Small calls` sections in the Issue body are owned by the program. `desk answer` and `desk note` append to them; nothing else edits the body, except the approved proposed-body flow in `/decisions`.
 
@@ -270,7 +273,7 @@ The coordinator is a Sonnet session at medium effort (plan), started with `/milk
 ### Inputs
 
 - **GitHub**: one GraphQL query for every open issue with its labels, assignees, body, the last 50 comments, and `closedByPullRequestsReferences` with each pull request's state, draft flag and mergeable state. Plus closed issues whose stage is not `stage:done`.
-- **Orca**: `orca orchestration worker-list --run <run> --include-remote --json`, every page, joined with `task-list` for task titles. A worker belongs to issue `#n` when its task title starts with `#n ` (the coordinator sets that title at start) or when the newest claim on `#n` names its dispatch id.
+- **Orca**: `orca orchestration worker-list --run <run> --include-remote --json`, every page, joined with `task-list` for task titles. A worker belongs to issue `#n` when its task title starts with `#n ` (the coordinator sets that title at start) or when the owning claim on `#n` names its dispatch id.
 - **The `## desk` section** of `CLAUDE.md`, for the machines and the worker limit.
 
 ### The diff
@@ -279,7 +282,7 @@ The coordinator is a Sonnet session at medium effort (plan), started with `/milk
 |---|---|---|---|
 | `dispatch` | `stage:ready`, `autopilot`, unblocked, no open sub-issue | no live worker for `#n` | Route (`reference/routing.md`), then `worker-start` (below). Only while live workers are under the machine's limit. |
 | `escalate` | as `dispatch`, attempts ≥ 2 | no live worker | Dispatch one tier up: Haiku to Sonnet. A Sonnet request at 2 attempts goes to the coordinator itself, which parks it with a card listing what was tried (plan). |
-| `orphan-claim` | `stage:working`, newest claim names dispatch D | D is `exited`, released or absent, and the claim is older than 10 minutes | `desk release --claim <id> --reason no-worker`. It becomes `dispatch` or `escalate` on the next pass. |
+| `orphan-claim` | `stage:working`, owning claim names dispatch D | D is `exited`, released or absent, and the claim is older than 10 minutes | `desk release --claim <id> --reason no-worker`. It becomes `dispatch` or `escalate` on the next pass. |
 | `unclaimed-worker` | `stage:ready` | a live worker titled `#n`, started more than 10 minutes ago | The worker never claimed. Read the tail of its terminal, `worker-stop` it, and let the next pass dispatch again. |
 | `unrecorded-result` | `stage:working`, claim names D | D sent `worker_done`, or sits idle at its prompt | Send to D's terminal: "Record your result on #n with desk done, desk park or desk fail, then send worker_done again." If the terminal is gone, `desk release --reason stopped`. |
 | `parked-worker` | `stage:needs-you`, claim names D | D is live | `worker-release --dispatch D`. The worktree stays for the next attempt. |
@@ -454,7 +457,7 @@ Confirmed by the plan author with four additions and one follow-up (relayed):
 - **One coordinator per project, pinned to one machine** in the project's `## desk` section.
 - **Workers may run on other machines** through Orca connected servers: `worker-start --on <environment>`, with `--worktree new-top-level --repo <selector>`.
 - **The claim names the machine**, plus a claim id, the Orca task id and the dispatch id.
-- **`desk park`, `desk done` and `desk fail` refuse unless the newest claim is still the caller's.** The worker rule also runs `desk status <n>` right before `git push` and stops if the claim moved. A worker that was handed back while cut off therefore stops, rather than pushing over the new worker.
+- **`desk park`, `desk done` and `desk fail` refuse unless the owning claim is still the caller's.** The worker rule also runs `desk status <n>` right before `git push` and stops if the claim moved. A worker that was handed back while cut off therefore stops, rather than pushing over the new worker.
 - **A silent machine** is one whose `orca status --environment <m>` is unreachable for 15 minutes in a row. The watchdog hands its claims back to `stage:ready`.
 - **Preflight refuses a coordinator on any machine but the pinned one**, and names the pinned machine.
 - **A lock file stops a second coordinator on the pinned machine.** The file is `~/.local/state/desk/<owner>__<repo>/coordinator.lock`, holding `{pid, orcaSessionId, startedAt}`. The pid is the ancestor `claude` process of the session, and the session id comes from `orca status --json` (`caller.orcaSessionId`). Preflight treats the lock as free when that pid is dead, so the kill test's dead coordinator never blocks the fresh one. The skill's stop step deletes the lock.
@@ -599,7 +602,7 @@ Five tasks with disjoint files. Models and efforts come from the plan's routing 
 - A claim whose label write silently fails exits 4 and prints both states. A test proves it.
 - Two racing claims: the later one exits 1 and posts a `lost-race` release. A test proves it.
 - `desk park` rejects a design card with a `Recommendation:` line, and a code-detail card without one.
-- `desk done`, `desk park`, `desk fail` and `desk note` refuse when the newest claim belongs to another dispatch.
+- `desk done`, `desk park`, `desk fail` and `desk note` refuse when the owning claim belongs to another dispatch.
 - `desk picture` creates `desk-pictures` on first use and returns the link. Milky confirms on the phone that the embedded picture renders in the GitHub app for a private repository. If it does not render there, the result comment shows a plain link to the same file instead (relayed).
 - `bin/desk` without bun on `PATH` prints the `mise use -g bun` fix and exits 127.
 
@@ -667,3 +670,5 @@ Each line can be overturned.
 - Auto-decided: the `autopilot` label keeps its name as the consent gate, over renaming it with the module, because renaming a label touches every open issue in every project, and the label's meaning did not change.
 - Auto-decided: `desk merge` runs in a temporary worktree on the coordinator's machine, over the request's own worktree, because the request's worktree may sit on another machine.
 - Auto-decided: the coordinator, not this design, files the build tasks as issues, because issue filing belongs to the run that schedules them.
+- Auto-decided: `desk answer` releases the parked claim, over `desk claim` treating old claims as stale, because every state change stays an explicit comment.
+- Auto-decided: the result comment splits `Checked before done` into `Verified by desk` and `Worker says` (a required `--checked` flag), over one line the program writes, because the program can prove only the conflict state and main's ancestry, and the judgment checks must not read as verified.

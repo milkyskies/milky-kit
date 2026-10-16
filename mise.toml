@@ -1,4 +1,5 @@
 [tools]
+bun = "1"
 node = "24"
 
 [tasks.lint]
