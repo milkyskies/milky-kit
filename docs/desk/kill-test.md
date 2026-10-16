@@ -4,7 +4,7 @@ The kill test proves that killing the desk coordinator mid-run and starting a fr
 
 The coordinator was killed with all three requests in flight and the fresh one finished the work without any handoff. Ten assertions were checked: eight held and two failed. Both failures have one cause, which is that `desk land` cannot remove a worktree that holds untracked files. Two checks need Milky's phone and stay pending.
 
-**Status.** run twice end to end; the second run failed two assertions (issue 183), so the run must be repeated after that fix · **Owns.** the observed state of each kill test step
+**Status.** run three times end to end; the third run passed every assertion and both variants, and the scratch repository waits for deletion · **Owns.** the observed state of each kill test step
 
 ## How the run was set up
 
@@ -124,3 +124,69 @@ The variants were not run, because the rule is to run them only when every asser
 
 - Each ping arrived once on the phone.
 - The inline picture renders in the GitHub mobile app for a private repository.
+
+## Run 3: after the fix for issue 183
+
+The third run repeats section 12 once the coordinator receives the exact worktree arguments from `desk reconcile` and `desk land` removes every worktree of an issue ([pull request 185](https://github.com/milkyskies/milky-kit/pull/185)). All ten assertions held. Two variants followed.
+
+### How run 3 was set up
+
+- Fix check before the reset: `desk land 16` removed the leftover worktree `16` from run 2.
+- The scripts of the previous run were removed from the scratch repository's `main`, its branches deleted, and fresh issues filed. Receiver and temporary `~/.config/desk/.env` as in run 2. The coordinator again ran as Opus 5.5 with high effort.
+- A first attempt (issues 21 to 23) had to be abandoned: the worker for C skipped the instruction `run sleep 600` ("Skipped the issue's sleep 600 step per coordinator limits"), so C was already at `stage:check` at the restart and could not be in flight at the kill. C now waits on a gate: its body tells the worker to run `until [ -f /tmp/desk-killtest-go ]; do sleep 10; done`, and the file is created by hand after assertions 11 to 15. The final attempt used issues 26 (A), 27 (B) and 28 (C).
+
+### Steps and observed state
+
+| Step | Observed |
+|---|---|
+| 3 to 6 | Coordinator started 18:07:32Z (lock pid 71547). All three issues `stage:working`. Terminal closed 18:09:28Z. |
+| 7, 8 | By 18:10:35Z A was `stage:check`, B `stage:needs-you`, C `stage:working`. The lock names pid 71547, which is dead, and no `desk watch` ran. **Pass.** |
+| 9, 10 | `desk run` then `orca orchestration check --json` in the new terminal returned four unread messages. Acknowledged before the coordinator started at 18:10:55Z. |
+| 11 | The pass ran; the lock names pid 86215. **Pass.** |
+| 12 | `{"mismatches":[]}`. **Pass.** |
+| 13 | Issue 26: `desk:claim`, `desk:result`. Issue 27: `desk:claim`, `desk:decision`, `desk:proposed`. Issue 28: `desk:claim`. **Pass.** |
+| 14 | One worker running for C (`ctx_f5e76f9dd08c`, terminal active). A's worker `succeeded`/`reclaimable`, B's released. **Pass.** |
+| 15 | One request in the receiver log at 18:11:51Z: `desk-killtest: 1 decision waiting, 1 done to check` and a link, no title. Issues 26 and 27 each carry one `desk:pinged`. **Pass.** Arrival on the phone is **pending Milky**. |
+| 16 | `/milky-kit:decisions` answered "Goodbye" and approved the body. Issue 27 returned to `stage:ready` and the new worker started in the **kept worktree `27`**, with no second worktree. It reached `stage:check` with pull request 30. **Pass.** The fix for issue 183 holds. |
+| 17 | `looks good` on issue 26: pull request 29 merged with a merge commit, issue closed at `stage:done`, worktree `26` removed. **Pass.** |
+| 18 | The gate file was created, issue 28 reached `stage:check`. `no, because the count should start at 0` produced `desk:reopen`, `desk:release`, a rebuild with `for (let value = 0; value <= 10; value++)` and a second `desk:result` at 18:21Z, with no extra card this time. `looks good` merged it. **Pass.** |
+| 19 | All three issues closed at `stage:done`, `git worktree list` shows only the main checkout, every worker released, `desk reconcile` empty. **Pass.** |
+
+Pings in the receiver log, each once: 18:11:51Z (`1 decision waiting, 1 done to check`) and 18:17:03Z (`1 done to check`, issue 27). Neither result of issue 28 was pinged: the first was rejected before the next digest and the second was approved within a minute.
+
+### Variant: a worker dies
+
+Run on fresh issues 32, 33, 34. The coordinator was closed with C (34) in flight, then C's worker terminal was closed (18:41:57Z).
+
+- `desk reconcile --json` on the dead coordinator's state reported `unrecorded-result` for issue 34 (`worker ... finished and its terminal is gone`), with `terminalGone: true`. The spec expects `orphan-claim`; Orca reports a closed worker terminal as a finished worker, so the code path is the `unrecorded-result` row, whose action for a gone terminal is `desk release --reason stopped`.
+- The fresh coordinator released the claim (`desk:release`, reason `stopped`, 18:42:52Z) and `desk status 34` showed `attempts: 1`.
+- It dispatched C again only at 19:14:29Z, when the watchdog's 30-minute `tick` fired. The watchdog had started after the release, so its baseline already held issue 34 as `stage:ready` and no event woke the coordinator. The new worker (dispatch `ctx_e8ae507d8dbe`) used the kept worktree `34`.
+- **Pass**, with a 31-minute wait before the dispatch.
+
+### Variant: two coordinators
+
+During the restart of the previous variant, a second `/milky-kit:desk` was started in another Orca terminal 20 seconds after the first took the lock (pid 68126).
+
+- Its preflight stopped the pass: `another coordinator already holds the lock`, naming process 68126, its start time and the running session, with the fix "stop that session, delete the lock". It dispatched nothing and changed nothing on GitHub. The first coordinator and its lock were untouched.
+- The refusal names the process and the start time, not the Orca terminal handle.
+- **Pass.**
+
+The variant "a machine dies" was skipped, because zeus is not part of this test.
+
+### Failed assertions in run 3
+
+None. No issue was filed.
+
+### Pending Milky
+
+- Each ping arrived once on the phone.
+- The inline picture renders in the GitHub mobile app for a private repository.
+
+### Cleanup
+
+`~/.config/desk/.env` deleted, receiver stopped, every worker released, and every run artifact removed. The scratch repository `milkyskies/desk-killtest` is not deleted yet: `gh repo delete` fails with HTTP 403 because the token lacks the `delete_repo` scope. Milky runs `gh auth refresh -h github.com -s delete_repo`, then `gh repo delete milkyskies/desk-killtest --yes`.
+
+## Open
+
+- **Dispatch after a release waits for the tick.** When the coordinator releases a claim in one pass, the request becomes dispatchable, but the watchdog started after that release holds it in its baseline and emits no event. The dispatch waited 31 minutes for the `tick`. Whether the watchdog should treat a dispatchable mismatch as an event is Milky's call.
+- **`orphan-claim` in the spec.** The variant text names `orphan-claim`; a closed worker terminal produces `unrecorded-result`.
