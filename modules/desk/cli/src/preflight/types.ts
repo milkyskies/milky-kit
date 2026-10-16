@@ -21,7 +21,8 @@ export type CheckResult = {
 export type PreflightEnvironment = {
 	role: Role
 	run: Runner
-	repo: Repo
+	repo: Repo | undefined
+	repositoryError: string | undefined
 	home: string
 	projectRoot: string
 	variables: Record<string, string | undefined>

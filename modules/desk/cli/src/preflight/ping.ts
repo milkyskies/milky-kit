@@ -66,13 +66,16 @@ export async function recordPing(path: string, key: string, now: Date): Promise<
 
 export type PingSender = (message: string) => Promise<void>
 
-export function deskPingSender(slug: string): PingSender {
+export function deskPingSender(slug: string | undefined): PingSender {
 	return async (message) => {
 		const main = new URL("../main.ts", import.meta.url).pathname
-		const child = Bun.spawn([process.execPath, main, "ping", message, "--repo", slug], {
-			stdout: "pipe",
-			stderr: "pipe",
-		})
+		const child = Bun.spawn(
+			[process.execPath, main, "ping", message, ...(slug ? ["--repo", slug] : [])],
+			{
+				stdout: "pipe",
+				stderr: "pipe",
+			},
+		)
 
 		const [stderr, status] = await Promise.all([new Response(child.stderr).text(), child.exited])
 		if (status !== 0) throw new Error(stderr.trim() || `desk ping exited ${status}`)

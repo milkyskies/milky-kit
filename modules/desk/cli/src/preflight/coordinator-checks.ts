@@ -72,6 +72,8 @@ export async function checkCoordinatorLock(
 	environment: PreflightEnvironment,
 	facts: Facts,
 ): Promise<CheckResult[]> {
+	if (environment.repo === undefined) return []
+
 	const claudePid = await findAncestorPid(environment.run, environment.startPid, "claude")
 	if (claudePid === undefined) {
 		return [

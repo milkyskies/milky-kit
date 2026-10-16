@@ -90,6 +90,8 @@ export function parseLabelNames(script: string): string[] {
 }
 
 export async function checkLabels(environment: PreflightEnvironment): Promise<CheckResult[]> {
+	if (environment.repo === undefined) return []
+
 	const script = join(environment.projectRoot, LABEL_SCRIPT)
 	const fix = `bash ${LABEL_SCRIPT}`
 
