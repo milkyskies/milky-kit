@@ -1,0 +1,9 @@
+# Working habits
+
+Five habits, each learned from a mistake.
+
+1. **Approval is not verification.** A design the user approved can still be wrong. It may be correct only because nothing exercises a case yet. When a change relies on "nothing does X yet", write that dependency where the next person will hit it, and re-derive it in the task that makes X happen. Name the test after the failure (`sleeping_does_not_finish_the_work`), so it reads as a thing that must not happen. A praised decision is the one nobody looks at twice.
+2. **Check main before building.** Several agents share one remote, and the board lags behind main. Run `git log --oneline -3 -- <file>` and `git log --grep '#<issue>'` first. If the work is already there, verify it yourself, report the finding, and open no PR. If another version is broader than yours, push nothing.
+3. **Merge main again before the merge, then check the seam.** A PR that has sat open is stale. Run `git fetch origin && git merge origin/main`, then exercise the one object both branches touched. A clean textual merge is not a correct merge. Re-run an expensive check only when the merge touched what that check covers. Report seam defects by naming the branch each came from.
+4. **Stop when a hunt starts.** When a requested change breaks something unexpected, stop at the first failed check. Report what broke and the one comparison you already have, then ask whether to dig in or back the change out. Do not start a chain of experiments. A side task that has grown into an investigation is the user's to schedule.
+5. **A test can assert the bug.** A user report that contradicts a green test is a reason to read the test, not to doubt the report. Grep the suite for the behaviour first. If a test asserts it, fix that test in the same PR and say in the body that it encoded the fault. Then write the test that would have caught it, and prove it red by removing the fix.

@@ -46,18 +46,13 @@ Three things to watch:
 - **Malformed or missing marker.** Do not skip the issue. Fall back to presenting the last comment verbatim as free text and take a written answer.
 - **No agent comment at all.** The user filed this one themselves. Read `## Open questions` from the body and present those as the questions. Numbered items become the proposals where they read as alternatives, free text otherwise. A self-filed issue has no recommendation, and inventing one would answer it on the user's behalf.
 
-An issue with several open questions yields several cards. Each card carries exactly one decision.
+An issue with several open questions yields several cards, one decision each.
 
 ### 3. Show one card, then ask
 
-Present ONE card at a time, and wait for the answer before showing the next. The order inside a card is always background, question, proposals:
+Present ONE card at a time, built the way `.claude/rules/cards.md` says: background, what the agent already checked, the question, then the proposals. Wait for the answer before showing the next.
 
-1. **Background.** Two or three sentences that let the user decide without opening the issue: what the work is, and why this question came up.
-2. **What the agent already checked.** One line, so the user does not repeat the search.
-3. **The question.** One decision, phrased as a question.
-4. **Proposals.** Each proposal written out in full with its consequence. Put the agent's recommendation first, marked `(Recommended)`.
-
-Never refer to a proposal by a label such as "option B" or "the second one", on the card or afterwards. Say the whole thing every time.
+Put the agent's recommendation first among the proposals, marked `(Recommended)`.
 
 Ask with `AskUserQuestion`: the proposals are the options, and the user can always choose "Other" to write a free-text answer. Where the agent gave no usable proposals, ask for free text instead. Keep the agent's own wording, since this skill relays the question and does not re-author it.
 
@@ -102,7 +97,7 @@ Say what was answered and what remains. If anything moved to `stage:ready`, say 
 ## Rules
 
 - **Never answer on the user's behalf.** If a decision looks obvious, it is still theirs. The agent parked precisely because it was not the agent's call.
-- **One decision per card, one card at a time.** Two decisions on a card hide the second one.
+- **One card at a time.** The card rules are in `.claude/rules/cards.md`.
 - **Never edit the issue body here** except through the approved proposed-body flow in step 4.
 - **A human moves the stage.** Never let an agent requeue itself; it would consume a half-written reply.
-- **Skipping is free.** An unanswered decision stays parked and costs nothing.
+- **Skipping is free.** An unanswered decision stays parked.

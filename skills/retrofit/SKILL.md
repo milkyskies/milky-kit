@@ -55,7 +55,7 @@ Report findings briefly. Then ask which modules to apply.
 
    1. **Compute the desired set.** Walk the user's chosen modules + the detected template (if any) + the always-on core rules. The desired set is a map of `<symlink-name>.md → <absolute-target-in-kit>` covering every rule that should exist after this run.
 
-      Always-on rules (every project): `~/.claude/kit/modules/core/rules/{general,comments,config-and-env,workflow,worktrees,testing}.md`.
+      Always-on rules (every project): `~/.claude/kit/modules/core/rules/{general,comments,config-and-env,workflow,worktrees,testing,talking-about-design,design-docs,cards,working-habits}.md`.
 
       Per chosen module: its `rules/*.md` files. Per detected template: its `rules/*.md` files (e.g. `effect-api` composes `effect`, `effect-http`, `effect-mcp`, `effect-sql`).
 
