@@ -64,7 +64,7 @@ Follow the `branch` mode section of `workflow.md` verbatim:
 ```bash
 git checkout main && git pull
 git checkout -b <prefix>/#<num>.<summary>
-glb update <num> --claim
+gh issue edit <num> --add-label stage:working --remove-label stage:ready --add-assignee @me
 ```
 
 Then work, `/ship`, and `/land` as normal.

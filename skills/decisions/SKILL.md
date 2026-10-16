@@ -1,12 +1,13 @@
 ---
 name: decisions
 description: >
-  Answer every autopilot decision parked on `Needs Decision` in one sitting.
-  Collects the queue from glb, presents each agent's question with its own proposed
-  options, posts your answer as an issue comment, and requeues the issue to Todo.
+  Answer every decision parked on `stage:needs-you`, one card at a time.
+  Collects the queue with gh, shows each question as a card (background, then the
+  question, then proposals), posts your answer as an issue comment, and moves the
+  issue to `stage:ready`.
   TRIGGER when: the user says "/decisions", "what's waiting on me", "answer the
   decisions", or asks what autopilot is blocked on.
-  DO NOT TRIGGER when: the user wants a list of open issues generally (use `glb list`),
+  DO NOT TRIGGER when: the user wants a list of open issues generally (use `gh issue list`),
   or wants to answer one specific issue they named (just comment on it).
 argument-hint: "[issue number (optional, answers just that one)]"
 ---
@@ -15,16 +16,16 @@ argument-hint: "[issue number (optional, answers just that one)]"
 
 Clear the decision queue.
 
-`Needs Decision` fills from two directions. An agent hits something it must not guess at, posts the question as an issue comment, and parks. Or you filed the issue undecided yourself — an idea, an unresolved fork — with the question in the body under `## Open questions`. Both pile up silently, because a parked issue looks like nothing is happening. This gathers them, asks you each question, and requeues what you answer.
+`stage:needs-you` fills from two directions. An agent hits something it must not guess at, posts the question as an issue comment, and parks. Or you filed the issue undecided yourself — an idea, an unresolved fork — with the question in the body under `## Open questions`. Both pile up silently, because a parked issue looks like nothing is happening. This skill gathers them, shows you each question as a card, and moves what you answer back to `stage:ready`.
 
-**The inbox is a query, not a table.** Nothing is stored here. The queue is `glb list --status "Needs Decision"`, the message body is the agent's comment or your own `## Open questions`, and your answer is a reply. That is deliberate: because the transport is GitHub, you can answer these from the GitHub mobile app instead, and the dispatcher picks them up identically.
+**The inbox is a query, not a table.** Nothing is stored here. The queue is `gh issue list --label stage:needs-you`, the message body is the agent's comment or your own `## Open questions`, and your answer is a reply. Because the transport is GitHub, you can answer from the GitHub mobile app instead, and the next worker picks the issue up identically.
 
 ## Steps
 
 ### 1. Build the queue
 
 ```bash
-glb list --status "Needs Decision"
+gh issue list --label stage:needs-you --state open --json number,title
 ```
 
 If `$ARGUMENTS` names an issue number, restrict to that one.
@@ -37,21 +38,30 @@ Empty queue: say "Nothing waiting on you" and stop. Do not prompt.
 gh issue view <num> --comments
 ```
 
-Find the **last** comment containing `<!-- autopilot:decision -->` and parse out the question, the numbered options, and the recommendation. The protocol is in `.claude/rules/autopilot.md`.
+Find the **last** comment containing `<!-- autopilot:decision -->` and parse out the question, the numbered options, the recommendation, and what the agent already checked. The protocol is in `.claude/rules/autopilot.md`.
 
 Three things to watch:
 
 - **Latest wins.** An issue may have parked more than once. Only the newest decision block is live.
 - **Malformed or missing marker.** Do not skip the issue. Fall back to presenting the last comment verbatim as free text and take a written answer.
-- **No agent comment at all.** The user filed this one themselves. Read `## Open questions` from the body and present those as the questions — numbered items become the options where they read as alternatives, free text otherwise. A self-filed issue has no recommendation, and inventing one would answer it on their behalf.
+- **No agent comment at all.** The user filed this one themselves. Read `## Open questions` from the body and present those as the questions. Numbered items become the proposals where they read as alternatives, free text otherwise. A self-filed issue has no recommendation, and inventing one would answer it on the user's behalf.
 
-### 3. Ask
+An issue with several open questions yields several cards. Each card carries exactly one decision.
 
-Batch into `AskUserQuestion`, **four questions per call**, chunking until the queue is exhausted. Never silently drop the remainder.
+### 3. Show one card, then ask
 
-For each: the agent's question is the question, its numbered options are the options, and its recommendation goes first with `(Recommended)` appended. Keep the agent's own wording — you are relaying, not re-authoring.
+Present ONE card at a time, and wait for the answer before showing the next. The order inside a card is always background, question, proposals:
 
-Where the agent gave no usable options, ask for free text instead.
+1. **Background.** Two or three sentences that let the user decide without opening the issue: what the work is, and why this question came up.
+2. **What the agent already checked.** One line, so the user does not repeat the search.
+3. **The question.** One decision, phrased as a question.
+4. **Proposals.** Each proposal written out in full with its consequence. Put the agent's recommendation first, marked `(Recommended)`.
+
+Never refer to a proposal by a label such as "option B" or "the second one", on the card or afterwards. Say the whole thing every time.
+
+Ask with `AskUserQuestion`: the proposals are the options, and the user can always choose "Other" to write a free-text answer. Where the agent gave no usable proposals, ask for free text instead. Keep the agent's own wording, since this skill relays the question and does not re-author it.
+
+After the answer, say it back in one line ("Retry limit = 3. The other queues follow it") and move to the next card.
 
 ### 4. Offer proposed bodies
 
@@ -64,9 +74,9 @@ If the issue also carries an `<!-- autopilot:proposed-body -->` block, the agent
   <original>"
   gh issue edit <num> --body-file <proposed>
   ```
-  The issue keeps whatever label it already had — approving a body does not grant consent it did not have. If it is not labelled yet, add it deliberately, and confirm with `glb ready --autopilot --explain` rather than eyeballing it.
+  The issue keeps whatever labels it already had. Approving a body does not grant consent it did not have: if the issue has no `autopilot` label, add it only when the user says so, with `gh issue edit <num> --add-label autopilot`.
 - **Edit** — take the user's changes, then approve as above.
-- **Reject** — leave body and status untouched.
+- **Reject** — leave body and stage untouched.
 
 Never replace a body without preserving the original in a comment first. Never alter `## Problem`; if the proposal changed it, that is a bug in the worker and the proposal should be rejected.
 
@@ -76,32 +86,23 @@ For each answered issue:
 
 ```bash
 gh issue comment <num> --body "<the answer>"
-glb update <num> --status Todo
+gh issue edit <num> --add-label stage:ready --remove-label stage:needs-you
 ```
 
-Comment first, then flip. If the flip fails, the answer is still on the issue and the next run finds it; the reverse would requeue an issue whose answer was lost.
+Comment first, then move the stage. If the stage edit fails, the answer is still on the issue and the next run finds it; the reverse would requeue an issue whose answer was lost.
 
-A **self-filed** issue answered this way reaches `Todo` still carrying only `## Problem` and the answered question — no acceptance criteria, no tests, and no `autopilot` label, so no agent claims it. Say so, and offer `/todo` to write the spec now that the fork is resolved.
+A **self-filed** issue answered this way reaches `stage:ready` still carrying only `## Problem` and the answered question: no acceptance criteria, no tests, and no `autopilot` label, so no agent claims it. Say so, and offer `/todo` to write the spec now that the fork is resolved.
 
-Skipped issues are left untouched — still `Needs Decision`, no comment.
+Skipped issues are left untouched: still `stage:needs-you`, no comment.
 
 ### 6. Report
 
-Say what was answered and what remains. If anything was requeued, name the next dispatcher wake as when it will be picked up.
-
-## Notification
-
-When running inside herdr (`HERDR_ENV=1`), ping when the queue is non-empty:
-
-```bash
-herdr notification show "3 decisions waiting" --sound request
-```
-
-Guard on `HERDR_ENV`; outside herdr the command is not available.
+Say what was answered and what remains. If anything moved to `stage:ready`, say the next worker will pick it up.
 
 ## Rules
 
 - **Never answer on the user's behalf.** If a decision looks obvious, it is still theirs. The agent parked precisely because it was not the agent's call.
-- **Never edit the issue body here.** Rewriting an underspecified issue is a separate flow with its own approval step.
-- **A human flips the status.** Never let an agent requeue itself; it would consume a half-written reply.
+- **One decision per card, one card at a time.** Two decisions on a card hide the second one.
+- **Never edit the issue body here** except through the approved proposed-body flow in step 4.
+- **A human moves the stage.** Never let an agent requeue itself; it would consume a half-written reply.
 - **Skipping is free.** An unanswered decision stays parked and costs nothing.

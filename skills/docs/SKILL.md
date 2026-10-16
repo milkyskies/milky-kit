@@ -7,7 +7,7 @@ description: >
   TRIGGER when: the user says "/docs", "write that down", "put this in the docs", "do we have this
   in the notes / conventions / rules?", "where does this go?", or a change just landed that a
   reader would need to know and no page says it yet.
-  DO NOT TRIGGER when: the fact is a task to do (glb), a lesson about how this user works
+  DO NOT TRIGGER when: the fact is a task to do (an issue), a lesson about how this user works
   (memory), or code that documents itself.
 argument-hint: "[the fact, as one sentence]"
 ---

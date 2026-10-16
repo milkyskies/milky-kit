@@ -29,7 +29,7 @@ Use this skill when the user is working in a project and decides a kit-level con
 
 3. **Edit the kit file.** Use `Edit` / `Write` on the kit's path. Do not stage anything in the current project at this stage.
 
-4. **Commit in the kit's repo.** `git -C <kit_path> commit -am "<scope>(<area>): <change>"`. Conventional commit format, matching milky-kit's existing style. If the user has a glb workflow in the kit, ask whether to also create an issue there.
+4. **Commit in the kit's repo.** `git -C <kit_path> commit -am "<scope>(<area>): <change>"`. Conventional commit format, matching milky-kit's existing style. If the user tracks kit work on GitHub issues, ask whether to also create an issue there.
 
 5. **Push to the kit's remote.** `git -C <kit_path> push origin main`. The kit doesn't use PRs (per the kit's own rules); commits land on main directly.
 
@@ -54,5 +54,5 @@ Use this skill when the user is working in a project and decides a kit-level con
 ## Conventions to honor
 
 - **Kit commits follow `<type>(<scope>): <subject>`.** Examples: `feat(effect-api): require use cases for every operation`, `docs(comments): forbid hand-wrapped lines`.
-- **Stay focused.** While in the kit, only make the user's requested change. Don't fix unrelated kit issues you happen to notice — file a glb issue instead (or just leave it).
+- **Stay focused.** While in the kit, only make the user's requested change. Don't fix unrelated kit issues you happen to notice — file a GitHub issue instead (or just leave it).
 - **Report the kit SHA after pushing.** The user sees what version their project is now anchored to.
