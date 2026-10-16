@@ -49,6 +49,51 @@ describe("desk reconcile command", () => {
 		])
 	})
 
+	test("a ready request with a kept worktree is dispatched into it, found from Orca's worktree list", async () => {
+		const { fake, context, output, fakeOrca, deps } = setup()
+		fake.addIssue({ number: 16, labels: ["request", "autopilot", "stage:ready"] })
+		fakeOrca.worktrees = [
+			{ path: "/work/main", isMainWorktree: true },
+			{ path: "/work/16", isMainWorktree: false },
+		]
+
+		await runWith(deps, [], context)
+
+		expect(JSON.parse(output[0] ?? "{}").mismatches).toMatchObject([
+			{ issue: 16, code: "dispatch", workerStart: ["--worktree", "path:/work/16"] },
+		])
+	})
+
+	test("never dispatches into a same-named worktree of another repository or host", async () => {
+		const { fake, context, output, fakeOrca, deps } = setup()
+		fake.addIssue({ number: 16, labels: ["request", "autopilot", "stage:ready"] })
+		fakeOrca.worktrees = [
+			{ path: "/scratch/16", isMainWorktree: false, repoId: "repo_scratch" },
+			{ path: "/remote/16", isMainWorktree: false, hostId: "env-zeus" },
+		]
+
+		await runWith(deps, [], context)
+
+		expect(JSON.parse(output[0] ?? "{}").mismatches[0].workerStart[1]).toBe("new-child")
+	})
+
+	test("refuses to reconcile when Orca cannot name the current worktree, and removes nothing", async () => {
+		const { fake, context, fakeOrca, deps } = setup()
+		fake.addIssue({ number: 16, labels: ["request", "autopilot", "stage:ready"] })
+		fakeOrca.failing.add("worktree current")
+
+		await expect(runWith(deps, [], context)).rejects.toThrow("worktree current")
+		expect(fakeOrca.called("rm")).toHaveLength(0)
+	})
+
+	test("refuses to reconcile when Orca truncated the worktree list", async () => {
+		const { fake, context, fakeOrca, deps } = setup()
+		fake.addIssue({ number: 16, labels: ["request", "autopilot", "stage:ready"] })
+		fakeOrca.worktreesTruncated = true
+
+		await expect(runWith(deps, [], context)).rejects.toThrow("truncated")
+	})
+
 	test("joins a live worker to its request through the task title", async () => {
 		const { fake, context, output, fakeOrca, deps } = setup()
 		fake.addIssue({ number: 12, labels: ["request", "autopilot", "stage:ready"] })

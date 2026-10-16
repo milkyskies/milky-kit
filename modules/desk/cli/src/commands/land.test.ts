@@ -127,6 +127,118 @@ describe("desk land", () => {
 		expect(fakeOrca.called("rm")).toHaveLength(0)
 	})
 
+	test("removes the unused kept worktree beside the worker's own, and no other issue's", async () => {
+		const { context, fakeOrca, fakeShell, deps } = setup()
+		fakeOrca.workers = [worker({ worktreePath: "/work/12-2" })]
+		fakeOrca.worktrees = [
+			{ path: "/work/12", isMainWorktree: false },
+			{ path: "/work/12-2", isMainWorktree: false },
+			{ path: "/work/120", isMainWorktree: false },
+			{ path: "/work/1", isMainWorktree: false },
+		]
+		fakeShell.on("git -C /work/12-2 rev-list --count", ok("0\n"))
+
+		await landIssue(deps, context, 12)
+
+		expect(fakeOrca.called("rm").map((call) => call.at(-1))).toEqual([
+			"path:/work/12-2",
+			"path:/work/12",
+		])
+	})
+
+	test("keeps an unused kept worktree that holds unpushed commits, and still removes the others", async () => {
+		const { fake, context, fakeOrca, fakeShell, deps } = setup()
+		fakeOrca.workers = [worker({ worktreePath: "/work/12-2" })]
+		fakeOrca.worktrees = [
+			{ path: "/work/12", isMainWorktree: false },
+			{ path: "/work/12-2", isMainWorktree: false },
+		]
+		fakeShell.on("git -C /work/12-2 rev-list --count", ok("0\n"))
+		fakeShell.on("git -C /work/12 rev-list --count @{upstream}..HEAD", ok("3\n"))
+
+		const report = await landIssue(deps, context, 12)
+
+		expect(fakeOrca.called("rm").map((call) => call.at(-1))).toEqual(["path:/work/12-2"])
+		expect(report.kept).toEqual([{ path: "/work/12", reason: "3 unpushed commits" }])
+		expect(fake.issue(12).comments.at(-1)?.body).toContain("worktree-kept: /work/12")
+	})
+
+	test("never removes a same-named worktree of another repository", async () => {
+		const { context, fakeOrca, fakeShell, deps } = setup()
+		fakeOrca.worktrees = [
+			{ path: "/work/12", isMainWorktree: false },
+			{ path: "/scratch/12", isMainWorktree: false, repoId: "repo_scratch" },
+			{ path: "/remote/12", isMainWorktree: false, hostId: "env-zeus" },
+		]
+		fakeShell.on("git -C /scratch/12 rev-list --count", ok("0\n"))
+		fakeShell.on("git -C /remote/12 rev-list --count", ok("0\n"))
+
+		await landIssue(deps, context, 12)
+
+		expect(fakeOrca.called("rm").map((call) => call.at(-1))).toEqual(["path:/work/12"])
+	})
+
+	test("skips an unused worktree with a live terminal in it", async () => {
+		const { context, fakeOrca, fakeShell, deps } = setup()
+		fakeOrca.workers = [worker({ worktreePath: "/work/12-2" })]
+		fakeOrca.worktrees = [
+			{ path: "/work/12", isMainWorktree: false, liveTerminalCount: 1 },
+			{ path: "/work/12-2", isMainWorktree: false },
+		]
+		fakeShell.on("git -C /work/12-2 rev-list --count", ok("0\n"))
+
+		const report = await landIssue(deps, context, 12)
+
+		expect(fakeOrca.called("rm").map((call) => call.at(-1))).toEqual(["path:/work/12-2"])
+		expect(report.kept).toEqual([{ path: "/work/12", reason: "a terminal is still open in it" }])
+	})
+
+	test("does not sweep a hand-made 12-experiment worktree or one on another branch", async () => {
+		const { context, fakeOrca, fakeShell, deps } = setup()
+		fakeOrca.worktrees = [
+			{ path: "/work/12", isMainWorktree: false },
+			{ path: "/work/12-experiment", isMainWorktree: false },
+			{ path: "/work/12-3", isMainWorktree: false, branch: "refs/heads/someone/else" },
+		]
+		fakeShell.on("git -C /work/12-experiment rev-list --count", ok("0\n"))
+		fakeShell.on("git -C /work/12-3 rev-list --count", ok("0\n"))
+
+		await landIssue(deps, context, 12)
+
+		expect(fakeOrca.called("rm").map((call) => call.at(-1))).toEqual(["path:/work/12"])
+	})
+
+	test("exits 3 after GitHub is done and removes nothing when Orca cannot name the current worktree", async () => {
+		const { fake, context, fakeOrca, deps } = setup()
+		fakeOrca.failing.add("worktree current")
+
+		const failure = await failureOf(landIssue(deps, context, 12))
+
+		expect(failure.code).toBe(3)
+		expect(fake.issue(12).state).toBe("CLOSED")
+		expect(fakeOrca.called("rm")).toHaveLength(0)
+	})
+
+	test("refuses the cleanup when Orca truncated the worktree list", async () => {
+		const { fake, context, fakeOrca, deps } = setup()
+		fakeOrca.worktreesTruncated = true
+
+		const failure = await failureOf(landIssue(deps, context, 12))
+
+		expect(failure.code).toBe(3)
+		expect(failure.message).toContain("truncated")
+		expect(fake.issue(12).state).toBe("CLOSED")
+	})
+
+	test("removes the kept worktree when no worker row is left for the claim", async () => {
+		const { context, fakeOrca, deps } = setup()
+		fakeOrca.workers = []
+
+		await landIssue(deps, context, 12)
+
+		expect(fakeOrca.called("rm", "path:/work/12")).toHaveLength(1)
+	})
+
 	test("a failed Orca step exits 3 after GitHub is done, and the next run retries only the failed step", async () => {
 		const { fake, context, fakeOrca, deps } = setup()
 		fakeOrca.failing.add("orchestration worker-release")
@@ -163,7 +275,7 @@ describe("desk land", () => {
 
 		expect(fakeOrca.called("rm", "path:/work/12", "--force")).toHaveLength(1)
 		expect(report.removedUntracked).toEqual([".serena/"])
-		expect(report.kept).toBeUndefined()
+		expect(report.kept).toEqual([])
 		expect(fake.issue(12).comments.at(-1)?.body).toContain(".serena/")
 	})
 
@@ -183,10 +295,7 @@ describe("desk land", () => {
 		const report = await landIssue(deps, context, 12)
 
 		expect(fakeOrca.called("rm")).toHaveLength(0)
-		expect(report.kept).toEqual({
-			path: "/work/12",
-			reason: "modified tracked files: src/a.ts",
-		})
+		expect(report.kept).toEqual([{ path: "/work/12", reason: "modified tracked files: src/a.ts" }])
 	})
 
 	test("a worktree with unpushed commits is kept, with the reason", async () => {
@@ -196,7 +305,7 @@ describe("desk land", () => {
 		const report = await landIssue(deps, context, 12)
 
 		expect(fakeOrca.called("rm")).toHaveLength(0)
-		expect(report.kept?.reason).toBe("2 unpushed commits")
+		expect(report.kept[0]?.reason).toBe("2 unpushed commits")
 	})
 
 	test("a branch without an upstream is compared against origin/main", async () => {
@@ -207,7 +316,7 @@ describe("desk land", () => {
 		const report = await landIssue(deps, context, 12)
 
 		expect(fakeOrca.called("rm")).toHaveLength(0)
-		expect(report.kept?.reason).toBe("1 unpushed commit")
+		expect(report.kept[0]?.reason).toBe("1 unpushed commit")
 	})
 
 	test("a kept worktree is reported on the issue once, however many times land runs", async () => {
@@ -223,6 +332,7 @@ describe("desk land", () => {
 
 	test("a remote worktree that Orca refuses as dirty is kept, not retried as a failure", async () => {
 		const { context, fakeOrca, deps } = setup()
+		fakeOrca.worktrees = []
 		fakeOrca.workers = [
 			worker({ hostKind: "environment", hostId: "env-zeus", worktreePath: "/srv/w/12" }),
 		]
@@ -236,7 +346,7 @@ describe("desk land", () => {
 
 		const report = await landIssue({ ...deps, orca: refuse }, context, 12)
 
-		expect(report.kept?.path).toBe("/srv/w/12")
+		expect(report.kept[0]?.path).toBe("/srv/w/12")
 	})
 
 	test("a remote worktree removal that fails for another reason exits 3 so the next pass retries", async () => {
@@ -265,7 +375,7 @@ describe("desk land", () => {
 		const report = await landIssue(deps, context, 12)
 
 		expect(fakeOrca.called("rm")).toHaveLength(0)
-		expect(report.kept?.reason).toBe("cannot tell whether the branch has unpushed commits")
+		expect(report.kept[0]?.reason).toBe("cannot tell whether the branch has unpushed commits")
 	})
 
 	test("a kept worktree whose reason changed between runs is still noted once", async () => {

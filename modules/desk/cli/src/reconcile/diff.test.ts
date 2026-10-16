@@ -12,6 +12,7 @@ import {
 	SECTION,
 	task,
 	worker,
+	worktreeRow,
 } from "./testing/fixtures.ts"
 
 const READY = ["request", "autopilot", "stage:ready"]
@@ -28,6 +29,118 @@ describe("desk reconcile", () => {
 		const [mismatch] = reconcile(input({ issues: [issue(12, READY)] }))
 
 		expect(mismatch).toMatchObject({ issue: 12, code: "dispatch", machine: "Minerva", attempts: 0 })
+	})
+
+	test("dispatch: starts the worker in a new worktree when the request has none", () => {
+		const [mismatch] = reconcile(input({ issues: [issue(16, READY)] }))
+
+		expect(mismatch?.workerStart).toEqual([
+			"--worktree",
+			"new-child",
+			"--name",
+			"16",
+			"--base-branch",
+			"main",
+		])
+	})
+
+	test("dispatch: starts the worker in the worktree a parked request kept", () => {
+		const worktrees = [worktreeRow("/work/15"), worktreeRow("/work/16")]
+
+		const [mismatch] = reconcile(input({ issues: [issue(16, READY)], worktrees }))
+
+		expect(mismatch?.workerStart).toEqual(["--worktree", "path:/work/16"])
+	})
+
+	test("dispatch: a kept worktree named <n>-<suffix> is found, and the plain <n> wins over it", () => {
+		const suffixed = [worktreeRow("/work/16-2")]
+		const both = [...suffixed, worktreeRow("/work/16")]
+
+		const [onlySuffixed] = reconcile(input({ issues: [issue(16, READY)], worktrees: suffixed }))
+		const [preferred] = reconcile(input({ issues: [issue(16, READY)], worktrees: both }))
+
+		expect(onlySuffixed?.workerStart).toEqual(["--worktree", "path:/work/16-2"])
+		expect(preferred?.workerStart).toEqual(["--worktree", "path:/work/16"])
+	})
+
+	test("dispatch: a hand-made 16-experiment or 2026-redesign worktree is not the request's", () => {
+		const worktrees = [worktreeRow("/work/16-experiment"), worktreeRow("/work/2026-redesign")]
+
+		const mismatches = reconcile(
+			input({ issues: [issue(16, READY), issue(2026, READY)], worktrees }),
+		)
+
+		expect(mismatches.map((mismatch) => mismatch.workerStart?.[1])).toEqual([
+			"new-child",
+			"new-child",
+		])
+	})
+
+	test("dispatch: Orca's generated <n>-<digits> worktree is the request's", () => {
+		const worktrees = [worktreeRow("/work/16-2", { branch: "refs/heads/milkyskies/16-2" })]
+
+		const [mismatch] = reconcile(input({ issues: [issue(16, READY)], worktrees }))
+
+		expect(mismatch?.workerStart).toEqual(["--worktree", "path:/work/16-2"])
+	})
+
+	test("dispatch: a worktree named <n> on another request's branch is not reused", () => {
+		const worktrees = [worktreeRow("/work/16", { branch: "refs/heads/milkyskies/other-work" })]
+
+		const [mismatch] = reconcile(input({ issues: [issue(16, READY)], worktrees }))
+
+		expect(mismatch?.workerStart?.[1]).toBe("new-child")
+	})
+
+	test("dispatch: a worktree of another issue or the main checkout is never reused", () => {
+		const worktrees = [
+			worktreeRow("/work/160"),
+			worktreeRow("/work/1"),
+			worktreeRow("/work/16", { isMain: true }),
+		]
+
+		const [mismatch] = reconcile(input({ issues: [issue(16, READY)], worktrees }))
+
+		expect(mismatch?.workerStart?.[1]).toBe("new-child")
+	})
+
+	test("escalate: carries the same worker-start arguments", () => {
+		const bodies = [
+			claim("c_1", "ctx_1"),
+			release("c_1", "stopped"),
+			claim("c_2", "ctx_2"),
+			release("c_2", "stopped"),
+		]
+		const worktrees = [worktreeRow("/work/12")]
+
+		const [mismatch] = reconcile(input({ issues: [issue(12, READY, bodies)], worktrees }))
+
+		expect(mismatch).toMatchObject({
+			code: "escalate",
+			workerStart: ["--worktree", "path:/work/12"],
+		})
+	})
+
+	test("dispatch: a remote machine starts a top-level worktree in its own repository", () => {
+		const section = {
+			...SECTION,
+			machines: [
+				{ name: "Minerva", workers: 0, repo: undefined },
+				{ name: "zeus", workers: 1, repo: "~/Code/kit" },
+			],
+		}
+		const worktrees = [worktreeRow("/work/5")]
+
+		const [mismatch] = reconcile(input({ issues: [issue(5, READY)], section, worktrees }))
+
+		expect(mismatch?.workerStart).toEqual([
+			"--on",
+			"zeus",
+			"--worktree",
+			"new-top-level",
+			"--repo",
+			"~/Code/kit",
+		])
 	})
 
 	test("dispatch: skips a request without autopilot, with a blocker, or with an open sub-issue", () => {

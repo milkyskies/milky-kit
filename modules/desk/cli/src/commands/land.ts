@@ -12,7 +12,7 @@ import { spawnShell } from "../merge/shell.ts"
 import {
 	inspectWorktree,
 	isDirtyWorktreeRefusal,
-	listWorktrees,
+	ownWorktrees,
 	releaseWorker,
 	removeWorktree,
 } from "../orca/cleanup.ts"
@@ -21,18 +21,19 @@ import { listHosts, machineOfHost } from "../orca/hosts.ts"
 import { OrcaError } from "../orca/runner.ts"
 import { requireRun } from "../orca/runs.ts"
 import { listWorkers } from "../orca/workers.ts"
+import { worktreesOfIssue } from "../orca/worktrees.ts"
 import { landedPullRequest } from "../reconcile/landed.ts"
 
 export type LandDeps = Pick<OrcaDeps, "orca"> & { shell: Shell }
 
 export type KeptWorktree = { path: string; reason: string }
 
-export type LandReport = { removedUntracked: string[]; kept?: KeptWorktree }
+export type LandReport = { removedUntracked: string[]; kept: KeptWorktree[] }
 
 type Cleanup = { failures: string[]; report: LandReport }
 
 async function cleanUpWorker(deps: LandDeps, runId: string, dispatch: string): Promise<Cleanup> {
-	const cleanup: Cleanup = { failures: [], report: { removedUntracked: [] } }
+	const cleanup: Cleanup = { failures: [], report: { removedUntracked: [], kept: [] } }
 	const workers = await listWorkers(deps.orca, { run: runId, includeRemote: true })
 	const worker = workers.find((candidate) => candidate.dispatchId === dispatch)
 	if (!worker) return cleanup
@@ -51,8 +52,10 @@ async function cleanUpWorker(deps: LandDeps, runId: string, dispatch: string): P
 	if (path === undefined) return cleanup
 
 	if (worker.hostKind === "local") {
-		const row = (await listWorktrees(deps.orca)).find((candidate) => candidate.path === path)
-		if (row && !row.isMain) await run(() => removeLocalWorktree(deps, path, cleanup.report))
+		await run(async () => {
+			const row = (await ownWorktrees(deps.orca)).find((candidate) => candidate.path === path)
+			if (row && !row.isMain) await removeLocalWorktree(deps, path, cleanup.report)
+		})
 
 		return cleanup
 	}
@@ -67,10 +70,10 @@ async function cleanUpWorker(deps: LandDeps, runId: string, dispatch: string): P
 			if (!isDirtyWorktreeRefusal(error.message)) throw error
 
 			// Git cannot run on the remote machine from here, so Orca's own refusal to delete is the only evidence the worktree holds changes.
-			cleanup.report.kept = {
+			cleanup.report.kept.push({
 				path,
 				reason: `the worktree is on ${machine} and Orca refused to remove it: ${error.message}`,
-			}
+			})
 		}
 	})
 
@@ -93,13 +96,36 @@ async function removeLocalWorktree(
 			report.removedUntracked = verdict.paths
 			return
 		case "keep":
-			report.kept = { path, reason: verdict.reason }
+			report.kept.push({ path, reason: verdict.reason })
 			return
 		default: {
 			const _exhaustive: never = verdict
 
 			return _exhaustive
 		}
+	}
+}
+
+async function removeIssueWorktrees(
+	deps: LandDeps,
+	number: number,
+	cleanup: Cleanup,
+): Promise<void> {
+	const alreadyKept = new Set(cleanup.report.kept.map((kept) => kept.path))
+
+	try {
+		for (const row of worktreesOfIssue(await ownWorktrees(deps.orca), number)) {
+			if (alreadyKept.has(row.path)) continue
+
+			if (row.liveTerminalCount > 0) {
+				cleanup.report.kept.push({ path: row.path, reason: "a terminal is still open in it" })
+				continue
+			}
+
+			await removeLocalWorktree(deps, row.path, cleanup.report)
+		}
+	} catch (error) {
+		cleanup.failures.push(error instanceof Error ? error.message : String(error))
 	}
 }
 
@@ -149,10 +175,11 @@ export async function landIssue(
 	}
 
 	const claim = owningClaim(after.comments)
-	const cleanup =
+	const cleanup: Cleanup =
 		claim === undefined
-			? ({ failures: [], report: { removedUntracked: [] } } satisfies Cleanup)
+			? { failures: [], report: { removedUntracked: [], kept: [] } }
 			: await cleanUpWorker(deps, runId, claim.dispatch)
+	await removeIssueWorktrees(deps, number, cleanup)
 	if (cleanup.failures.length > 0) {
 		throw new DeskError(
 			EXIT.external,
@@ -170,16 +197,16 @@ export async function landIssue(
 		)
 	}
 
-	if (kept) {
-		const prefix = `worktree-kept: ${kept.path}`
-		if (!after.comments.some((comment) => comment.body.includes(prefix))) {
-			await postComment(
-				context.gh,
-				context.repo,
-				number,
-				`${prefix} stays on disk because ${kept.reason}. Land does not retry it.\n\n${AGENT_MARKER}\n`,
-			)
-		}
+	for (const worktree of kept) {
+		const prefix = `worktree-kept: ${worktree.path}`
+		if (after.comments.some((comment) => comment.body.includes(prefix))) continue
+
+		await postComment(
+			context.gh,
+			context.repo,
+			number,
+			`${prefix} stays on disk because ${worktree.reason}. Land does not retry it.\n\n${AGENT_MARKER}\n`,
+		)
 	}
 
 	return cleanup.report
@@ -195,12 +222,12 @@ export const run: Command = async (args, context) => {
 		lines.push(`removed untracked files with the worktree: ${report.removedUntracked.join(", ")}`)
 	}
 
-	if (report.kept) lines.push(`worktree-kept ${report.kept.path}: ${report.kept.reason}`)
+	for (const kept of report.kept) lines.push(`worktree-kept ${kept.path}: ${kept.reason}`)
 
 	emit(context, lines.join("\n"), {
 		issue: number,
 		stage: "stage:done",
 		removedUntracked: report.removedUntracked,
-		kept: report.kept ?? null,
+		kept: report.kept,
 	})
 }

@@ -3,6 +3,7 @@ import { type IssueState, stageOf } from "../github/issue.ts"
 import { machineOfHost } from "../orca/hosts.ts"
 import { issueNumberOfTitle } from "../orca/tasks.ts"
 import { isBusy, isGone, isLive, isSettled, type Worker } from "../orca/workers.ts"
+import { worktreesOfIssue } from "../orca/worktrees.ts"
 import { workerMachines } from "../project/section.ts"
 import { landedPullRequest } from "./landed.ts"
 import type { Mismatch, ReconcileInput } from "./types.ts"
@@ -322,6 +323,25 @@ function freeSlots(input: ReconcileInput): Map<string, number> {
 	return free
 }
 
+function workerStartArguments(input: ReconcileInput, issue: number, machine: string): string[] {
+	if (machine !== input.section.coordinator.machine) {
+		const repo = workerMachines(input.section).find((candidate) => candidate.name === machine)?.repo
+
+		return [
+			"--on",
+			machine,
+			"--worktree",
+			"new-top-level",
+			...(repo === undefined ? [] : ["--repo", repo]),
+		]
+	}
+
+	const kept = worktreesOfIssue(input.worktrees, issue)[0]
+	if (kept) return ["--worktree", `path:${kept.path}`]
+
+	return ["--worktree", "new-child", "--name", String(issue), "--base-branch", "main"]
+}
+
 function assignMachines(input: ReconcileInput, mismatches: Mismatch[]): Mismatch[] {
 	const free = freeSlots(input)
 	const priorities = new Map(input.issues.map((issue) => [issue.number, priorityOf(issue)]))
@@ -342,6 +362,7 @@ function assignMachines(input: ReconcileInput, mismatches: Mismatch[]): Mismatch
 		}
 
 		mismatch.machine = machine
+		mismatch.workerStart = workerStartArguments(input, mismatch.issue, machine)
 		free.set(machine, (free.get(machine) ?? 0) - 1)
 	}
 

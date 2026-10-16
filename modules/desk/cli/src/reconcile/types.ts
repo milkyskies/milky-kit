@@ -1,4 +1,5 @@
 import type { IssueState } from "../github/issue.ts"
+import type { WorktreeRow } from "../orca/cleanup.ts"
 import type { Host } from "../orca/hosts.ts"
 import type { Task } from "../orca/tasks.ts"
 import type { Worker } from "../orca/workers.ts"
@@ -33,12 +34,14 @@ export type Mismatch = {
 	machine?: string
 	attempts?: number
 	terminalGone?: boolean
+	workerStart?: string[]
 }
 
 export type ReconcileInput = {
 	issues: IssueState[]
 	workers: Worker[]
 	tasks: Task[]
+	worktrees: WorktreeRow[]
 	hosts: Host[]
 	section: DeskSection
 	now: Date

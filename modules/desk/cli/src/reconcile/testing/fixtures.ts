@@ -1,6 +1,7 @@
 import { parseComments } from "../../github/derive.ts"
 import type { IssueState } from "../../github/issue.ts"
 import { composeComment } from "../../github/markers.ts"
+import type { WorktreeRow } from "../../orca/cleanup.ts"
 import type { Host } from "../../orca/hosts.ts"
 import type { Task } from "../../orca/tasks.ts"
 import type { Worker } from "../../orca/workers.ts"
@@ -19,6 +20,18 @@ export const HOSTS: Host[] = [
 	{ kind: "local", id: "local", name: "Minerva" },
 	{ kind: "environment", id: "env-zeus", name: "zeus" },
 ]
+
+export function worktreeRow(path: string, overrides: Partial<WorktreeRow> = {}): WorktreeRow {
+	return {
+		path,
+		isMain: false,
+		repoId: "repo_kit",
+		hostId: "local",
+		branch: `refs/heads/milkyskies/${path.split("/").at(-1)}`,
+		liveTerminalCount: 0,
+		...overrides,
+	}
+}
 
 export function minutesAgo(minutes: number): string {
 	return new Date(NOW.getTime() - minutes * 60_000).toISOString().slice(0, 19).concat("Z")
@@ -98,6 +111,7 @@ export function input(overrides: Partial<ReconcileInput> = {}): ReconcileInput {
 		issues: [],
 		workers: [],
 		tasks: [],
+		worktrees: [],
 		hosts: HOSTS,
 		section: SECTION,
 		now: NOW,
