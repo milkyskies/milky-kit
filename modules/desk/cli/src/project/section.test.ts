@@ -1,0 +1,96 @@
+import { describe, expect, test } from "bun:test"
+import { readFileSync } from "node:fs"
+import { join } from "node:path"
+
+import { DESK_SECTION } from "../preflight/testing/world.ts"
+import { parseDeskSection, remoteMachines, workerMachines } from "./section.ts"
+
+function parsed(markdown: string) {
+	const result = parseDeskSection(markdown)
+	if (result.kind !== "ok") throw new Error(`expected ok, got ${JSON.stringify(result)}`)
+
+	return result.section
+}
+
+describe("parseDeskSection", () => {
+	test("reads coordinator, machines and preflight from the format in the design", () => {
+		const section = parsed(DESK_SECTION)
+
+		expect(section.coordinator).toEqual({
+			machine: "Minerva",
+			ask: "ask:choices",
+			check: "mise run check",
+		})
+		expect(section.machines).toEqual([
+			{ name: "Minerva", workers: 3, repo: undefined },
+			{ name: "zeus", workers: 2, repo: "~/Code/Projects/kansai-2" },
+		])
+		expect(section.preflight.needs).toEqual([
+			{ command: "pg_isready -h localhost -p 5432", fix: "docker compose up -d db" },
+		])
+		expect(section.preflight.mcp).toEqual(["serena", "blender"])
+		expect(remoteMachines(section).map((machine) => machine.name)).toEqual(["zeus"])
+	})
+
+	test("the shipped template parses", () => {
+		const template = readFileSync(
+			join(import.meta.dir, "..", "..", "..", "desk-section.md"),
+			"utf8",
+		)
+
+		expect(parsed(template).coordinator.ask).toBe("ask:choices")
+	})
+
+	test("check defaults to mise run check and no Machines means the coordinator machine with 3 workers", () => {
+		const section = parsed("## desk\n\n### Coordinator\n- machine: Minerva\n- ask: ask:own-feel\n")
+
+		expect(section.coordinator.check).toBe("mise run check")
+		expect(workerMachines(section)).toEqual([{ name: "Minerva", workers: 3, repo: undefined }])
+		expect(remoteMachines(section)).toEqual([])
+	})
+
+	test("reports a missing section", () => {
+		expect(parseDeskSection("# project\n\n## other\n")).toEqual({ kind: "missing" })
+	})
+
+	test("a ## desk heading inside a code fence is not the section", () => {
+		expect(parseDeskSection("```md\n## desk\n### Coordinator\n```\n").kind).toBe("missing")
+	})
+
+	test("the section ends at the next ## heading, so later sections are not read", () => {
+		const section = parsed(`${DESK_SECTION}\n## Other\n\n### Coordinator\n- bogus: 1\n`)
+
+		expect(section.coordinator.machine).toBe("Minerva")
+	})
+
+	test("unknown keys, bad machine lines and fix-less commands each name their line", () => {
+		const result = parseDeskSection(
+			[
+				"## desk",
+				"### Coordinator",
+				"- machine: Minerva",
+				"- ask: ask:sometimes",
+				"- colour: red",
+				"### Machines",
+				"- zeus: workers many",
+				"- hera: workers 2, cpu 4",
+				"### Preflight",
+				"- `docker ps`",
+				"- nonsense",
+			].join("\n"),
+		)
+
+		if (result.kind !== "invalid") throw new Error("expected invalid")
+
+		expect(result.issues.map((issue) => issue.line)).toEqual([2, 5, 7, 8, 10, 11])
+		expect(result.issues[1]?.message).toBe('unknown key "colour" in ### Coordinator')
+	})
+
+	test("prose subsections such as Hard areas and Routing are not parsed", () => {
+		const section = parsed(
+			`${DESK_SECTION}\n### Hard areas\n- anything: goes here\n\n### Routing\n| Work | Model |\n`,
+		)
+
+		expect(section.coordinator.machine).toBe("Minerva")
+	})
+})
