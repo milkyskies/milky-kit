@@ -6,6 +6,7 @@ import { run as done } from "./commands/done.ts"
 import { run as fail } from "./commands/fail.ts"
 import { run as note } from "./commands/note.ts"
 import { run as park } from "./commands/park.ts"
+import { run as release } from "./commands/release.ts"
 import { run as reopen } from "./commands/reopen.ts"
 import { attemptCount, owningClaim, parseComments } from "./github/derive.ts"
 import { readIssue } from "./github/issue.ts"
@@ -278,5 +279,95 @@ describe("finding 7b: body edits do not drop the other command's lines", () => {
 
 		expect(fake.issue(12).body).toContain("Auto-decided: x over y because z")
 		expect(fake.issue(12).body).toContain("- 2026-10-16: go")
+	})
+})
+
+describe("re-review A: orphaned claims at any stage can be cleared", () => {
+	test("release --claim clears a claim left at stage:ready by a killed worker", async () => {
+		const { fake, context } = makeHarness()
+		fake.addIssue({ number: 12 })
+		fake.addComment(12, claimBody("c_dead01", "ctx_dead"))
+
+		await release(["12", "--reason", "no-worker", "--claim", "c_dead01"], context)
+		await claim(["12", ...CLAIM_FLAGS], context)
+
+		expect(fake.issue(12).labels).toContain("stage:working")
+	})
+
+	test("release --claim on a lingering loser leaves the working owner and the stage alone", async () => {
+		const { fake, context } = makeHarness()
+		seedWorking(fake, 12)
+		fake.addComment(12, claimBody("c_loser1", "ctx_loser"))
+
+		await release(["12", "--reason", "stopped", "--claim", "c_loser1"], context)
+
+		expect(fake.issue(12).labels).toContain("stage:working")
+		expect(owningClaim(parseComments(fake.issue(12).comments))?.id).toBe("c_first1")
+	})
+
+	test("fail closes a lingering loser too, so the issue can be claimed again", async () => {
+		const { fake, context } = makeHarness()
+		seedWorking(fake, 12)
+		fake.addComment(12, claimBody("c_loser1", "ctx_loser"))
+		fake.files.set("reason.md", "tried")
+
+		await fail(["12", "--dispatch", "ctx_y", "--reason", "reason.md"], context)
+		await claim(["12", ...CLAIM_FLAGS], context)
+
+		expect(fake.issue(12).labels).toContain("stage:working")
+	})
+
+	test("reopen closes a lingering loser and verifies no claim remains", async () => {
+		const { fake, context } = makeHarness()
+		seedWorking(fake, 12).labels = ["request", "autopilot", "stage:check"]
+		fake.addComment(12, claimBody("c_loser1", "ctx_loser"))
+		const reason = fake.addComment(12, "no, because")
+
+		await reopen(["12", "--comment", String(reason.databaseId)], context)
+
+		expect(owningClaim(parseComments(fake.issue(12).comments))).toBeUndefined()
+	})
+
+	test("answer closes a lingering loser too", async () => {
+		const { fake, context } = makeHarness()
+		seedWorking(fake, 12).labels = ["request", "autopilot", "stage:needs-you"]
+		fake.addComment(12, claimBody("c_loser1", "ctx_loser"))
+		fake.files.set("answer.md", "Go.")
+
+		await answer(["12", "--body", "answer.md", "--decision", "go"], context)
+
+		expect(owningClaim(parseComments(fake.issue(12).comments))).toBeUndefined()
+	})
+})
+
+describe("re-review B: a write between the fresh read and the edit is detected", () => {
+	test("desk note exits 4 when another writer edits after the fresh read", async () => {
+		const { fake, context } = makeHarness()
+		seedWorking(fake, 12)
+		fake.afterRead(2, (issue) => {
+			issue.body += "\n## Decisions\n\n- 2026-10-16: use magic links\n"
+			issue.bodyEdits += 1
+		})
+
+		const result = await failureOf(
+			note(["12", "--dispatch", "ctx_y", "Auto-decided: a over b because c"], context),
+		)
+
+		expect(result.code).toBe(4)
+		expect(result.message).toContain("2 body edits since the fresh read")
+	})
+
+	test("desk answer exits 4 when another writer edits after the fresh read", async () => {
+		const { fake, context } = makeHarness()
+		seedWorking(fake, 12).labels = ["request", "autopilot", "stage:needs-you"]
+		fake.files.set("answer.md", "Go.")
+		fake.afterRead(2, (issue) => {
+			issue.body += "\n## Small calls\n\n- 2026-10-16: Auto-decided: x over y because z\n"
+			issue.bodyEdits += 1
+		})
+
+		expect(
+			(await failureOf(answer(["12", "--body", "answer.md", "--decision", "go"], context))).code,
+		).toBe(4)
 	})
 })

@@ -9,6 +9,7 @@ export type FakeIssue = {
 	labels: string[]
 	assignees: string[]
 	body: string
+	bodyEdits: number
 	comments: FakeComment[]
 	blockedBy: { number: number; state: string }[]
 	subIssues: { number: number; state: string }[]
@@ -39,6 +40,8 @@ export class FakeGithub {
 	dropLabelWrites = false
 	commentPageSize = 100
 	afterNextRead: ((issue: FakeIssue) => void) | undefined
+	private readCount = 0
+	private readonly readHooks = new Map<number, (issue: FakeIssue) => void>()
 	private commentCounter = 1000
 	private shaCounter = 0
 	private issueCounter = 100
@@ -55,6 +58,7 @@ export class FakeGithub {
 			labels: ["request", "autopilot", "stage:ready"],
 			assignees: [],
 			body: "## Problem\n\nSomething is missing.\n",
+			bodyEdits: 0,
 			comments: [],
 			blockedBy: [],
 			subIssues: [],
@@ -78,6 +82,10 @@ export class FakeGithub {
 		issue.comments.push(comment)
 
 		return comment
+	}
+
+	afterRead(ordinal: number, hook: (issue: FakeIssue) => void): void {
+		this.readHooks.set(this.readCount + ordinal, hook)
 	}
 
 	issue(number: number): FakeIssue {
@@ -147,6 +155,7 @@ export class FakeGithub {
 						number: issue.number,
 						state: issue.state,
 						body: issue.body,
+						userContentEdits: { totalCount: issue.bodyEdits },
 						labels: nodes(issue.labels.map((name) => ({ name }))),
 						assignees: nodes(issue.assignees.map((login) => ({ login }))),
 						comments: {
@@ -176,10 +185,12 @@ export class FakeGithub {
 			},
 		}
 
-		const hook = this.afterNextRead
+		this.readCount += 1
+		const numbered = this.readHooks.get(this.readCount)
+		const hooks = [this.afterNextRead, numbered]
 		this.afterNextRead = undefined
 		const serialized = JSON.stringify(payload)
-		hook?.(issue)
+		for (const hook of hooks) hook?.(issue)
 
 		return serialized
 	}
@@ -270,7 +281,10 @@ export class FakeGithub {
 		}
 
 		if (this.flag(args, "--add-assignee") === "@me") issue.assignees = ["milkyskies"]
-		if (args.includes("--body-file")) issue.body = input ?? ""
+		if (args.includes("--body-file")) {
+			issue.body = input ?? ""
+			issue.bodyEdits += 1
+		}
 
 		return ""
 	}
