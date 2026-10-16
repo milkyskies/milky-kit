@@ -41,14 +41,23 @@ export const run: Command = async (args, context) => {
 		)
 	}
 
-	await releaseClaims(gh, repo, number, [target], reason)
+	const laterClaims = target.id === active[0]?.id ? active.slice(1) : []
 
-	const remaining = active.filter((claim) => claim.id !== target.id)
+	await releaseClaims(gh, repo, number, [target], reason)
+	await releaseClaims(gh, repo, number, laterClaims, "lost-race")
+
+	const remaining = active.filter(
+		(claim) => claim.id !== target.id && !laterClaims.some((later) => later.id === claim.id),
+	)
 	const returnsToReady = hasStage(before, "stage:working") && remaining.length === 0
 	if (returnsToReady) await moveStage(gh, repo, number, "stage:working", "stage:ready")
 
 	const after = await readIssue(gh, repo, number)
-	if (activeClaims(after.comments).some((claim) => claim.id === target.id)) {
+	if (
+		activeClaims(after.comments).some((claim) =>
+			[target, ...laterClaims].some((closed) => closed.id === claim.id),
+		)
+	) {
 		throw mismatch(
 			"release",
 			number,

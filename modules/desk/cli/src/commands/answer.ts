@@ -3,9 +3,10 @@ import { parseArgs } from "node:util"
 import { parseNumber, parseOrUsage, requireFlag } from "../args.ts"
 import { type Command, emit, isoDay, readInputFile } from "../context.ts"
 import { usageError } from "../errors.ts"
+import { sectionLines } from "../github/body.ts"
 import { appendProgramLine } from "../github/body-edit.ts"
 import { activeClaims } from "../github/derive.ts"
-import { readIssue } from "../github/issue.ts"
+import { type IssueState, readIssue } from "../github/issue.ts"
 import { AGENT_MARKER } from "../github/markers.ts"
 import { moveStage, postComment, releaseClaims } from "../github/writes.ts"
 import { requireStage, verifyClaimReleased, verifyStage } from "../guards.ts"
@@ -38,8 +39,13 @@ export const run: Command = async (args, context) => {
 	const entry = `- ${isoDay(context.now())}: ${decision}`
 	const claims = activeClaims(before.comments)
 
-	await postComment(gh, repo, number, answer)
-	await appendProgramLine(gh, repo, number, "answer", "Decisions", entry)
+	const alreadyAnswered = answerAlreadyPosted(before, answer)
+	if (!alreadyAnswered) await postComment(gh, repo, number, answer)
+
+	const decisionRecorded =
+		alreadyAnswered &&
+		sectionLines(before.body, "Decisions").some((line) => line.endsWith(`: ${decision}`))
+	if (!decisionRecorded) await appendProgramLine(gh, repo, number, "answer", "Decisions", entry)
 
 	await releaseClaims(gh, repo, number, claims, "answered")
 
@@ -55,4 +61,13 @@ export const run: Command = async (args, context) => {
 		stage: "stage:ready",
 		decision: entry,
 	})
+}
+
+function answerAlreadyPosted(issue: IssueState, answer: string): boolean {
+	const lastDecision = issue.comments.findLastIndex(
+		(comment) => comment.marker?.kind === "decision",
+	)
+	const lastHuman = issue.comments.findLastIndex((comment) => !comment.agent)
+
+	return lastHuman > lastDecision && issue.comments[lastHuman]?.body.trim() === answer.trim()
 }
