@@ -26,18 +26,18 @@ If `.milky-kit-mode` is missing, default to `branch` and tell the user — they 
 
 To switch modes between tasks, run `/milky-kit:mode main | branch | worktrees`. The flip applies to the next task — finish whatever you're doing in the current mode first.
 
-## glb (ghlobes) — Issue Tracking (all modes)
+## Issue Tracking (all modes)
 
-Use `glb` for ALL task tracking via GitHub Issues + Projects. Do NOT use TodoWrite, TaskCreate, or markdown TODOs.
+Use GitHub Issues with labels for ALL task tracking, through plain `gh`. Do NOT use TodoWrite, TaskCreate, or markdown TODOs.
 
-**`glb.md` is canonical for everything about the tracker** — commands, statuses, points, priorities, type labels, epics, and the issue body template. Read that file rather than this one for any of them.
+**`issues.md` is canonical for everything about the tracker** — labels, stages, commands, points, priorities, type labels, epics, and the issue body template. Read that file rather than this one for any of them.
 
-Start every session with `glb next`, run `glb update <num> --claim` before touching code, and `glb done <num>` when finished.
+Start every session with `gh issue list --label stage:ready`, claim the issue with `gh issue edit <num> --add-label stage:working --remove-label stage:ready --add-assignee @me` before touching code, and move it to `stage:done` and close it when finished.
 
 Two rules stay here, because both are about branching rather than tracking:
 
 - **Sub-issues branch off `main` and PR into `main`, just like any other issue.** The parent/child relationship is organizational only. The epic-branch workflow (sub-PRs into an epic branch) applies only in `branch` or `worktrees` mode, and only when the user explicitly asks for it.
-- **No em dashes in PR titles.** `glb create` rejects them in issue titles; nothing checks a PR title, so it falls to you.
+- **No em dashes in PR titles.** Issue titles avoid them too (see `issues.md`); nothing checks a PR title, so it falls to you.
 
 ## Session Start — MANDATORY (all modes)
 
@@ -73,7 +73,7 @@ When `.milky-kit-mode` is `main`, follow this section. Skip the others.
 ### 1. Claim the issue
 
 ```bash
-glb update <num> --claim
+gh issue edit <num> --add-label stage:working --remove-label stage:ready --add-assignee @me
 ```
 
 ### 2. Verify branch is `main`
@@ -110,7 +110,8 @@ Run formatter + linter before every push. No exceptions.
 ### 5. Close the issue
 
 ```bash
-glb done <num> --comment "<short summary>"
+gh issue edit <num> --add-label stage:done --remove-label stage:working
+gh issue close <num> --comment "<short summary>"
 ```
 
 For commits that fix the issue completely, include `closes #<num>` in the commit body so GitHub also closes via the commit.
@@ -146,7 +147,7 @@ If you're still on main, stop and switch.
 ### 3. Claim & work
 
 ```bash
-glb update <num> --claim
+gh issue edit <num> --add-label stage:working --remove-label stage:ready --add-assignee @me
 ```
 
 **Before writing new code, find a similar existing implementation in each layer you're about to touch and follow its patterns.**
@@ -178,7 +179,7 @@ Worktrees mode has two roles. **The default is the worktree:**
 
 ### Root checkout — only via `/here` or an explicit "in root"
 
-Follow the **`branch` mode** workflow above verbatim: sync (`git fetch origin`, plus `git pull` if on `main`), create `feature/#<num>.<summary>` in the root checkout, `glb update <num> --claim`, work, `/ship`, `/land`.
+Follow the **`branch` mode** workflow above verbatim: sync (`git fetch origin`, plus `git pull` if on `main`), create `feature/#<num>.<summary>` in the root checkout, claim the issue, work, `/ship`, `/land`.
 
 ### Worktree task (default)
 
@@ -221,7 +222,7 @@ If either is wrong, stop and re-enter the correct worktree with `EnterWorktree(p
 #### 3. Claim & work
 
 ```bash
-glb update <num> --claim
+gh issue edit <num> --add-label stage:working --remove-label stage:ready --add-assignee @me
 ```
 
 **Before writing new code, find a similar existing implementation in each layer you're about to touch and follow its patterns.**
@@ -264,7 +265,7 @@ feature/#409.llm-infrastructure -> main            <- one final PR
 
 Every PR must link back to the issue it closes. This applies whether you open the PR via `/ship` or `gh pr create` directly.
 
-- **Title:** `[#<num>] <issue title>` — e.g. `[#22] Retire Cloudflare Pages branch previews`. Use the issue title from `glb show <num>`, not a conventional-commit summary.
+- **Title:** `[#<num>] <issue title>` — e.g. `[#22] Retire Cloudflare Pages branch previews`. Use the issue title from `gh issue view <num>`, not a conventional-commit summary.
 - **Sub-issue title** (epic-branch workflow only): `[#<epic-num>/#<num>] <issue title>`.
 - **Body:** must start with `closes #<num>` on the first line so GitHub auto-closes the issue on merge.
 
@@ -275,5 +276,5 @@ Do NOT use conventional-commit titles for PRs — those belong on commits, not P
 ## Session Completion (all modes)
 
 - **NEVER stop before pushing** — that leaves work stranded locally. YOU must push; never say "ready to push when you are."
-- **File issues** for any remaining work — `glb create`
+- **File issues** for any remaining work — `gh issue create`
 - If push fails, resolve and retry until it succeeds

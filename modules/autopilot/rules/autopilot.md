@@ -1,30 +1,30 @@
 # Autopilot
 
-Rules for autonomous agents that pick work off the board and drive it to a draft PR, and for the humans answering them. Applies only in projects that have opted into autopilot; if no issue carries the `autopilot` label, none of this fires.
+Rules for autonomous agents that pick work off the issue list and drive it to a draft PR, and for the humans answering them. Applies only in projects that have opted into autopilot; if no issue carries the `autopilot` label, none of this fires.
 
-## State lives in glb, nowhere else
+## State lives in stage labels, nowhere else
 
-The board is the state machine. There is no runs database, no local state file, no separate inbox.
+The `stage:*` label on the issue is the state machine. There is no runs database, no local state file, no separate inbox. The meaning of each stage is in `issues.md`.
 
 ```
-Todo ──claim──> In Progress ──draft PR──> In Review ──merged──> Done
-  ▲                  │                        │
-  │                  └────────┬───────────────┘
-  │                           ▼
-  └──── you answer ──── Needs Decision
+stage:ready ──claim──> stage:working ──PR opened──> stage:check ──merged──> stage:done
+     ▲                      │                            │
+     │                      └─────────────┬──────────────┘
+     │                                    ▼
+     └──── you answer ──────── stage:needs-you
 ```
 
-**Only store a state in glb if it is not derivable from GitHub.** `Needs Decision` is not derivable, so it lives in glb. "CI is red", "has unaddressed review comments", "merge conflict" all come from `gh pr view` and must never become statuses.
+**Only store a state as a stage if it is not derivable from GitHub.** `stage:needs-you` is not derivable, so it lives in a label. "CI is red", "has unaddressed review comments", "merge conflict" all come from `gh pr view` and must never become stages.
 
 The payoff for keeping the transport on GitHub is that the mobile app is a free second client: a decision can be answered from a phone, and the dispatcher picks it up unchanged.
 
 ## Eligibility is opt-in
 
-An agent may only claim an issue that carries the `autopilot` label. That label is the whole gate. See `glb.md`. Forgetting it means an agent leaves the issue alone.
+An agent may only claim an issue that carries the `autopilot` label. That label is the whole gate. See `issues.md`. Forgetting it means an agent leaves the issue alone.
 
-The label answers one question - may this run unattended - and it is the only question a tracker can answer without reading. **Whether the issue says enough to finish is the agent's call, made while reading it**, and the answer goes in a decision comment rather than a filter. An issue too thin to implement is claimed, read, and parked on `Needs Decision` with the question and a proposed body. A human then gets a draft spec back instead of an issue that silently never ran.
+The label answers one question - may this run unattended - and it is the only question a tracker can answer without reading. **Whether the issue says enough to finish is the agent's call, made while reading it**, and the answer goes in a decision comment rather than a filter. An issue too thin to implement is claimed, read, and parked on `stage:needs-you` with the question and a proposed body. A human then gets a draft spec back instead of an issue that silently never ran.
 
-An ineligible issue is skipped, never parked. It was never claimed, so its status is not the agent's to change.
+An ineligible issue is skipped, never parked. It was never claimed, so its stage is not the agent's to change.
 
 ## The area table
 
@@ -87,7 +87,7 @@ Only the worker is routed. These are stable:
 
 | Role | Tier |
 |---|---|
-| Dispatcher — read board, decide | Haiku |
+| Dispatcher — read the issue list, decide | Haiku |
 | CI-fix agent — read log, apply fix | Sonnet |
 | Review pass | Opus |
 | Decision comment | Opus |
@@ -100,7 +100,7 @@ Design decisions, spec changes, and human answers arrive as **comments**, not bo
 
 1. `gh issue view <num> --repo <owner>/<repo> --comments`
 2. **The latest comment wins.** Older instructions are superseded, not merged.
-3. If the issue was previously `Needs Decision`, the human's answer is in the comments. Follow it.
+3. If the issue was previously `stage:needs-you`, the human's answer is in the comments. Follow it.
 
 ## When to stop and ask
 
@@ -146,9 +146,9 @@ _Stopped at: <what you were doing>. Reply in a comment and I will pick it up._
 <!-- autopilot:agent -->
 ```
 
-Then `glb update <num> --status "Needs Decision"` and exit. Leave the worktree in place; the next attempt resumes in it.
+Then `gh issue edit <num> --add-label stage:needs-you --remove-label stage:working` and exit. Leave the worktree in place; the next attempt resumes in it.
 
-**Parking must reach the human, not just the board.** A comment nobody is looking at is the same as no comment: the run stalls silently and the board looks busy. The dispatcher sends a push notification naming the issue and the question the moment it sees a worker park - see the autopilot skill. The worker's job is to make that notification worth reading, which is what the numbered options below are for.
+**Parking must reach the human, not just the issue.** A comment nobody is looking at is the same as no comment: the run stalls silently while the issue list looks busy. The dispatcher sends a push notification naming the issue and the question the moment it sees a worker park. The worker's job is to make that notification worth reading, which is what the numbered options below are for.
 
 **Always offer numbered options.** A question with concrete options is answered with one keypress; a question in prose costs a paragraph. If you genuinely cannot enumerate options, say so explicitly rather than padding the list with filler.
 
@@ -176,11 +176,11 @@ Rules for the proposal:
 
 ## Answering
 
-Either run `/decisions`, or reply directly on GitHub. Both routes end the same way: a comment on the issue and the status back to `Todo`.
+Either run `/decisions`, or reply directly on GitHub. Both routes end the same way: a comment on the issue and the stage back to `stage:ready` (`gh issue edit <num> --add-label stage:ready --remove-label stage:needs-you`).
 
-If the project installs the bookkeeping workflow (`modules/autopilot/scaffold/.github/workflows/`), replying on GitHub is enough — the workflow flips the status server-side, so an answer written on a phone is queued before you next open the laptop. Without it, flip the status yourself.
+The `skills/autopilot` skill and the autopilot scaffold (the bookkeeping workflow and its status script) are deleted. Nothing flips the stage server-side now, so the human or `/decisions` flips it.
 
-**A human flips the status, never the agent.** If the agent re-checked on its own it would consume a half-written reply and burn an attempt.
+**A human flips the stage, never the agent.** If the agent re-checked on its own it would consume a half-written reply and burn an attempt.
 
 ## One gate stays human: the merge
 
@@ -188,4 +188,4 @@ If the project installs the bookkeeping workflow (`modules/autopilot/scaffold/.g
 
 Marking a PR ready for review used to be treated as a second gate. It is not one, and using it as one was actively harmful: a finished draft looks exactly like a draft still being written, so the work that most needed attention was the work hardest to see. A worker now marks its own PR ready on finishing, which is what the state means — ready for *your* review.
 
-`/land` after merge is automatic, and it is what closes the herdr tab and removes the worktree. Nothing is reaped before then, because until a PR merges you may still want to say something to the agent that wrote it.
+`/land` after merge is automatic, and it is what removes the worktree. Nothing is reaped before then, because until a PR merges you may still want to say something to the agent that wrote it.
