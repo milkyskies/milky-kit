@@ -1,5 +1,4 @@
-import type { LinkedPullRequest } from "../github/issue.ts"
-import type { IssueState } from "../github/issue.ts"
+import type { IssueState, LinkedPullRequest } from "../github/issue.ts"
 
 export function landedPullRequest(issue: IssueState): LinkedPullRequest | undefined {
 	const resultIndex = issue.comments.findLastIndex((comment) => comment.marker?.kind === "result")

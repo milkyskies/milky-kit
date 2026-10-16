@@ -11,11 +11,8 @@ export function issueNumberOfTitle(title: string): number | undefined {
 	return match?.[1] === undefined ? undefined : Number(match[1])
 }
 
-export async function listTasks(orca: Orca, run?: string): Promise<Task[]> {
-	const args = ["orchestration", "task-list"]
-	if (run !== undefined) args.push("--run", run)
-
-	const result = await orca(args)
+export async function listTasks(orca: Orca, run: string): Promise<Task[]> {
+	const result = await orca(["orchestration", "task-list", "--run", run])
 
 	return readArray(result, "tasks").map((row) => {
 		const created = Date.parse(readString(row, "created_at"))

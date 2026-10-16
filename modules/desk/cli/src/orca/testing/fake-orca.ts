@@ -36,7 +36,9 @@ export class FakeOrca {
 	workers: Worker[] = []
 	tasks: FakeTask[] = []
 	messages: FakeMessage[] = []
-	runs: FakeRun[] = []
+	runs: FakeRun[] = [{ id: "run_kit", objective: "desk milkyskies/kit" }]
+	ignoreRunFlag = false
+	workerRuns = new Map<string, string>()
 	worktrees: { path: string; isMainWorktree: boolean }[] = []
 	hosts = [
 		{ kind: "local", id: "local", name: "this machine", machineName: "Minerva" },
@@ -139,6 +141,13 @@ export class FakeOrca {
 		const remote = args.includes("--include-remote")
 		const rows = this.workers.filter((worker) => remote || worker.hostKind === "local")
 
-		return { workers: rows.map(workerRow), page: { nextCursor: null } }
+		const source = args.includes("--run") && !this.ignoreRunFlag ? "flag" : "all"
+		const run = this.flag(args, "--run")
+		const scoped = rows.filter(
+			(worker) =>
+				run === undefined || (this.workerRuns.get(worker.dispatchId) ?? "run_kit") === run,
+		)
+
+		return { workers: scoped.map(workerRow), page: { nextCursor: null }, scope: { source } }
 	}
 }

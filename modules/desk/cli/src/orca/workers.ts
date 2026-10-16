@@ -1,4 +1,4 @@
-import { isRecord, readArray, readField, readString } from "../json.ts"
+import { isRecord, readArray, readField, readString, ShapeError } from "../json.ts"
 import type { Orca } from "./runner.ts"
 
 export type Worker = {
@@ -75,18 +75,21 @@ function nextCursor(result: unknown): string | undefined {
 
 export async function listWorkers(
 	orca: Orca,
-	options: { run?: string; includeRemote: boolean },
+	options: { run: string; includeRemote: boolean },
 ): Promise<Worker[]> {
 	const workers: Worker[] = []
 	let cursor: string | undefined
 
 	do {
-		const args = ["orchestration", "worker-list", "--limit", PAGE_LIMIT]
+		const args = ["orchestration", "worker-list", "--limit", PAGE_LIMIT, "--run", options.run]
 		if (options.includeRemote) args.push("--include-remote")
-		if (options.run !== undefined) args.push("--run", options.run)
 		if (cursor !== undefined) args.push("--cursor", cursor)
 
 		const result = await orca(args)
+		if (readField(readField(result, "scope"), "source") === "all") {
+			throw new ShapeError("worker-list covered every Run instead of the one asked for")
+		}
+
 		workers.push(...readArray(result, "workers").map(parseWorker))
 		cursor = nextCursor(result)
 	} while (cursor !== undefined)

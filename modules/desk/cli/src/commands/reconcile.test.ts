@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test"
+import { failureOf } from "../github/testing/seed.ts"
 import { FakeOrca } from "../orca/testing/fake-orca.ts"
 import { SECTION, worker } from "../reconcile/testing/fixtures.ts"
 import { makeListingHarness } from "../reconcile/testing/github.ts"
@@ -59,5 +60,46 @@ describe("desk reconcile command", () => {
 		expect(JSON.parse(output[0] ?? "{}").mismatches).toMatchObject([
 			{ issue: 12, code: "unclaimed-worker" },
 		])
+	})
+
+	test("lists workers and tasks only in the project's own Run, so another project's worker is never touched", async () => {
+		const { fake, context, output, fakeOrca, deps } = setup()
+		fake.addIssue({
+			number: 12,
+			state: "CLOSED",
+			labels: ["request", "stage:done"],
+		})
+		fakeOrca.runs = [
+			{ id: "run_other", objective: "desk milkyskies/other" },
+			{ id: "run_kit", objective: "desk milkyskies/kit" },
+		]
+		fakeOrca.workers = [worker({ dispatchId: "ctx_other", taskId: "task_other" })]
+		fakeOrca.workerRuns.set("ctx_other", "run_other")
+		fakeOrca.tasks = [
+			{ id: "task_other", title: "#12 Other project", createdAt: "2026-10-16T13:00:00Z" },
+		]
+
+		await runWith(deps, [], context)
+
+		expect(JSON.parse(output[0] ?? "{}").mismatches).toEqual([])
+		expect(fakeOrca.called("worker-list", "--run", "run_kit")).toHaveLength(1)
+		expect(fakeOrca.called("task-list", "--run", "run_kit")).toHaveLength(1)
+	})
+
+	test("refuses when the project has no Run yet, and names the fix", async () => {
+		const { context, fakeOrca, deps } = setup()
+		fakeOrca.runs = []
+
+		const failure = await failureOf(runWith(deps, [], context))
+
+		expect(failure.code).toBe(1)
+		expect(failure.message).toContain("desk run")
+	})
+
+	test("refuses a worker list that covered every Run", async () => {
+		const { context, deps, fakeOrca } = setup()
+		fakeOrca.ignoreRunFlag = true
+
+		await expect(runWith(deps, [], context)).rejects.toThrow("every Run")
 	})
 })

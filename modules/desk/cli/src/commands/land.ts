@@ -7,17 +7,18 @@ import { readIssue, stageOf } from "../github/issue.ts"
 import { editLabels } from "../github/writes.ts"
 import { verifyStage } from "../guards.ts"
 import { listWorktrees, releaseWorker, removeWorktree } from "../orca/cleanup.ts"
-import { landedPullRequest } from "../reconcile/landed.ts"
 import { type OrcaDeps, realOrcaDeps } from "../orca/deps.ts"
 import { listHosts, machineOfHost } from "../orca/hosts.ts"
 import { OrcaError } from "../orca/runner.ts"
+import { requireRun } from "../orca/runs.ts"
 import { listWorkers } from "../orca/workers.ts"
+import { landedPullRequest } from "../reconcile/landed.ts"
 
 export type LandDeps = Pick<OrcaDeps, "orca">
 
-async function cleanUpWorker(deps: LandDeps, dispatch: string): Promise<string[]> {
+async function cleanUpWorker(deps: LandDeps, runId: string, dispatch: string): Promise<string[]> {
 	const failures: string[] = []
-	const workers = await listWorkers(deps.orca, { includeRemote: true })
+	const workers = await listWorkers(deps.orca, { run: runId, includeRemote: true })
 	const worker = workers.find((candidate) => candidate.dispatchId === dispatch)
 	if (!worker) return failures
 
@@ -58,7 +59,12 @@ export async function landIssue(deps: LandDeps, context: Context, number: number
 	const before = await readIssue(gh, repo, number)
 
 	if (landedPullRequest(before) === undefined) {
-		throw refusal("land", number, "the pull request named by the newest result is not merged, or the request was reopened since", "a merged result pull request")
+		throw refusal(
+			"land",
+			number,
+			"the pull request named by the newest result is not merged, or the request was reopened since",
+			"a merged result pull request",
+		)
 	}
 
 	const stage = stageOf(before)
@@ -88,7 +94,10 @@ export async function landIssue(deps: LandDeps, context: Context, number: number
 	}
 
 	const claim = owningClaim(after.comments)
-	const failures = claim === undefined ? [] : await cleanUpWorker(deps, claim.dispatch)
+	const failures =
+		claim === undefined
+			? []
+			: await cleanUpWorker(deps, await requireRun(deps.orca, repoSlug(repo)), claim.dispatch)
 	if (failures.length > 0) {
 		throw new DeskError(
 			EXIT.external,

@@ -3,10 +3,12 @@ import { parseArgs } from "node:util"
 
 import { parseOrUsage } from "../args.ts"
 import type { Command, Context } from "../context.ts"
+import { repoSlug } from "../github/gh.ts"
 import { type OrcaDeps, realOrcaDeps } from "../orca/deps.ts"
 import { isMachineReachable, listHosts } from "../orca/hosts.ts"
 import { readInbox } from "../orca/inbox.ts"
 import { OrcaError } from "../orca/runner.ts"
+import { requireRun } from "../orca/runs.ts"
 import { listWorkers } from "../orca/workers.ts"
 import { projectStateDirectory } from "../project/paths.ts"
 import { loadIssues } from "../reconcile/load.ts"
@@ -44,9 +46,11 @@ export async function runWith(
 	const hosts = await listHosts(orca)
 	const local = hosts.find((host) => host.kind === "local")
 
+	const run = await requireRun(orca, repoSlug(context.repo))
+
 	const watchDeps: WatchDeps = {
 		now: context.now,
-		workers: () => listWorkers(orca, { includeRemote: true }),
+		workers: () => listWorkers(orca, { run, includeRemote: true }),
 		mail: async () => {
 			try {
 				return await readInbox(orca)

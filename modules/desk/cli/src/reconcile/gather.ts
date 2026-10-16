@@ -13,7 +13,7 @@ export async function gatherInput(
 	orca: Orca,
 	section: DeskSection,
 	now: Date,
-	run?: string,
+	run: string,
 ): Promise<ReconcileInput> {
 	const workers = await listWorkers(orca, { run, includeRemote: true })
 	const tasks = await listTasks(orca, run)

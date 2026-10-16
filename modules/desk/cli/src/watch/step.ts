@@ -85,9 +85,7 @@ function baselineOf(issues: readonly IssueState[]): GithubBaseline {
 				.map((issue) => issue.number),
 		),
 		merged: new Set(
-			issues
-				.filter((issue) => landedPullRequest(issue) !== undefined)
-				.map((issue) => issue.number),
+			issues.filter((issue) => landedPullRequest(issue) !== undefined).map((issue) => issue.number),
 		),
 		humanComments: new Set(
 			waiting.flatMap((issue) =>

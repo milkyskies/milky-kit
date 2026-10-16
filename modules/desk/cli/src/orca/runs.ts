@@ -1,3 +1,4 @@
+import { DeskError, EXIT } from "../errors.ts"
 import { readArray, readField, readString } from "../json.ts"
 import type { Orca } from "./runner.ts"
 
@@ -28,6 +29,17 @@ export async function listRuns(orca: Orca): Promise<Run[]> {
 	} while (cursor !== undefined)
 
 	return runs
+}
+
+export async function requireRun(orca: Orca, repoSlug: string): Promise<string> {
+	const objective = runObjective(repoSlug)
+	const existing = (await listRuns(orca)).find((run) => run.objective === objective)
+	if (existing) return existing.id
+
+	throw new DeskError(
+		EXIT.refused,
+		`desk: no Orca Run is named "${objective}". Fix: run desk run in the coordinator terminal`,
+	)
 }
 
 export async function bindRun(

@@ -2,7 +2,9 @@ import { parseArgs } from "node:util"
 
 import { parseOrUsage } from "../args.ts"
 import type { Command, Context } from "../context.ts"
+import { repoSlug } from "../github/gh.ts"
 import { type OrcaDeps, realOrcaDeps } from "../orca/deps.ts"
+import { requireRun } from "../orca/runs.ts"
 import { reconcile } from "../reconcile/diff.ts"
 import { gatherInput } from "../reconcile/gather.ts"
 
@@ -17,7 +19,7 @@ export async function runWith(deps: OrcaDeps, args: string[], context: Context):
 		deps.orca,
 		await deps.loadSection(),
 		context.now(),
-		values.run,
+		values.run ?? (await requireRun(deps.orca, repoSlug(context.repo))),
 	)
 	const mismatches = reconcile(input)
 

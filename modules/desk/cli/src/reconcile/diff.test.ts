@@ -262,7 +262,9 @@ describe("desk reconcile", () => {
 
 	test("merged: only the pull request the newest result names counts", () => {
 		const pullRequests = [{ number: 44, state: "MERGED", isDraft: false, mergeable: "UNKNOWN" }]
-		const issues = [issue(12, CHECK, [claim("c_1", "ctx_y"), result("c_1", "45")], { pullRequests })]
+		const issues = [
+			issue(12, CHECK, [claim("c_1", "ctx_y"), result("c_1", "45")], { pullRequests }),
+		]
 
 		expect(codes({ issues })).toEqual([])
 	})

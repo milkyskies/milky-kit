@@ -23,6 +23,7 @@ describe("desk run", () => {
 	test("creates the Run when none exists, and a fresh coordinator then finds the same one", async () => {
 		const { context, output } = makeListingHarness()
 		const fakeOrca = new FakeOrca()
+		fakeOrca.runs = []
 
 		await runWith({ orca: fakeOrca.orca }, context)
 		await runWith({ orca: fakeOrca.orca }, context)
