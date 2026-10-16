@@ -24,7 +24,7 @@ User says any of: "abandon milky-kit", "remove all the kit's content from this p
 
 ## What does NOT get removed (and why)
 
-- **Scaffold files** (`.github/workflows/*.yml`, `biome.json`, `mise.toml`, `.ghlobes.toml`, `docker-compose.yml`, etc.). These were copied at retrofit/scaffold time and are project-owned forever — the user has likely edited them. The user can delete any they don't want manually.
+- **Scaffold files** (`.github/workflows/*.yml`, `biome.json`, `mise.toml`, `.github/scripts/setup-labels.sh`, `docker-compose.yml`, etc.). These were copied at retrofit/scaffold time and are project-owned forever — the user has likely edited them. The user can delete any they don't want manually.
 - **`CLAUDE.md`.** Owned by the project, especially the `## Project-specific` section. The kit never touches this.
 - **`.claude/rules/` symlinks pointing OUTSIDE the kit** — e.g. project-local rules the user wrote that live in the same directory. Only kit-pointed symlinks get removed.
 - **Real files in `.claude/rules/`.** If the user committed actual files (not symlinks) there, leave them alone and surface their existence.
@@ -74,7 +74,7 @@ User says any of: "abandon milky-kit", "remove all the kit's content from this p
    - .milky-kit-version
 
    Left in place (project-owned):
-   - Scaffold files: <list, e.g. .github/workflows/ci.yml, biome.json, mise.toml, .ghlobes.toml>
+   - Scaffold files: <list, e.g. .github/workflows/ci.yml, biome.json, mise.toml, .github/scripts/setup-labels.sh>
    - CLAUDE.md
    - <any non-symlink files in .claude/rules/ if present>
 
@@ -88,7 +88,7 @@ User says any of: "abandon milky-kit", "remove all the kit's content from this p
 - **Always survey + confirm before deleting.** No silent removal.
 - **Never `rm -rf`.** Only `rm` on individual symlinks + `.milky-kit-version`.
 - **Never delete real files** under `.claude/rules/` (only symlinks pointing into the kit).
-- **Never touch scaffold files** (`.github/workflows/*.yml`, `biome.json`, `mise.toml`, `.ghlobes.toml`, `docker-compose.yml`, `package.json`, `tsconfig.json`, etc.). These are project-owned.
+- **Never touch scaffold files** (`.github/workflows/*.yml`, `biome.json`, `mise.toml`, `.github/scripts/setup-labels.sh`, `docker-compose.yml`, `package.json`, `tsconfig.json`, etc.). These are project-owned.
 - **Never touch `CLAUDE.md`.** Always project-owned.
 - **Never touch machine-level state** (`~/.claude/kit`, the plugin, the marketplace). That's outside this skill's scope — point the user at `/plugin uninstall milky-kit@milkyskies` + `rm ~/.claude/kit` if they want that.
 - **Never run `git` commands.** Removed files show up in `git status`; let the user commit when they're ready.

@@ -20,11 +20,11 @@ User says any of: "scaffold a new project", "set up an Effect API", "new milky-k
    - `axum-api` — Rust + Axum + SeaORM + Postgres
    - `bun-scripts` — Bun + TS scripts
 
-2. **Composable modules** (multi-select): `ghlobes`, `security`, `ci`, `release-please`, `postgres`, `sqlite`, `pnpm` or `bun`. Default selections per template (`security` and `release-please` are always default — supply-chain workflows + dependabot + tagged releases):
-   - `effect-api` / `hono-api`: `ghlobes`, `security`, `release-please`, `ci`, `pnpm`, `postgres`
-   - `react-spa`: `ghlobes`, `security`, `release-please`, `ci`, `pnpm`
-   - `axum-api`: `ghlobes`, `security`, `release-please`, `ci`, `postgres`
-   - `bun-scripts`: `ghlobes`, `security`, `release-please`, `bun`
+2. **Composable modules** (multi-select): `issues`, `security`, `ci`, `release-please`, `postgres`, `sqlite`, `pnpm` or `bun`. Default selections per template (`security` and `release-please` are always default — supply-chain workflows + dependabot + tagged releases):
+   - `effect-api` / `hono-api`: `issues`, `security`, `release-please`, `ci`, `pnpm`, `postgres`
+   - `react-spa`: `issues`, `security`, `release-please`, `ci`, `pnpm`
+   - `axum-api`: `issues`, `security`, `release-please`, `ci`, `postgres`
+   - `bun-scripts`: `issues`, `security`, `release-please`, `bun`
 
 3. **Variants** (only when the chosen template has them). Read `~/.claude/kit/templates/<template>/variants/` to discover axes. Examples:
    - `hono-api`: `db` (d1/neon/supabase), `api_style` (rpc/openapi), `auth` (firebase/none)
@@ -85,7 +85,7 @@ User says any of: "scaffold a new project", "set up an Effect API", "new milky-k
 
    For a non-API Effect project (e.g. Matrix bot, MCP-only server, worker), the user picks `effect` plus only the adapter modules that actually apply. The retrofit skill exposes these as independent selections.
 
-   Composable-module rules (per the user's selections in step 2): `ghlobes/rules/glb.md`, `ci/rules/ci.md`, `security/rules/security.md`, `release-please/rules/release-please.md`, `pnpm/rules/pnpm-security.md`, `bun/rules/bun.md`, `postgres/rules/postgres.md`, etc.
+   Composable-module rules (per the user's selections in step 2): `issues/rules/issues.md`, `ci/rules/ci.md`, `security/rules/security.md`, `release-please/rules/release-please.md`, `pnpm/rules/pnpm-security.md`, `bun/rules/bun.md`, `postgres/rules/postgres.md`, etc.
 
    The symlinks point through `~/.claude/kit/` (absolute), so they survive the user moving project directories but require `~/.claude/kit/` to be set up on each machine (see kit README — `ln -s ~/Code/Projects/milky-kit ~/.claude/kit`).
 
@@ -190,9 +190,8 @@ User says any of: "scaffold a new project", "set up an Effect API", "new milky-k
     - Create the repo on GitHub. Direct link: <https://github.com/new> — or run `gh repo create <project-name> --private --source . --push` from the project directory.
     - Enable PR creation by Actions (needed for release-please): direct link <https://github.com/{{owner}}/{{repo}}/settings/actions> → scroll to **Workflow permissions** → check **Allow GitHub Actions to create and approve pull requests** → Save.
 
-    **If ghlobes module chosen:**
-    - Create the GitHub Project (Beta). Direct link for personal account: <https://github.com/users/{{owner}}/projects/new>. For an org: <https://github.com/orgs/{{owner}}/projects/new>. Pick "New project" → "Board" or "Table". Note the project number (e.g. `17`).
-    - Run `glb init` in the project dir. Interactive — it'll prompt for the project number you just noted. It'll create the Status/Priority/Points fields if missing.
+    **If issues module chosen:**
+    - Once the GitHub repo exists and `gh auth status` shows a signed-in account, run `.github/scripts/setup-labels.sh` from the project directory. It creates every stage, kind, ask, priority, points and type label, and it is safe to re-run.
 
     **If the project will publish to npm (e.g. `@scope/pkg`):**
     - Make sure the npm scope exists. If `@scope` is not yet registered: <https://www.npmjs.com/org/create> (free plan is fine for public packages).
@@ -209,5 +208,5 @@ User says any of: "scaffold a new project", "set up an Effect API", "new milky-k
 - **No PRs, no worktrees.** Work directly on `main`.
 - **Substitute `{{app_name}}` everywhere** — in path names and file contents.
 - **Don't overwrite files the user created** if the project directory already had content. If the directory isn't empty, ask before continuing; offer `retrofit` instead.
-- **Run `glb init` instructions** rather than running it directly — `glb init` is interactive (asks the user to pick a GitHub Project), so hand it off per the general "hand off interactive steps" rule.
+- **Run `setup-labels.sh` only after the GitHub repo exists.** The script needs an authenticated `gh` and a repository to label; if either is missing, hand the command to the user.
 - **One commit** for the initial scaffold. Don't split into ten small commits.

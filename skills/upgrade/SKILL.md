@@ -56,6 +56,29 @@ After all changes are applied (or skipped):
    - **Trusted Publisher** (if the project publishes to npm and the upgrade introduces a release.yml change): verify the publisher config still matches at <https://www.npmjs.com/package/{{package}}/access>. Workflow filename should match the entry-point (`release-please.yml` for the standard flow).
    - **Pending release-please PR?** If the project has open release PRs (from kit-side template changes that affect this project), link to them: <https://github.com/{{owner}}/{{repo}}/pulls?q=is%3Apr+is%3Aopen+label%3Aautorelease%3A+pending>.
 
+## Migration: ghlobes to issues
+
+Run this when the project's `.milky-kit-version` lists `ghlobes`, or `.claude/rules/glb.md` or `.ghlobes.toml` exists. Confirm with the user first, then walk the steps in order.
+
+1. **Rule link.** Remove the `.claude/rules/glb.md` symlink. Link `.claude/rules/issues.md` to `~/.claude/kit/modules/issues/rules/issues.md`. Replace `ghlobes` with `issues` in the module list inside `.milky-kit-version`.
+2. **Labels.** Copy `~/.claude/kit/modules/issues/scaffold/.github/scripts/setup-labels.sh` to `.github/scripts/setup-labels.sh`, make it executable, and run it. It needs only an authenticated `gh`.
+3. **Relabel every open issue** from its Projects status to its stage label, using this mapping:
+
+   | Projects status | Stage label |
+   |---|---|
+   | Backlog | `stage:backlog` |
+   | Todo | `stage:ready` |
+   | In Progress | `stage:working` |
+   | Needs Decision | `stage:needs-you` |
+   | In Review | `stage:check` |
+   | Done | `stage:done` (the issue is already closed; label it anyway) |
+
+   Read each status with `gh project item-list <project-number> --owner <owner> --format json --limit 200` (project number and owner come from `.ghlobes.toml`, so read them before step 4), or with `gh api graphql` against the project items. Apply the label with `gh issue edit <n> --add-label <stage label>`. An open issue with no status gets `stage:backlog`. Print the full issue-to-label table and get the user's go-ahead before editing anything.
+4. **Config.** Delete `.ghlobes.toml`.
+5. **Commit** the removed config, the new script and the relinked rule as `chore: move issue tracking from ghlobes to labels`.
+
+The old GitHub Project stays in place. The user can close or delete it once the labels look right.
+
 ## Things to be careful about
 
 - **User-customized scaffold files** — `biome.json` may have project-specific ignores, `package.json` may have unrelated deps. Always diff before overwriting.

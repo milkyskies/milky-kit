@@ -1,6 +1,6 @@
 ---
 name: retrofit
-description: Apply milky-kit conventions to an EXISTING project. Use when the user wants to add the kit's CI workflows, supply-chain security, biome config, ghlobes task tracking, CLAUDE.md rules, or @effect/vitest setup to a repository that already has code. Detects the current stack and merges rather than overwrites.
+description: Apply milky-kit conventions to an EXISTING project. Use when the user wants to add the kit's CI workflows, supply-chain security, biome config, label-based issue tracking, CLAUDE.md rules, or @effect/vitest setup to a repository that already has code. Detects the current stack and merges rather than overwrites.
 ---
 
 # Apply milky-kit to an existing repo
@@ -21,14 +21,14 @@ Before asking the user anything, scan the repo:
 - `tsconfig.json` exists? → record path; may need extends bumping.
 - `.github/workflows/` exists? → list current workflows; ask before adding `ci.yml` / `security.yml` if those names are already taken.
 - `CLAUDE.md` exists? → leave it alone. The kit loads rules from `.claude/rules/` symlinks now, not from `@`-refs in CLAUDE.md. Any existing `@`-ref list in a project's CLAUDE.md is harmless leftover; suggest cleanup only if the user asks.
-- `.ghlobes.toml` exists? → ghlobes already wired; skip the ghlobes module's scaffold but still offer the rule ref.
+- `.github/scripts/setup-labels.sh` exists? → issues module already wired; skip its scaffold but still offer the rule link.
 
 Report findings briefly. Then ask which modules to apply.
 
 ## Inputs to gather
 
 1. **Which composable modules to apply** (multi-select, only modules that make sense for the detected stack; default-on for `security` and `release-please` unless the user unchecks):
-   - `ghlobes` — task tracking via GitHub Issues + Projects
+   - `issues` — task tracking via GitHub Issues and stage labels (default-on)
    - `security` — runtime-neutral CI security workflow + dependabot + rules (default-on)
    - `release-please` — tagged releases via release-please (variant: `publish/none` for tag-only, `publish/npm` for npm Trusted Publishing). Default-on with `publish/none`; switch to `publish/npm` only if the project will publish to npm.
    - `ci` — CI scripts (check-package-scripts.sh)
@@ -122,7 +122,7 @@ Report findings briefly. Then ask which modules to apply.
    - For `.github/workflows/*.yml`: skip if file exists; show diff and ask if they want to replace.
    - For `.github/dependabot.yml` (ships with the `security` module): if missing, copy and prune ecosystem blocks the project doesn't use (no `package.json` anywhere → strip `npm` block; no `Cargo.toml` anywhere → strip `cargo` block; `github-actions` always stays). If present, leave it alone — the user owns it.
    - For `_<name>` underscore-prefixed config files (e.g. `_biome.json`): strip the leading underscore at the destination. Same as the `new` skill — the underscore exists in scaffold form only, never in consumed projects.
-   - For `.ghlobes.toml`: skip if present.
+   - For `.github/scripts/setup-labels.sh`: skip if present.
    - For `CLAUDE.md`: if missing, copy `~/.claude/kit/modules/core/scaffold/CLAUDE.md` (the minimal one) into the project. If present, leave it alone — rules now load from `.claude/rules/` symlinks, so any existing `@`-ref list in CLAUDE.md becomes redundant but harmless; suggest cleaning it up only if the user asks.
    - For `mise.toml`: if missing, generate it from the chosen modules following the same per-template `[tools]` + `[tasks.dev]` rules as the `new` skill. If present, ask before touching `[tools]`; offer to add missing `[tasks.check]`/`[tasks.fmt]`/`[tasks."db:setup"]` if absent.
    - For `AGENTS.md`: if the file ships with a literal `{{rule_refs}}` placeholder under '## Rules library', substitute it with the project's actual rule list (one `@.claude/rules/<rule>.md` per line, plus a one-line description). Reflects what was symlinked in step 1. Same format as the `new` skill's step 7a.
@@ -159,9 +159,8 @@ Report findings briefly. Then ask which modules to apply.
    - <https://www.npmjs.com/package/{{package}}/access> → scroll to **Trusted Publisher** → **Add** → **GitHub Actions** → fill: Organization=`{{owner}}`, Repository=`{{repo}}`, Workflow filename=`release-please.yml` (the CALLER workflow), Environment name=blank → Save.
    - If `@scope` doesn't exist yet on npm: <https://www.npmjs.com/org/create>.
 
-   **If `ghlobes` module applied and project doesn't yet have a GitHub Project:**
-   - Personal account: <https://github.com/users/{{owner}}/projects/new>. Org: <https://github.com/orgs/{{owner}}/projects/new>. Pick "New project" → "Board" or "Table". Note the project number.
-   - Then run `glb init` in the project dir (interactive — answers the project number prompt; creates the Status/Priority/Points fields if missing).
+   **If `issues` module applied:**
+   - Run `.github/scripts/setup-labels.sh` in the project directory. It needs only an authenticated `gh` (`gh auth status`) and is safe to re-run.
 
    **If `postgres` module applied:**
    - Start Docker Desktop (no link — open the app). Verify with `docker info`.
@@ -172,7 +171,7 @@ Report findings briefly. Then ask which modules to apply.
 ## Refuse to do
 
 - **Don't overwrite tests** or any `src/` content. The kit doesn't ship business code.
-- **Don't run `glb init`** — hand off to the user (interactive prompt).
+- **Don't run `setup-labels.sh` without an authenticated `gh`.** Check `gh auth status` first and hand the command to the user if it fails.
 - **Don't aggressively replace `tsconfig.json`** — projects often have careful customizations there.
 - **Don't strip user comments** from `package.json` / `biome.json` — preserve `//` keys.
 
