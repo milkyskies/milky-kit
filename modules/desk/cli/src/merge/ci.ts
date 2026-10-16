@@ -9,7 +9,7 @@ export type CiStatus =
 	| { kind: "passed" }
 
 const BLOCKED_MESSAGE =
-	/billing|spending limit|payments? (have )?failed|account (is )?locked|not started because/i
+	/account is locked due to a billing issue/
 const FAILED_CONCLUSIONS = [
 	"failure",
 	"timed_out",
