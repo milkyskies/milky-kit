@@ -42,7 +42,7 @@ ${closing}${extra}`
 }
 
 export async function failureOf(
-	promise: Promise<void>,
+	promise: Promise<unknown>,
 ): Promise<{ code: number; message: string }> {
 	try {
 		await promise
