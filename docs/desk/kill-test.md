@@ -162,6 +162,7 @@ Run on fresh issues 32, 33, 34. The coordinator was closed with C (34) in flight
 - The fresh coordinator released the claim (`desk:release`, reason `stopped`, 18:42:52Z) and `desk status 34` showed `attempts: 1`.
 - It dispatched C again only at 19:14:29Z, when the watchdog's 30-minute `tick` fired. The watchdog had started after the release, so its baseline already held issue 34 as `stage:ready` and no event woke the coordinator. The new worker (dispatch `ctx_e8ae507d8dbe`) used the kept worktree `34`.
 - **Pass**, with a 31-minute wait before the dispatch.
+- Both open items from this run, the wait for the tick and `orphan-claim` in the spec, are settled by the pull request for issue 188.
 
 ### Variant: two coordinators
 
@@ -185,8 +186,3 @@ None. No issue was filed.
 ### Cleanup
 
 `~/.config/desk/.env` deleted, receiver stopped, every worker released, and every run artifact removed. The scratch repository `milkyskies/desk-killtest` is not deleted yet: `gh repo delete` fails with HTTP 403 because the token lacks the `delete_repo` scope. Milky runs `gh auth refresh -h github.com -s delete_repo`, then `gh repo delete milkyskies/desk-killtest --yes`.
-
-## Open
-
-- **Dispatch after a release waits for the tick.** When the coordinator releases a claim in one pass, the request becomes dispatchable, but the watchdog started after that release holds it in its baseline and emits no event. The dispatch waited 31 minutes for the `tick`. Whether the watchdog should treat a dispatchable mismatch as an event is Milky's call.
-- **`orphan-claim` in the spec.** The variant text names `orphan-claim`; a closed worker terminal produces `unrecorded-result`.
