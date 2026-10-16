@@ -144,16 +144,16 @@ A comment the digest has pinged gets a trailing `<!-- desk:pinged at=<iso> -->` 
 - Posts each card, then the proposed body, then moves `stage:working` to `stage:needs-you`.
 - The worktree stays. The next attempt resumes in it.
 
-**`desk done <n> --dispatch <d> --pr <number> --summary "<one sentence>" (--picture <url>… | --no-picture "<why>") [--see "<how to see it>"]`**
+**`desk done <n> --dispatch <d> --pr <number> --summary "<one sentence>" (--picture <url>… | --no-picture "<why>") --checked "<text>" [--see "<how to see it>"]`**
 - Precondition: `stage:working`; the newest claim is `<d>`'s; the pull request is open, not a draft, and its body's first line is `closes #<n>`; GitHub does not report it `CONFLICTING`.
-- Composes the result comment (section 3), posts it, then moves `stage:working` to `stage:check`.
+- Composes the result comment (section 3), posts it, then moves `stage:working` to `stage:check`. Exits 2 without `--checked`.
 
 **`desk fail <n> --dispatch <d> --reason <file>`**
 - Precondition: `stage:working`; the newest claim is `<d>`'s.
 - Posts `<!-- desk:failed claim=<id> attempt=<k> -->` with what was tried and why each try failed, then moves the stage back to `stage:ready`. The coordinator reads the attempt count and escalates (section 4).
 
-**`desk release <n> --reason <silent-machine|no-worker|stopped|lost-race> [--claim <id>]`**
-- Used by the coordinator and the watchdog, never by a worker on its own claim.
+**`desk release <n> --reason <silent-machine|no-worker|stopped|lost-race|answered> [--claim <id>]`**
+- Used by the coordinator and the watchdog, never by a worker on its own claim. `answered` is written only by `desk answer`.
 - Precondition: `stage:working`. With `--claim`, the newest claim must be that id, so a release never hits a claim made after the caller looked.
 - Posts `<!-- desk:release claim=<id> reason=<reason> -->`, then moves the stage to `stage:ready`.
 
@@ -164,7 +164,7 @@ A comment the digest has pinged gets a trailing `<!-- desk:pinged at=<iso> -->` 
 **`desk answer <n> --body <file> --decision "<one line>"`**
 - The human's side, called by `/decisions` and later by the desk app.
 - Precondition: `stage:needs-you`.
-- Posts the answer with no agent marker, appends `- <date>: <decision>` to the body's `## Decisions` section, then moves the stage to `stage:ready`.
+- Posts the answer with no agent marker, appends `- <date>: <decision>` to the body's `## Decisions` section, posts `<!-- desk:release claim=<id> reason=answered -->` for the newest claim, then moves the stage to `stage:ready`. The release is what lets the next `desk claim` pass its "no newest claim" check. A release with `reason=answered` is not counted as an attempt.
 
 **`desk propose --from <n> --title "<title>" --type <type> --body <file>`**
 - Files a side topic as a proposed request. The body must contain `## Problem`.
@@ -240,9 +240,10 @@ Two more things land on the Issue during the work, not at the end. Each small ca
 
 **See it yourself:** `mise run dev`, then open /login
 **Pull request:** #45
-**Decisions used:** the lines of `## Decisions` this work relied on, copied
+**Decisions used:** every line of `## Decisions` in the description, copied, or `none`
 **Small calls:** 3, listed under `## Small calls` in the description
-**Checked before done:** merged origin/main at abc1234 with no conflicts; nothing used was removed upstream; nothing contradicts `## Decisions`.
+**Verified by desk:** the pull request is not `CONFLICTING`, and its head contains main at abc1234 (`behind_by` 0).
+**Worker says:** nothing used was removed upstream; nothing contradicts `## Decisions`.
 **Proposed requests:** #51
 
 Reply `looks good` to merge, or `no, because …` to send it back.
@@ -250,7 +251,7 @@ Reply `looks good` to merge, or `no, because …` to send it back.
 <!-- desk:agent -->
 ```
 
-With `--no-picture`, the picture line reads `No picture: <why>`. The worker rule says visual work always has a picture.
+`Worker says` is the text of `--checked`, the worker's own statement of the judgment checks. `Verified by desk` holds only what the program proved itself, so the comment never presents a claim as verified that nobody checked. With `--no-picture`, the picture line reads `No picture: <why>`. The worker rule says visual work always has a picture.
 
 The `## Decisions` and `## Small calls` sections in the Issue body are owned by the program. `desk answer` and `desk note` append to them; nothing else edits the body, except the approved proposed-body flow in `/decisions`.
 
@@ -667,3 +668,5 @@ Each line can be overturned.
 - Auto-decided: the `autopilot` label keeps its name as the consent gate, over renaming it with the module, because renaming a label touches every open issue in every project, and the label's meaning did not change.
 - Auto-decided: `desk merge` runs in a temporary worktree on the coordinator's machine, over the request's own worktree, because the request's worktree may sit on another machine.
 - Auto-decided: the coordinator, not this design, files the build tasks as issues, because issue filing belongs to the run that schedules them.
+- Auto-decided: `desk answer` releases the parked claim, over `desk claim` treating old claims as stale, because every state change stays an explicit comment.
+- Auto-decided: the result comment splits `Checked before done` into `Verified by desk` and `Worker says` (a required `--checked` flag), over one line the program writes, because the program can prove only the conflict state and main's ancestry, and the judgment checks must not read as verified.
