@@ -1,6 +1,8 @@
 import { parseJson, readNumber } from "../json.ts"
+import type { Claim } from "./derive.ts"
 import type { Gh, Repo } from "./gh.ts"
 import { repoSlug } from "./gh.ts"
+import { composeComment } from "./markers.ts"
 
 export async function postComment(
 	gh: Gh,
@@ -49,4 +51,25 @@ export async function moveStage(
 
 export async function editBody(gh: Gh, repo: Repo, issue: number, body: string): Promise<void> {
 	await gh(["issue", "edit", String(issue), "--repo", repoSlug(repo), "--body-file", "-"], body)
+}
+
+export async function releaseClaims(
+	gh: Gh,
+	repo: Repo,
+	issue: number,
+	claims: readonly Claim[],
+	reason: string,
+): Promise<void> {
+	for (const claim of claims) {
+		await postComment(
+			gh,
+			repo,
+			issue,
+			composeComment(
+				"release",
+				{ claim: claim.id, reason },
+				`Released claim ${claim.id}: ${reason}.`,
+			),
+		)
+	}
 }

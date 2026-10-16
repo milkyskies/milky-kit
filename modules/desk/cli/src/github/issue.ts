@@ -14,6 +14,7 @@ const ISSUE_QUERY = `query($owner: String!, $name: String!, $number: Int!, $befo
         pageInfo { hasPreviousPage startCursor }
         nodes { id databaseId body createdAt }
       }
+      userContentEdits(first: 1) { totalCount }
       blockedBy(first: 20) { nodes { number state } }
       subIssues(first: 50) { nodes { number state } }
       closedByPullRequestsReferences(first: 5, includeClosedPrs: true) {
@@ -34,6 +35,7 @@ export type IssueState = {
 	number: number
 	open: boolean
 	body: string
+	bodyEdits: number
 	labels: string[]
 	assignees: string[]
 	comments: ParsedComment[]
@@ -93,6 +95,7 @@ export function parseIssue(raw: string): IssueState {
 		number: readNumber(issue, "number"),
 		open: readString(issue, "state") === "OPEN",
 		body: readString(issue, "body"),
+		bodyEdits: readNumber(readField(issue, "userContentEdits"), "totalCount"),
 		labels: nodesOf(issue, "labels").map((node) => readString(node, "name")),
 		assignees: nodesOf(issue, "assignees").map((node) => readString(node, "login")),
 		comments: parseComments(nodesOf(issue, "comments").map(toComment)),

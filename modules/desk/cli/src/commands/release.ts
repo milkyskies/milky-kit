@@ -2,11 +2,10 @@ import { parseArgs } from "node:util"
 
 import { parseNumber, parseOrUsage, requireFlag } from "../args.ts"
 import { type Command, emit } from "../context.ts"
-import { refusal, usageError } from "../errors.ts"
-import { owningClaim } from "../github/derive.ts"
-import { readIssue } from "../github/issue.ts"
-import { composeComment } from "../github/markers.ts"
-import { moveStage, postComment } from "../github/writes.ts"
+import { mismatch, refusal, usageError } from "../errors.ts"
+import { activeClaims, owningClaim } from "../github/derive.ts"
+import { hasStage, readIssue } from "../github/issue.ts"
+import { moveStage, releaseClaims } from "../github/writes.ts"
 import { describeState, requireStage, verifyStage } from "../guards.ts"
 
 const REASONS = ["silent-machine", "no-worker", "stopped", "lost-race"]
@@ -27,42 +26,59 @@ export const run: Command = async (args, context) => {
 
 	const { gh, repo } = context
 	const before = await readIssue(gh, repo, number)
+	const active = activeClaims(before.comments)
 
-	requireStage("release", before, "stage:working")
+	const target =
+		values.claim === undefined
+			? requireWorkingClaim(before, number)
+			: active.find((claim) => claim.id === values.claim)
+	if (!target) {
+		throw refusal(
+			"release",
+			number,
+			`claim ${values.claim} is not an unreleased claim (${describeState(before)})`,
+			"an unreleased claim",
+		)
+	}
 
-	const claim = owningClaim(before.comments)
+	await releaseClaims(gh, repo, number, [target], reason)
+
+	const remaining = active.filter((claim) => claim.id !== target.id)
+	const returnsToReady = hasStage(before, "stage:working") && remaining.length === 0
+	if (returnsToReady) await moveStage(gh, repo, number, "stage:working", "stage:ready")
+
+	const after = await readIssue(gh, repo, number)
+	if (activeClaims(after.comments).some((claim) => claim.id === target.id)) {
+		throw mismatch(
+			"release",
+			number,
+			describeState(before),
+			describeState(after),
+			`claim ${target.id} released`,
+		)
+	}
+	if (returnsToReady) verifyStage("release", before, after, "stage:ready")
+
+	emit(context, `#${number} released ${target.id}: ${reason}`, {
+		issue: number,
+		stage: returnsToReady ? "stage:ready" : describeState(after),
+		claim: target.id,
+		reason,
+	})
+}
+
+function requireWorkingClaim(issue: Parameters<typeof describeState>[0], number: number) {
+	requireStage("release", issue, "stage:working")
+
+	const claim = owningClaim(issue.comments)
 	if (!claim) {
 		throw refusal(
 			"release",
 			number,
-			`there is no claim to release (${describeState(before)})`,
-			"a newest claim",
+			`there is no claim to release (${describeState(issue)})`,
+			"an owning claim",
 		)
 	}
 
-	if (values.claim !== undefined && claim.id !== values.claim) {
-		throw refusal("release", number, `the newest claim is ${claim.id}`, `claim ${values.claim}`)
-	}
-
-	await postComment(
-		gh,
-		repo,
-		number,
-		composeComment(
-			"release",
-			{ claim: claim.id, reason },
-			`Released claim ${claim.id}: ${reason}.`,
-		),
-	)
-	await moveStage(gh, repo, number, "stage:working", "stage:ready")
-
-	const after = await readIssue(gh, repo, number)
-	verifyStage("release", before, after, "stage:ready")
-
-	emit(context, `#${number} → stage:ready (released ${claim.id}: ${reason})`, {
-		issue: number,
-		stage: "stage:ready",
-		claim: claim.id,
-		reason,
-	})
+	return claim
 }

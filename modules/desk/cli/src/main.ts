@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs"
 import { join } from "node:path"
 
-import type { Command, Context } from "./context.ts"
+import type { BaseContext, Command, RepoFreeCommand } from "./context.ts"
 import { DeskError, EXIT } from "./errors.ts"
 import { type Gh, GhError, resolveRepo, spawnGh } from "./github/gh.ts"
 
@@ -29,11 +29,19 @@ function splitGlobals(argv: string[]): Globals {
 	return { repo, json, rest }
 }
 
+type LoadedCommand = { kind: "repo"; run: Command } | { kind: "repo-free"; run: RepoFreeCommand }
+
+function exportedFunction(loaded: unknown, key: string): unknown {
+	return typeof loaded === "object" && loaded !== null && key in loaded
+		? Reflect.get(loaded, key)
+		: undefined
+}
+
 function isCommand(value: unknown): value is Command {
 	return typeof value === "function"
 }
 
-async function loadCommand(name: string | undefined): Promise<Command> {
+async function loadCommand(name: string | undefined, directory: string): Promise<LoadedCommand> {
 	if (name === undefined || !COMMAND_NAME.test(name)) {
 		throw new DeskError(
 			EXIT.usage,
@@ -41,16 +49,21 @@ async function loadCommand(name: string | undefined): Promise<Command> {
 		)
 	}
 
-	const path = join(import.meta.dir, "commands", `${name}.ts`)
+	const path = join(directory, `${name}.ts`)
 	if (!existsSync(path)) throw new DeskError(EXIT.usage, `desk: unknown command "${name}"`)
 
 	const loaded: unknown = await import(path)
-	const run =
-		typeof loaded === "object" && loaded !== null && "run" in loaded ? loaded.run : undefined
-	if (!isCommand(run))
-		throw new DeskError(EXIT.usage, `desk: command "${name}" exports no run function`)
+	const repoFree = exportedFunction(loaded, "runWithoutRepo")
+	if (isRepoFree(repoFree)) return { kind: "repo-free", run: repoFree }
 
-	return run
+	const run = exportedFunction(loaded, "run")
+	if (isCommand(run)) return { kind: "repo", run }
+
+	throw new DeskError(EXIT.usage, `desk: command "${name}" exports no run function`)
+}
+
+function isRepoFree(value: unknown): value is RepoFreeCommand {
+	return typeof value === "function"
 }
 
 function isWrite(args: readonly string[]): boolean {
@@ -61,7 +74,13 @@ function isWrite(args: readonly string[]): boolean {
 	return args.includes("-X") && method !== undefined && method !== "GET"
 }
 
-export async function main(argv: string[], baseGh: Gh = spawnGh): Promise<number> {
+const COMMANDS_DIRECTORY = join(import.meta.dir, "commands")
+
+export async function main(
+	argv: string[],
+	baseGh: Gh = spawnGh,
+	commandsDirectory: string = COMMANDS_DIRECTORY,
+): Promise<number> {
 	let wrote = false
 	const gh: Gh = (args, input) => {
 		if (isWrite(args)) wrote = true
@@ -73,10 +92,9 @@ export async function main(argv: string[], baseGh: Gh = spawnGh): Promise<number
 	const [name, ...args] = rest
 
 	try {
-		const command = await loadCommand(name)
-		const context: Context = {
+		const command = await loadCommand(name, commandsDirectory)
+		const base: BaseContext = {
 			gh,
-			repo: await resolveRepo(gh, repoFlag),
 			json,
 			now: () => new Date(),
 			newId: () => crypto.randomUUID().replaceAll("-", "").slice(0, 6),
@@ -85,7 +103,11 @@ export async function main(argv: string[], baseGh: Gh = spawnGh): Promise<number
 			readBytes: async (path) => new Uint8Array(await Bun.file(path).arrayBuffer()),
 		}
 
-		await command(args, context)
+		if (command.kind === "repo-free") {
+			await command.run(args, { ...base, resolveRepo: () => resolveRepo(gh, repoFlag) })
+		} else {
+			await command.run(args, { ...base, repo: await resolveRepo(gh, repoFlag) })
+		}
 
 		return 0
 	} catch (error) {

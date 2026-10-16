@@ -1,9 +1,8 @@
 import { usageError } from "./errors.ts"
 import type { Gh, Repo } from "./github/gh.ts"
 
-export type Context = {
+export type BaseContext = {
 	gh: Gh
-	repo: Repo
 	json: boolean
 	now: () => Date
 	newId: () => string
@@ -13,7 +12,13 @@ export type Context = {
 	sleep?: (milliseconds: number) => Promise<void>
 }
 
+export type Context = BaseContext & { repo: Repo }
+
+export type RepoFreeContext = BaseContext & { resolveRepo: () => Promise<Repo> }
+
 export type Command = (args: string[], context: Context) => Promise<void>
+
+export type RepoFreeCommand = (args: string[], context: RepoFreeContext) => Promise<void>
 
 export function emit(context: Context, text: string, data: Record<string, unknown>): void {
 	context.out(context.json ? JSON.stringify(data) : text)
