@@ -189,13 +189,14 @@ A comment the digest has pinged gets a trailing `<!-- desk:pinged at=<iso> -->` 
   2. `git merge origin/main`. A conflict exits 1 with the conflicting files. The coordinator sends the request back to a worker (section 4).
   3. Run the project's check command from `## desk` (default `mise run check`). A failure exits 1 with the first failing line.
   4. Push.
-  5. Read the pull request's checks. Configured and failing: exit 1. No workflow configured: print `no CI configured`. Actions disabled or blocked by billing: print `CI blocked`. Either fact goes into the merge comment, and neither waits (relayed).
-  6. `gh pr merge <pr> --merge`. Merge commits only; the kit never squashes or rebases.
-  7. Post `<!-- desk:merge pr=<pr> ci=<passed|none|blocked> check=<passed> -->`, then run `desk land <n>`.
-  8. Remove the temporary worktree.
+  5. Read the pushed commit's checks. No workflow configured: print `no CI configured`. Actions disabled or blocked by billing: print `CI blocked`. Either fact goes into the merge comment, and neither waits, because the local check in step 3 already ran (relayed). With workflows configured and not blocked, poll the pushed commit's check runs every 20 seconds until they finish. A failure exits 1, and so does `--ci-timeout` (default 20 minutes) running out.
+  6. Re-read the issue. Exit 1 unless it is still `stage:check` and the newest human comment is still a `looks good` newer than the result, because the local check takes minutes and a `no, because …` may have arrived meanwhile.
+  7. `gh pr merge <pr> --merge --match-head-commit <sha>`, where `<sha>` is the commit that passed the check, so a push after the check cannot merge unchecked. Merge commits only; the kit never squashes or rebases.
+  8. Post `<!-- desk:merge pr=<pr> ci=<passed|none|blocked> check=<passed> -->`, then run `desk land <n>`.
+  9. Remove the temporary worktree.
 
 **`desk land <n>`**
-- Precondition: the linked pull request is merged. Idempotent.
+- Precondition: the pull request named by the newest `desk:result` comment is merged, and no `desk:reopen` or `desk:claim` comment is newer than that result. An old merged pull request on a reopened request never counts. Idempotent.
 - Moves the stage to `stage:done` and closes the issue with `Merged.` if it is still open.
 - Releases the Orca worker named by the owning claim (`orca orchestration worker-release --dispatch <d>`) and removes its worktree (`orca worktree rm`). A failed Orca step prints its error and exits 3. The GitHub state is already correct, so the next pass retries only the cleanup.
 - Pressing Merge in the GitHub app ends here too: the next reconcile pass sees the merged pull request and runs `desk land` (relayed).
@@ -273,7 +274,7 @@ The coordinator is a Sonnet session at medium effort (plan), started with `/milk
 ### Inputs
 
 - **GitHub**: one GraphQL query for every open issue with its labels, assignees, body, the last 50 comments, and `closedByPullRequestsReferences` with each pull request's state, draft flag and mergeable state. Plus closed issues whose stage is not `stage:done`.
-- **Orca**: `orca orchestration worker-list --run <run> --include-remote --json`, every page, joined with `task-list` for task titles. A worker belongs to issue `#n` when its task title starts with `#n ` (the coordinator sets that title at start) or when the owning claim on `#n` names its dispatch id.
+- **Orca**: `orca orchestration worker-list --run <run> --include-remote --json`, every page, always with the `desk <owner>/<repo>` Run (the commands refuse when it does not exist, and when Orca reports the list covered every Run), so another project's worker is never joined to this project's issue. It is joined with `task-list` for task titles. A worker belongs to issue `#n` when its task title starts with `#n ` (the coordinator sets that title at start) or when the owning claim on `#n` names its dispatch id.
 - **The `## desk` section** of `CLAUDE.md`, for the machines and the worker limit.
 
 ### The diff
@@ -282,14 +283,14 @@ The coordinator is a Sonnet session at medium effort (plan), started with `/milk
 |---|---|---|---|
 | `dispatch` | `stage:ready`, `autopilot`, unblocked, no open sub-issue | no live worker for `#n` | Route (`reference/routing.md`), then `worker-start` (below). Only while live workers are under the machine's limit. |
 | `escalate` | as `dispatch`, attempts ≥ 2 | no live worker | Dispatch one tier up: Haiku to Sonnet. A Sonnet request at 2 attempts goes to the coordinator itself, which parks it with a card listing what was tried (plan). |
-| `orphan-claim` | `stage:working`, owning claim names dispatch D | D is `exited`, released or absent, and the claim is older than 10 minutes | `desk release --claim <id> --reason no-worker`. It becomes `dispatch` or `escalate` on the next pass. |
+| `orphan-claim` | `stage:working`, owning claim names dispatch D | D is `exited`, released or absent, and the claim is older than 10 minutes. A claim on a remote machine whose worker row is absent waits for the silent-machine rule instead, because a missing remote row may only mean the remote listing is incomplete. | `desk release --claim <id> --reason no-worker`. It becomes `dispatch` or `escalate` on the next pass. |
 | `unclaimed-worker` | `stage:ready` | a live worker titled `#n`, started more than 10 minutes ago | The worker never claimed. Read the tail of its terminal, `worker-stop` it, and let the next pass dispatch again. |
 | `unrecorded-result` | `stage:working`, claim names D | D sent `worker_done`, or sits idle at its prompt | Send to D's terminal: "Record your result on #n with desk done, desk park or desk fail, then send worker_done again." If the terminal is gone, `desk release --reason stopped`. |
 | `parked-worker` | `stage:needs-you`, claim names D | D is live | `worker-release --dispatch D`. The worktree stays for the next attempt. |
 | `looks-good` | `stage:check`, newest human comment starts `looks good` | any | `desk merge`. On a conflict or failing check, dispatch a merge worker (Sonnet, low effort) into the request's worktree. |
 | `rejected` | `stage:check`, newest human comment's first word is `no` | any | `desk reopen`. |
 | `conversation` | `stage:check` or `stage:needs-you`, a human comment that is neither | any | Forward the comment to the request's worker if it is live. Otherwise dispatch a reply-only worker (Sonnet, low effort): answer on the Issue, change no code, move no stage. |
-| `merged` | linked pull request merged, stage not `stage:done` | any | `desk land`. |
+| `merged` | the pull request named by the newest result is merged, no reopen or claim is newer, stage not `stage:done` | any | `desk land`. |
 | `check-red` | `stage:check`, pull request `CONFLICTING` | any | Send the request back to its worker if live, otherwise dispatch a merge worker (Sonnet, low effort). |
 | `stray-worker` | issue closed or `stage:done` | a live worker for `#n` | `worker-stop`, then `worker-release`. |
 | `human-claimed` | `stage:working` with no `desk:claim` comment | any | Change nothing. Report it in the digest pass. A person or another session claimed it with plain `gh`, and desk does not own work it did not claim: never release, requeue or dispatch it. |
@@ -394,7 +395,7 @@ The same set of failed checks on the same machine pings once per 6 hours. The re
 | A worker never started | idle for 10 minutes from the start of the watch | wakes: `worker-idle` |
 | A worker hung | working, but no heartbeat for 20 minutes (the preamble sends one every 5) | wakes: `worker-hung` |
 | A worker gone | `projection.liveness.verdict` is `exited` | wakes: `worker-gone` |
-| A machine gone | `orca status --environment <m>` unreachable on every poll for 15 minutes | runs `desk release --claim <id> --reason silent-machine` for each claim on that machine, then wakes: `machine-silent` |
+| A machine gone | `orca status --environment <m>` unreachable on every poll for 15 minutes. A poll counts only when the local `orca status` answered and reachable; a failing local Orca skips the poll, because it says nothing about the remote machine. | runs `desk release --claim <id> --reason silent-machine` for each claim on that machine, then wakes: `machine-silent` |
 
 A reachable machine whose worker is merely quiet is the stalled-worker case, never a hand-back (relayed).
 
@@ -673,7 +674,7 @@ Each line can be overturned.
 - Auto-decided: the coordinator, not this design, files the build tasks as issues, because issue filing belongs to the run that schedules them.
 - Auto-decided: `desk answer` releases the parked claim, over `desk claim` treating old claims as stale, because every state change stays an explicit comment.
 - Auto-decided: the result comment splits `Checked before done` into `Verified by desk` and `Worker says` (a required `--checked` flag), over one line the program writes, because the program can prove only the conflict state and main's ancestry, and the judgment checks must not read as verified.
-- Auto-decided: `desk merge` records `ci=pending` when check runs exist but have not finished or none exist yet, over waiting or leaving it out, because the push has usually created no runs yet and merging never waits on checks.
+- Auto-decided: `desk merge` polls the pushed commit's checks to completion with a 20-minute timeout when workflows exist and are not billing-blocked, over merging on `pending`, because right after the push no run has finished and a failing pull request would merge every time.
 - Auto-decided: idle detection reads `projection.stage.activity` from `worker-list`, over `orca worktree ps`, because both come from the same agent status and `worker-list` also covers remote workers.
 - Auto-decided: `desk digest` keeps a local `badlabels-pinged.json` so a `bad-labels` issue pings once per label set, over a marker on GitHub, because the issue has no comment to mark, and a lost file only repeats a ping.
 - Auto-decided: the ntfy sender and the merge helpers live in `src/ping/` and `src/merge/`, over `src/watch/`, because neither belongs to the watchdog.
