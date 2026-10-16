@@ -4,7 +4,7 @@ The kill test proves that killing the desk coordinator mid-run and starting a fr
 
 The coordinator was killed with all three requests in flight and the fresh one finished the work without any handoff. Ten assertions were checked: eight held and two failed. Both failures have one cause, which is that `desk land` cannot remove a worktree that holds untracked files. Two checks need Milky's phone and stay pending.
 
-**Status.** run once end to end, two assertions failed (issue 180), so the run must be repeated after the fix · **Owns.** the observed state of each kill test step
+**Status.** run twice end to end; the second run failed two assertions (issue 183), so the run must be repeated after that fix · **Owns.** the observed state of each kill test step
 
 ## How the run was set up
 
@@ -78,3 +78,49 @@ Pings in the receiver log, in order, each once:
 ## Open
 
 - **Preflight without ping settings** ([issue 179](https://github.com/milkyskies/milky-kit/issues/179)). A project cannot run the desk without ntfy settings today.
+
+## Run 2: after the fix for issue 180
+
+The second run repeats section 12 against the same scratch repository once `desk land` removes worktrees that hold only untracked files ([pull request 181](https://github.com/milkyskies/milky-kit/pull/181)). Ten assertions were checked: eight held and two failed. The fix for issue 180 works, and a different leftover worktree is now the failure.
+
+### How run 2 was set up
+
+- Fix check before the reset: `desk land 6`, `7` and `8` on the first run's merged issues each printed `removed untracked files with the worktree: .serena/` and removed the worktree.
+- The first run's scripts were removed from the scratch repository's `main` in a commit, its branches were deleted, and fresh issues were filed.
+- A first attempt (issues 12 to 14) parked A: the new worktree had no `node_modules`, so the worker could not run `bun run check` and asked whether it may run `bun install`. That is a gap in the scratch repository, not in the desk. The attempt was closed unmerged, the scratch `CLAUDE.md` gained the line "After entering a worktree, run `bun install` in `apps/scripts`" under Project-specific, and the run restarted with issues 15 (A), 16 (B) and 17 (C). The first run's workers had installed on their own.
+- The ping receiver and the temporary `~/.config/desk/.env` were set up as in run 1 and removed at the end. The coordinator again ran as Opus 5.5 with high effort.
+
+### Steps and observed state
+
+| Step | Observed |
+|---|---|
+| 3 | Issues 15, 16, 17 filed with `request,stage:ready,autopilot,priority:P2,points:1,type:feature` (B also `ask:everything`, C with the `sleep 600` line). |
+| 4 to 6 | Coordinator started 17:04:57Z, lock pid 18655. All three issues `stage:working` with one claim each. Terminal closed 17:06:58Z. |
+| 7, 8 | A `stage:check`, B `stage:needs-you` by 17:07:27Z, C `stage:working`. The lock names pid 18655, which is dead, and no `desk watch` process remained. **Pass.** |
+| 9, 10 | In the new terminal, `desk run` then `orca orchestration check --json` returned nine unread messages (some from the abandoned attempt). Acknowledged before the coordinator started at 17:08Z. |
+| 11 | The pass ran and the lock names pid 32695. **Pass.** |
+| 12 | `{"mismatches":[]}`. **Pass.** |
+| 13 | Issue 15: `desk:claim`, `desk:result`. Issue 16: `desk:claim`, `desk:decision`, `desk:proposed`. Issue 17: `desk:claim`. **Pass.** |
+| 14 | One live worker for C (`ctx_6a62ee967627`), none running for A (`succeeded`, `reclaimable`) or B. **Pass.** |
+| 15 | One request in the receiver log at 17:08:24Z: `desk-killtest: 1 decision waiting, 1 done to check` and a link, no title. Issues 15 and 16 each carry one `desk:pinged` marker. **Pass.** Arrival on the phone is **pending Milky**. |
+| 16 | `/milky-kit:decisions` answered "goodbye" and edited the proposed body. Issue 16 returned to `stage:ready`. The new worker started in a **new** worktree `16-2` (branch `milkyskies/16-2`, pull request 19) and the kept worktree `16` stayed untouched. Issue 16 reached `stage:check`. **Fail**, see below. |
+| 17 | `looks good` on issue 15: pull request 18 merged with a merge commit at 17:12Z, issue closed at `stage:done`, worktree `15` removed. **Pass.** The fix for issue 180 holds. |
+| 18 | `no, because the count should start at 0` on issue 17: `desk:reopen` and `desk:release` (reason `reopened`), then the rebuild worker parked a design card, because the reason does not say where the count ends (ten lines from 0 end at 9, the title says 10). `/milky-kit:decisions` was answered "0 through 10". The auto-mode check blocked the body swap in that session, so the answer was applied by hand (`gh issue comment` with the old body, then `gh issue edit`) and then `desk answer` ran. Issue 17 was rebuilt, reached `stage:check`, and `looks good` merged it. **Pass**, with the extra card. The desk behaved as designed, and the step's rejection text is ambiguous against the issue text. |
+| 19 | All three issues closed at `stage:done`, `desk reconcile` empty, no worker running. Worktree `16` remains on disk. **Fail**, see below. |
+
+Pings in the receiver log, each once: 17:08:24Z (`1 decision waiting, 1 done to check`), 17:14:19Z (`1 done to check`, issue 16), 17:20:16Z (`1 decision waiting`, issue 17's card). Neither result of issue 17 was pinged: the first was rejected before the next digest, and the second was approved within a minute.
+
+### Failed assertions in run 2
+
+| Steps | Observed | Issue |
+|---|---|---|
+| 16, 19 | A request parked on `stage:needs-you` keeps its worktree, and the coordinator started the answered request in a second worktree `16-2` with `--worktree new-child --name 16`. After the merge `desk land` removed `16-2` and left the unused `16`. In run 1 the same step reused worktree `7`. | [183](https://github.com/milkyskies/milky-kit/issues/183) |
+
+### Not run
+
+The variants were not run, because the rule is to run them only when every assertion passes. The scratch repository `milkyskies/desk-killtest` stays for the repeat after issue 183, with worktree `16` on disk.
+
+### Pending Milky
+
+- Each ping arrived once on the phone.
+- The inline picture renders in the GitHub mobile app for a private repository.
