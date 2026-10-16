@@ -12,6 +12,7 @@ function setup(options: { workflows?: boolean; check?: string } = {}) {
 	const harness = makeListingHarness()
 	const fakeOrca = new FakeOrca()
 	const shell = new FakeShell()
+	const clock: { ms: number; onSleep: (() => void) | undefined } = { ms: 0, onSleep: undefined }
 	const { fake } = harness
 
 	fake.pullRequests.set(
@@ -48,9 +49,14 @@ function setup(options: { workflows?: boolean; check?: string } = {}) {
 		}),
 		shell: shell.shell,
 		hasWorkflows: async () => options.workflows ?? false,
+		sleep: async (milliseconds: number) => {
+			clock.ms += milliseconds
+			clock.onSleep?.()
+		},
+		nowMs: () => clock.ms,
 	}
 
-	return { ...harness, fakeOrca, shell, deps }
+	return { ...harness, fakeOrca, shell, deps, clock }
 }
 
 describe("desk merge", () => {
@@ -168,13 +174,69 @@ describe("desk merge", () => {
 		expect(fake.callsMatching(["pr", "merge"])).toHaveLength(0)
 	})
 
-	test("does not wait for CI that is still running", async () => {
-		const { context, output, extras, deps } = setup({ workflows: true })
+	test("waits for CI that is still running, then merges once it passes", async () => {
+		const { context, output, extras, clock, deps } = setup({ workflows: true })
 		extras.checkRuns = [{ id: 9, name: "ci", status: "in_progress", conclusion: null }]
+		clock.onSleep = () => {
+			extras.checkRuns = [{ id: 9, name: "ci", status: "completed", conclusion: "success" }]
+		}
 
 		await runWith(deps, ["12"], context)
 
-		expect(output[0]).toContain("CI still running when merged")
+		expect(clock.ms).toBe(20_000)
+		expect(output[0]).toContain("CI passed")
+	})
+
+	test("refuses when CI never reports within the timeout, and merges nothing", async () => {
+		const { fake, context, clock, deps } = setup({ workflows: true })
+
+		const failure = await failureOf(runWith(deps, ["12", "--ci-timeout", "2m"], context))
+
+		expect(failure.code).toBe(1)
+		expect(failure.message).toContain("did not finish within 2 minutes")
+		expect(clock.ms).toBeGreaterThanOrEqual(120_000)
+		expect(fake.callsMatching(["pr", "merge"])).toHaveLength(0)
+	})
+
+	test("refuses when CI fails while it is being waited on", async () => {
+		const { fake, context, extras, clock, deps } = setup({ workflows: true })
+		extras.checkRuns = [{ id: 9, name: "ci", status: "queued", conclusion: null }]
+		extras.annotations.set(9, [{ message: "Process completed with exit code 1." }])
+		clock.onSleep = () => {
+			extras.checkRuns = [{ id: 9, name: "ci", status: "completed", conclusion: "failure" }]
+		}
+
+		const failure = await failureOf(runWith(deps, ["12"], context))
+
+		expect(failure.message).toContain("CI failing (ci)")
+		expect(fake.callsMatching(["pr", "merge"])).toHaveLength(0)
+	})
+
+	test("refuses when a human comments no during the local check", async () => {
+		const { fake, context, shell, deps } = setup()
+		shell.on("sh -c", () => {
+			fake.addComment(12, "no, because the count should start at 0")
+
+			return { code: 0, stdout: "", stderr: "" }
+		})
+
+		const failure = await failureOf(runWith(deps, ["12"], context))
+
+		expect(failure.code).toBe(1)
+		expect(fake.callsMatching(["pr", "merge"])).toHaveLength(0)
+		expect(fake.issue(12).labels).toContain("stage:check")
+	})
+
+	test("merges only the commit that passed the check", async () => {
+		const { fake, context, deps } = setup()
+
+		await runWith(deps, ["12"], context)
+
+		const [call] = fake.callsMatching(["pr", "merge", "45"])
+		expect(call?.slice(call.indexOf("--match-head-commit"))).toEqual([
+			"--match-head-commit",
+			"sha123",
+		])
 	})
 
 	test("lands the issue: the worker is released after the merge", async () => {
