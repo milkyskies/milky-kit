@@ -63,10 +63,6 @@ export function owningClaim(comments: readonly ParsedComment[]): Claim | undefin
 	return activeClaims(comments)[0]
 }
 
-export const newestClaim = owningClaim
-
-export const earliestClaim = owningClaim
-
 export function lastHumanComment(comments: readonly ParsedComment[]): ParsedComment | undefined {
 	return comments.findLast((comment) => !comment.agent)
 }
