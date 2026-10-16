@@ -154,6 +154,7 @@ export async function makeWorld(options: { section?: string } = {}): Promise<Wor
 			role,
 			run,
 			repo: { owner, name },
+			repositoryError: undefined,
 			home,
 			projectRoot,
 			variables: { DESK_NTFY_URL: "http://zeus:8090", DESK_NTFY_TOPIC: "abc123" },

@@ -19,6 +19,7 @@ import {
 	checkKitPresent,
 	checkMiseTools,
 	checkOrcaRunning,
+	checkRepositoryResolved,
 	checkRepositoryWritable,
 	checkSerena,
 } from "./tool-checks.ts"
@@ -32,6 +33,7 @@ const SHARED_CHECKS: Check[] = [
 	checkKitCurrent,
 	checkOrcaRunning,
 	checkGhLoggedIn,
+	checkRepositoryResolved,
 	checkRepositoryWritable,
 	checkRulesLinked,
 	checkMcpServers,

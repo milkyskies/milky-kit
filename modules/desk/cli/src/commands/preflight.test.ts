@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { join } from "node:path"
+import { GhError } from "../github/gh.ts"
 import { makeHarness } from "../github/testing/fake-gh.ts"
 import { failureOf } from "../github/testing/seed.ts"
 import { failed, makeWorld, ok, START_PID, type World } from "../preflight/testing/world.ts"
@@ -32,9 +33,11 @@ async function setup(now = new Date("2026-10-16T14:00:00Z")) {
 		},
 	}
 
+	const { repo, ...base } = context
+
 	return {
 		made,
-		context: { ...context, now: () => clock.current },
+		context: { ...base, now: () => clock.current, resolveRepo: async () => repo },
 		output,
 		dependencies,
 		pings,
@@ -187,5 +190,49 @@ describe("desk preflight", () => {
 		})
 
 		expect(output).toContain("ok    ping configured")
+	})
+
+	test("a logged-out gh reports its own fix line instead of dying on the repository lookup", async () => {
+		const { made, context, output, dependencies } = await setup()
+		made.script.set("gh auth status", failed("not logged in"))
+		const loggedOut = {
+			...context,
+			resolveRepo: async () => {
+				throw new GhError(["repo", "view"], "gh: To use GitHub CLI, run: gh auth login")
+			},
+		}
+
+		const result = await failureOf(runPreflight(["--role", "coordinator"], loggedOut, dependencies))
+
+		expect(result.code).toBe(1)
+		expect(output).toContain("FAIL  gh is not logged in · fix: gh auth login")
+		expect(
+			output.some(
+				(line) =>
+					line.startsWith("FAIL  no GitHub repository could be resolved") &&
+					line.endsWith("fix: gh auth login"),
+			),
+		).toBe(true)
+		expect(output.some((line) => line.includes("coordinator lock"))).toBe(false)
+	})
+
+	test("a directory outside any repository names --repo as the fix when gh is logged in", async () => {
+		const { context, output, dependencies } = await setup()
+		const outside = {
+			...context,
+			resolveRepo: async () => {
+				throw new GhError(["repo", "view"], "no git remotes found")
+			},
+		}
+
+		await failureOf(runPreflight(["--role", "worker"], outside, dependencies))
+
+		expect(
+			output.some(
+				(line) =>
+					line.includes("no git remotes found") && line.endsWith("or pass --repo owner/name"),
+			),
+		).toBe(true)
+		expect(output).toContain("ok    gh logged in")
 	})
 })

@@ -1,11 +1,12 @@
 import { readFile } from "node:fs/promises"
 import { homedir } from "node:os"
+import { basename } from "node:path"
 import { parseArgs } from "node:util"
 
 import { parseOrUsage, requireFlag } from "../args.ts"
-import type { Command, Context } from "../context.ts"
+import type { RepoFreeCommand, RepoFreeContext } from "../context.ts"
 import { DeskError, EXIT, usageError } from "../errors.ts"
-import { repoSlug } from "../github/gh.ts"
+import { type Repo, repoSlug } from "../github/gh.ts"
 import { createFacts } from "../preflight/facts.ts"
 import {
 	composePingMessage,
@@ -30,7 +31,7 @@ export type PreflightDependencies = {
 	processVariables: Record<string, string | undefined>
 	startPid: number
 	isAlive: (pid: number) => boolean
-	sendPing: (slug: string) => PingSender
+	sendPing: (slug: string | undefined) => PingSender
 }
 
 function realDependencies(): PreflightDependencies {
@@ -70,7 +71,7 @@ async function projectRootOf(dependencies: PreflightDependencies): Promise<strin
 
 export async function runPreflight(
 	args: string[],
-	context: Context,
+	context: RepoFreeContext,
 	dependencies: PreflightDependencies,
 ): Promise<void> {
 	const { values } = parseOrUsage("preflight", () =>
@@ -81,10 +82,13 @@ export async function runPreflight(
 	)
 	const role = parseRole(values.role)
 
+	const resolved = await resolveOrExplain(context)
+
 	const environment: PreflightEnvironment = {
 		role,
 		run: dependencies.run,
-		repo: context.repo,
+		repo: resolved.repo,
+		repositoryError: resolved.error,
 		home: dependencies.home,
 		projectRoot: await projectRootOf(dependencies),
 		variables: { ...(await userVariables(dependencies.home)), ...dependencies.processVariables },
@@ -110,23 +114,34 @@ export async function runPreflight(
 	)
 }
 
+async function resolveOrExplain(
+	context: RepoFreeContext,
+): Promise<{ repo: Repo | undefined; error: string | undefined }> {
+	try {
+		return { repo: await context.resolveRepo(), error: undefined }
+	} catch (error) {
+		return { repo: undefined, error: error instanceof Error ? error.message : String(error) }
+	}
+}
+
 async function pingOnce(
-	context: Context,
+	context: RepoFreeContext,
 	dependencies: PreflightDependencies,
 	environment: PreflightEnvironment,
 	failures: ReturnType<typeof failedChecks>,
 ): Promise<void> {
 	const machine = await createFacts(environment).localMachineName()
 	const key = failureKey(machine, failures)
-	const recordPath = preflightPingRecordPath(environment.home, context.repo)
+	const repo = environment.repo ?? { owner: "unknown", name: basename(environment.projectRoot) }
+	const recordPath = preflightPingRecordPath(environment.home, repo)
 	const now = context.now()
 
 	if (await pingedRecently(recordPath, key, now)) return
 
-	const message = composePingMessage({ project: context.repo.name, machine }, failures)
+	const message = composePingMessage({ project: repo.name, machine }, failures)
 
 	try {
-		await dependencies.sendPing(repoSlug(context.repo))(message)
+		await dependencies.sendPing(environment.repo && repoSlug(environment.repo))(message)
 	} catch (error) {
 		const detail = error instanceof Error ? error.message : String(error)
 		process.stderr.write(`desk: preflight: the ping was not sent: ${detail}\n`)
@@ -137,4 +152,5 @@ async function pingOnce(
 	await recordPing(recordPath, key, now)
 }
 
-export const run: Command = (args, context) => runPreflight(args, context, realDependencies())
+export const runWithoutRepo: RepoFreeCommand = (args, context) =>
+	runPreflight(args, context, realDependencies())

@@ -86,6 +86,8 @@ export async function checkGhLoggedIn(environment: PreflightEnvironment): Promis
 export async function checkRepositoryWritable(
 	environment: PreflightEnvironment,
 ): Promise<CheckResult[]> {
+	if (environment.repo === undefined) return []
+
 	const slug = repoSlug(environment.repo)
 	const result = await environment.run("gh", [
 		"repo",
@@ -109,6 +111,26 @@ export async function checkRepositoryWritable(
 			"repository writable",
 			`${slug} permission is ${seen}, need WRITE, MAINTAIN or ADMIN`,
 			`ask for write access to ${slug} (permission seen: ${seen})`,
+		),
+	]
+}
+
+export async function checkRepositoryResolved(
+	environment: PreflightEnvironment,
+): Promise<CheckResult[]> {
+	if (environment.repo !== undefined) return []
+
+	const auth = await environment.run("gh", ["auth", "status"])
+	const fix =
+		auth.status === 0
+			? "run desk inside a clone of a GitHub repository, or pass --repo owner/name"
+			: "gh auth login"
+
+	return [
+		fail(
+			"repository",
+			`no GitHub repository could be resolved: ${environment.repositoryError ?? "unknown error"}`,
+			fix,
 		),
 	]
 }
