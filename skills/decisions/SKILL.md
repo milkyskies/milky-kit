@@ -6,7 +6,7 @@ description: >
   question, then proposals), posts your answer as an issue comment, and moves the
   issue to `stage:ready`.
   TRIGGER when: the user says "/decisions", "what's waiting on me", "answer the
-  decisions", or asks what autopilot is blocked on.
+  decisions", or asks what the desk is blocked on.
   DO NOT TRIGGER when: the user wants a list of open issues generally (use `gh issue list`),
   or wants to answer one specific issue they named (just comment on it).
 argument-hint: "[issue number (optional, answers just that one)]"
@@ -38,7 +38,7 @@ Empty queue: say "Nothing waiting on you" and stop. Do not prompt.
 gh issue view <num> --comments
 ```
 
-Find the **last** comment containing `<!-- autopilot:decision -->` and parse out the kind, the question, the numbered options, the recommendation or the hidden pick, and what the agent already checked. The protocol is in `.claude/rules/autopilot.md`.
+Find the **last** comment containing `<!-- desk:decision -->` and parse out the kind, the question, the numbered options, the recommendation or the hidden pick, and what the agent already checked. The protocol is in `.claude/rules/desk.md`.
 
 Three things to watch:
 
@@ -62,11 +62,11 @@ After the answer, say it back in one line ("Retry limit = 3. The other queues fo
 
 ### 4. Offer proposed bodies
 
-If the issue also carries an `<!-- autopilot:proposed-body -->` block, the agent parked because the spec was too thin and has drafted a replacement. Present it as **approve / edit / reject**:
+If the issue also carries a `<!-- desk:proposed-body -->` block, the agent parked because the spec was too thin and has drafted a replacement. Present it as **approve / edit / reject**:
 
 - **Approve** — preserve the original first, then replace:
   ```bash
-  gh issue comment <num> --body "Original body before autopilot rewrite:
+  gh issue comment <num> --body "Original body before the proposed rewrite:
 
   <original>"
   gh issue edit <num> --body-file <proposed>
@@ -82,11 +82,10 @@ Never replace a body without preserving the original in a comment first. Never a
 For each answered issue:
 
 ```bash
-gh issue comment <num> --body "<the answer>"
-gh issue edit <num> --add-label stage:ready --remove-label stage:needs-you
+~/.claude/kit/modules/desk/bin/desk answer <num> --body <file> --decision "<one line>"
 ```
 
-Comment first, then move the stage. If the stage edit fails, the answer is still on the issue and the next run finds it; the reverse would requeue an issue whose answer was lost.
+`desk answer` posts the answer with no agent marker, appends `- <date>: <decision>` to the body's `## Decisions` section, moves the stage to `stage:ready`, releases the parked claim with `desk:release reason=answered`, and reads the issue back to confirm. It writes the comment first, so a failed stage move leaves the answer on the issue; a non-zero exit means the state is not what was meant, so report the stderr line and stop. The one-line decision is the user's answer said back, in their words.
 
 A **self-filed** issue answered this way reaches `stage:ready` still carrying only `## Problem` and the answered question: no acceptance criteria, no tests, and no `autopilot` label, so no agent claims it. Say so, and offer `/todo` to write the spec now that the fork is resolved.
 
@@ -100,6 +99,6 @@ Say what was answered and what remains. If anything moved to `stage:ready`, say 
 
 - **Never answer on the user's behalf.** If a decision looks obvious, it is still theirs. The agent parked precisely because it was not the agent's call.
 - **One card at a time.** The card rules are in `.claude/rules/cards.md`.
-- **Never edit the issue body here** except through the approved proposed-body flow in step 4.
+- **Never edit the issue body here** except through the approved proposed-body flow in step 4. `desk answer` appends to `## Decisions` and edits nothing else.
 - **A human moves the stage.** Never let an agent requeue itself; it would consume a half-written reply.
 - **Skipping is free.** An unanswered decision stays parked.

@@ -79,6 +79,16 @@ Run this when the project's `.milky-kit-version` lists `ghlobes`, or `.claude/ru
 
 The old GitHub Project stays in place. The user can close or delete it once the labels look right.
 
+## Migration: autopilot to desk
+
+Run this when the project's `.claude/rules/` holds a symlink to the old autopilot rule, or the project's `.claude/rules.manifest` lists it. Confirm with the user first, then walk the steps in order.
+
+1. **Rule link.** Remove the symlink to the old autopilot rule. Link `.claude/rules/desk.md` to `~/.claude/kit/modules/desk/rules/desk.md`. Replace `autopilot` with `desk` in the module list inside `.milky-kit-version`.
+2. **Run the migration program.** `~/.claude/kit/modules/desk/bin/desk migrate --dry-run` lists every change and writes nothing. Show the list to the user. After their go-ahead, run `desk migrate`. It rewrites the old rule's name to `desk.md` in `.claude/rules.manifest`, runs `mise run rules:link`, and rewrites the old `autopilot` comment markers on every open issue to the `desk` markers, printing each change.
+3. **CLAUDE.md.** Replace the old `## Implementation tiers` and `## Correctness-critical paths` sections with the `## desk` section from `~/.claude/kit/modules/desk/desk-section.md`: tiers become `### Hard areas`, correctness-critical paths become `### Review paths`. Show the diff first. The `## Project-specific` section stays untouched.
+4. **Preflight.** Run `desk preflight --role coordinator` and surface each fix it prints. The `autopilot` label stays as it is, because it is the consent gate.
+5. **Commit** as `chore: move autopilot to the desk module`.
+
 ## Things to be careful about
 
 - **User-customized scaffold files** — `biome.json` may have project-specific ignores, `package.json` may have unrelated deps. Always diff before overwriting.
