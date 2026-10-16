@@ -34,18 +34,29 @@ export function machineOfHost(hosts: readonly Host[], hostKind: string, hostId: 
 		: hostId
 }
 
-export async function isMachineReachable(
-	orca: Orca,
-	environment: string | undefined,
-): Promise<boolean> {
-	const args = environment === undefined ? ["status"] : ["status", "--environment", environment]
+export type Reachability = "reachable" | "unreachable" | "unknown"
+
+async function runtimeReachable(orca: Orca, args: string[]): Promise<boolean> {
+	const result = await orca(args)
+
+	return readField(readField(result, "runtime"), "reachable") === true
+}
+
+export async function machineReachability(orca: Orca, environment: string): Promise<Reachability> {
+	try {
+		if (!(await runtimeReachable(orca, ["status"]))) return "unknown"
+	} catch (error) {
+		if (error instanceof OrcaError) return "unknown"
+
+		throw error
+	}
 
 	try {
-		const result = await orca(args)
-
-		return readField(readField(result, "runtime"), "reachable") === true
+		return (await runtimeReachable(orca, ["status", "--environment", environment]))
+			? "reachable"
+			: "unreachable"
 	} catch (error) {
-		if (error instanceof OrcaError) return false
+		if (error instanceof OrcaError) return "unreachable"
 
 		throw error
 	}

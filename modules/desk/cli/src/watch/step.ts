@@ -1,5 +1,6 @@
 import { owningClaim } from "../github/derive.ts"
 import { type IssueState, stageOf } from "../github/issue.ts"
+import type { Reachability } from "../orca/hosts.ts"
 import type { Message } from "../orca/inbox.ts"
 import { isLive, type Worker } from "../orca/workers.ts"
 import { landedPullRequest } from "../reconcile/landed.ts"
@@ -32,7 +33,7 @@ export type WatchDeps = {
 	workers: () => Promise<Worker[]>
 	mail: () => Promise<Message[] | undefined>
 	issues: () => Promise<IssueState[]>
-	isReachable: (machine: string) => Promise<boolean>
+	reachability: (machine: string) => Promise<Reachability>
 	release: (issue: number, claimId: string) => Promise<void>
 	localMachine: string
 	ledger: Ledger
@@ -237,7 +238,10 @@ async function machineEvents(
 	const events: WatchEvent[] = []
 
 	for (const [machine, claims] of claimsByMachine) {
-		if (await deps.isReachable(machine)) {
+		const reachability = await deps.reachability(machine)
+		if (reachability === "unknown") continue
+
+		if (reachability === "reachable") {
 			since.delete(machine)
 			continue
 		}

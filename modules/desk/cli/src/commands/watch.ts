@@ -5,7 +5,7 @@ import { parseOrUsage } from "../args.ts"
 import type { Command, Context } from "../context.ts"
 import { repoSlug } from "../github/gh.ts"
 import { type OrcaDeps, realOrcaDeps } from "../orca/deps.ts"
-import { isMachineReachable, listHosts } from "../orca/hosts.ts"
+import { listHosts, machineReachability } from "../orca/hosts.ts"
 import { readInbox } from "../orca/inbox.ts"
 import { OrcaError } from "../orca/runner.ts"
 import { requireRun } from "../orca/runs.ts"
@@ -61,7 +61,7 @@ export async function runWith(
 			}
 		},
 		issues: () => loadIssues(context.gh, context.repo),
-		isReachable: (machine) => isMachineReachable(orca, machine),
+		reachability: (machine) => machineReachability(orca, machine),
 		release: (issue, claimId) =>
 			releaseRun([String(issue), "--reason", "silent-machine", "--claim", claimId], {
 				...context,

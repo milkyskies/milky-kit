@@ -18,6 +18,7 @@ class Harness {
 	reachable = new Map<string, boolean>()
 	releases: [number, string][] = []
 	failRelease = false
+	unknown = false
 	githubReads = 0
 	ledger = memoryLedger()
 
@@ -30,7 +31,11 @@ class Harness {
 
 			return this.issues
 		},
-		isReachable: async (machine) => this.reachable.get(machine) ?? true,
+		reachability: async (machine) => {
+			if (this.unknown) return "unknown"
+
+			return (this.reachable.get(machine) ?? true) ? "reachable" : "unreachable"
+		},
 		release: async (number, claimId) => {
 			if (this.failRelease) throw new Error("refused")
 			this.releases.push([number, claimId])
@@ -145,6 +150,19 @@ describe("desk watch", () => {
 		expect(events).toEqual([
 			{ event: "machine-silent", machine: "zeus", released: [12, 13], failed: [] },
 		])
+	})
+
+	test("machine-silent: polls where the local Orca cannot answer never count against a remote machine", async () => {
+		const h = new Harness()
+		h.issues = [issue(12, WORKING, [claim("c_1", "ctx_a", minutesAgo(5), "zeus")])]
+		h.reachable.set("zeus", false)
+		h.unknown = true
+
+		await h.poll()
+		h.advance(20)
+
+		expect(await h.poll()).toEqual([])
+		expect(h.releases).toEqual([])
 	})
 
 	test("machine-silent: a machine that answers in between starts the 15 minutes over", async () => {
