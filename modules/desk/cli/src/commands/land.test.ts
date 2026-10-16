@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test"
 import { composeComment } from "../github/markers.ts"
 import { claimBody, failureOf } from "../github/testing/seed.ts"
 import { FakeShell, failed, ok } from "../merge/testing.ts"
+import { OrcaError } from "../orca/runner.ts"
 import { FakeOrca } from "../orca/testing/fake-orca.ts"
 import { worker } from "../reconcile/testing/fixtures.ts"
 import { makeListingHarness } from "../reconcile/testing/github.ts"
@@ -32,6 +33,7 @@ function setup(pullRequestState: "MERGED" | "OPEN" = "MERGED") {
 	fakeOrca.worktrees = [{ path: "/work/12", isMainWorktree: false }]
 
 	const fakeShell = new FakeShell()
+	fakeShell.on("git -C /work/12 rev-list --count", ok("0\n"))
 
 	return { ...harness, fakeOrca, fakeShell, deps: { orca: fakeOrca.orca, shell: fakeShell.shell } }
 }
@@ -219,16 +221,63 @@ describe("desk land", () => {
 		expect(fake.issue(12).comments).toHaveLength(commentsAfterFirst)
 	})
 
-	test("a remote worktree that Orca refuses to remove is kept, not retried as a failure", async () => {
+	test("a remote worktree that Orca refuses as dirty is kept, not retried as a failure", async () => {
 		const { context, fakeOrca, deps } = setup()
+		fakeOrca.workers = [
+			worker({ hostKind: "environment", hostId: "env-zeus", worktreePath: "/srv/w/12" }),
+		]
+		const refuse: typeof deps.orca = async (args) => {
+			if (args.includes("rm")) {
+				throw new OrcaError(args, "Failed to delete worktree at /srv/w/12. M src/a.ts")
+			}
+
+			return fakeOrca.orca(args)
+		}
+
+		const report = await landIssue({ ...deps, orca: refuse }, context, 12)
+
+		expect(report.kept?.path).toBe("/srv/w/12")
+	})
+
+	test("a remote worktree removal that fails for another reason exits 3 so the next pass retries", async () => {
+		const { fake, context, fakeOrca, deps } = setup()
 		fakeOrca.workers = [
 			worker({ hostKind: "environment", hostId: "env-zeus", worktreePath: "/srv/w/12" }),
 		]
 		fakeOrca.failing.add("worktree rm")
 
+		const failure = await failureOf(landIssue(deps, context, 12))
+
+		expect(failure.code).toBe(3)
+		expect(
+			fake
+				.issue(12)
+				.comments.map((comment) => comment.body)
+				.join("\n"),
+		).not.toContain("worktree-kept")
+	})
+
+	test("an empty rev-list output keeps the worktree instead of reading as zero unpushed commits", async () => {
+		const { context, fakeOrca, fakeShell, deps } = setup()
+		fakeShell.on("git -C /work/12 status --porcelain", ok("?? .serena/\n"))
+		fakeShell.on("git -C /work/12 rev-list --count", ok(""))
+
 		const report = await landIssue(deps, context, 12)
 
-		expect(report.kept?.path).toBe("/srv/w/12")
+		expect(fakeOrca.called("rm")).toHaveLength(0)
+		expect(report.kept?.reason).toBe("cannot tell whether the branch has unpushed commits")
+	})
+
+	test("a kept worktree whose reason changed between runs is still noted once", async () => {
+		const { fake, context, fakeShell, deps } = setup()
+		fakeShell.on("git -C /work/12 rev-list --count @{upstream}..HEAD", ok("2\n"))
+		await landIssue(deps, context, 12)
+		const commentsAfterFirst = fake.issue(12).comments.length
+
+		fakeShell.on("git -C /work/12 rev-list --count @{upstream}..HEAD", ok("3\n"))
+		await landIssue(deps, context, 12)
+
+		expect(fake.issue(12).comments).toHaveLength(commentsAfterFirst)
 	})
 
 	test("lists workers only in the project's own Run", async () => {

@@ -200,7 +200,7 @@ A comment the digest has pinged gets a trailing `<!-- desk:pinged at=<iso> -->` 
 - Moves the stage to `stage:done` and closes the issue with `Merged.` if it is still open.
 - Releases the Orca worker named by the owning claim (`orca orchestration worker-release --dispatch <d>`) and removes its worktree (`orca worktree rm`). A failed Orca step prints its error and exits 3. The GitHub state is already correct, so the next pass retries only the cleanup.
 - Before removing a local worktree, land inspects it with `git status --porcelain` and the branch's unpushed commits (against `@{upstream}`, or `origin/main` when there is no upstream). A clean worktree is removed. A worktree holding only untracked files is removed with `--force`; land lists the deleted paths in its output and in a comment on the issue. A worktree with modified tracked files or unpushed commits is kept: land prints `worktree-kept <path>: <reason>`, comments the reason on the issue once, and exits 0, because retrying cannot succeed.
-- Git cannot run on a remote machine from the coordinator, so a remote worktree is removed without `--force`. If Orca refuses, the worktree is kept with Orca's message as the reason.
+- Git cannot run on a remote machine from the coordinator, so a remote worktree is removed without `--force`. If Orca refuses because the worktree is dirty, it is kept with Orca's message as the reason. Any other failure (host offline, timeout) exits 3 and the next pass retries it.
 - Pressing Merge in the GitHub app ends here too: the next reconcile pass sees the merged pull request and runs `desk land` (relayed).
 
 **`desk status <n>`**: read-only. Prints the stage, the owning claim, the attempt count, the last human comment, and the linked pull request.

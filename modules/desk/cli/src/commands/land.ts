@@ -9,7 +9,13 @@ import { editLabels, postComment } from "../github/writes.ts"
 import { verifyStage } from "../guards.ts"
 import type { Shell } from "../merge/shell.ts"
 import { spawnShell } from "../merge/shell.ts"
-import { inspectWorktree, listWorktrees, releaseWorker, removeWorktree } from "../orca/cleanup.ts"
+import {
+	inspectWorktree,
+	isDirtyWorktreeRefusal,
+	listWorktrees,
+	releaseWorker,
+	removeWorktree,
+} from "../orca/cleanup.ts"
 import { type OrcaDeps, realOrcaDeps } from "../orca/deps.ts"
 import { listHosts, machineOfHost } from "../orca/hosts.ts"
 import { OrcaError } from "../orca/runner.ts"
@@ -58,6 +64,7 @@ async function cleanUpWorker(deps: LandDeps, runId: string, dispatch: string): P
 		} catch (error) {
 			if (!(error instanceof OrcaError)) throw error
 			if (error.message.includes("selector_not_found")) return
+			if (!isDirtyWorktreeRefusal(error.message)) throw error
 
 			// Git cannot run on the remote machine from here, so Orca's own refusal to delete is the only evidence the worktree holds changes.
 			cleanup.report.kept = {
@@ -94,17 +101,6 @@ async function removeLocalWorktree(
 			return _exhaustive
 		}
 	}
-}
-
-async function noteOnIssue(
-	context: Context,
-	number: number,
-	existing: readonly { body: string }[],
-	body: string,
-): Promise<void> {
-	if (existing.some((comment) => comment.body.includes(body))) return
-
-	await postComment(context.gh, context.repo, number, `${body}\n\n${AGENT_MARKER}\n`)
 }
 
 export async function landIssue(
@@ -175,12 +171,15 @@ export async function landIssue(
 	}
 
 	if (kept) {
-		await noteOnIssue(
-			context,
-			number,
-			after.comments,
-			`worktree-kept: ${kept.path} stays on disk because ${kept.reason}. Land does not retry it.`,
-		)
+		const prefix = `worktree-kept: ${kept.path}`
+		if (!after.comments.some((comment) => comment.body.includes(prefix))) {
+			await postComment(
+				context.gh,
+				context.repo,
+				number,
+				`${prefix} stays on disk because ${kept.reason}. Land does not retry it.\n\n${AGENT_MARKER}\n`,
+			)
+		}
 	}
 
 	return cleanup.report

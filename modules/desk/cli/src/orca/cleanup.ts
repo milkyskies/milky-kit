@@ -53,7 +53,10 @@ async function unpushedCommitCount(shell: Shell, path: string): Promise<number |
 		(await gitOutput(shell, path, ["rev-list", "--count", "origin/main..HEAD"]))
 	if (against === undefined) return undefined
 
-	const count = Number(against.trim())
+	const trimmed = against.trim()
+	if (trimmed === "") return undefined
+
+	const count = Number(trimmed)
 
 	return Number.isInteger(count) ? count : undefined
 }
@@ -83,4 +86,20 @@ export async function inspectWorktree(shell: Shell, path: string): Promise<Workt
 	if (lines.length === 0) return { kind: "clean" }
 
 	return { kind: "untracked", paths: lines.map((line) => line.slice(UNTRACKED_PREFIX.length)) }
+}
+
+const DIRTY_REFUSAL_MARKERS = [
+	"Worktree has uncommitted or untracked changes",
+	"contains modified or untracked files",
+]
+
+// Orca reports no error code for a dirty-worktree refusal, so this matches the same wording Orca's own force-delete classifier does.
+const FORMATTED_DIRTY_REFUSAL =
+	/Failed to delete worktree at [^\n]*\.\s*(?:(?:[MADRCUT][ MADRCUT]| [MADRCUT]|\?\?)\s+\S)/
+
+export function isDirtyWorktreeRefusal(message: string): boolean {
+	return (
+		DIRTY_REFUSAL_MARKERS.some((marker) => message.includes(marker)) ||
+		FORMATTED_DIRTY_REFUSAL.test(message)
+	)
 }
