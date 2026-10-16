@@ -115,7 +115,12 @@ async function removeIssueWorktrees(
 
 	try {
 		for (const row of worktreesOfIssue(await ownWorktrees(deps.orca), number)) {
-			if (alreadyKept.has(row.path) || row.liveTerminalCount > 0) continue
+			if (alreadyKept.has(row.path)) continue
+
+			if (row.liveTerminalCount > 0) {
+				cleanup.report.kept.push({ path: row.path, reason: "a terminal is still open in it" })
+				continue
+			}
 
 			await removeLocalWorktree(deps, row.path, cleanup.report)
 		}

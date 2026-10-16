@@ -187,9 +187,10 @@ describe("desk land", () => {
 		]
 		fakeShell.on("git -C /work/12-2 rev-list --count", ok("0\n"))
 
-		await landIssue(deps, context, 12)
+		const report = await landIssue(deps, context, 12)
 
 		expect(fakeOrca.called("rm").map((call) => call.at(-1))).toEqual(["path:/work/12-2"])
+		expect(report.kept).toEqual([{ path: "/work/12", reason: "a terminal is still open in it" }])
 	})
 
 	test("does not sweep a hand-made 12-experiment worktree or one on another branch", async () => {
@@ -205,6 +206,17 @@ describe("desk land", () => {
 		await landIssue(deps, context, 12)
 
 		expect(fakeOrca.called("rm").map((call) => call.at(-1))).toEqual(["path:/work/12"])
+	})
+
+	test("exits 3 after GitHub is done and removes nothing when Orca cannot name the current worktree", async () => {
+		const { fake, context, fakeOrca, deps } = setup()
+		fakeOrca.failing.add("worktree current")
+
+		const failure = await failureOf(landIssue(deps, context, 12))
+
+		expect(failure.code).toBe(3)
+		expect(fake.issue(12).state).toBe("CLOSED")
+		expect(fakeOrca.called("rm")).toHaveLength(0)
 	})
 
 	test("refuses the cleanup when Orca truncated the worktree list", async () => {

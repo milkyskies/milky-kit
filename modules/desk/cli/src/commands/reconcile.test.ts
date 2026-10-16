@@ -77,6 +77,15 @@ describe("desk reconcile command", () => {
 		expect(JSON.parse(output[0] ?? "{}").mismatches[0].workerStart[1]).toBe("new-child")
 	})
 
+	test("refuses to reconcile when Orca cannot name the current worktree, and removes nothing", async () => {
+		const { fake, context, fakeOrca, deps } = setup()
+		fake.addIssue({ number: 16, labels: ["request", "autopilot", "stage:ready"] })
+		fakeOrca.failing.add("worktree current")
+
+		await expect(runWith(deps, [], context)).rejects.toThrow("worktree current")
+		expect(fakeOrca.called("rm")).toHaveLength(0)
+	})
+
 	test("refuses to reconcile when Orca truncated the worktree list", async () => {
 		const { fake, context, fakeOrca, deps } = setup()
 		fake.addIssue({ number: 16, labels: ["request", "autopilot", "stage:ready"] })
