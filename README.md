@@ -34,6 +34,7 @@ A **module** is one orthogonal concern that composes cleanly with any template. 
 | `modules/security` | OSV-Scanner, zizmor, pinned actions, GitHub-context shell-injection prevention |
 | `modules/pnpm` | pnpm workspace config + pnpm-specific supply-chain controls (cooldown, safe-chain, trust policy, onlyBuiltDependencies) |
 | `modules/bun` | Bun workspace + Bun-specific security notes (with honest gaps) |
+| `modules/desk` | The desk worker contract (`desk.md`), the `## desk` section template, and the `desk` state program workers use to claim, park, finish and fail an issue |
 | `modules/issues` | Label set, `setup-labels.sh`, and the issue-tracking agent rule file (plain `gh`, stage labels) |
 | `modules/postgres` | docker-compose Postgres + Effect-flavored `@effect/sql-pg` notes |
 | `modules/sqlite` | local SQLite scaffold |
@@ -105,7 +106,7 @@ In any Claude Code session (project doesn't matter for the install):
 /plugin install milky-kit@milkyskies
 ```
 
-Claude clones the repo to its own plugin cache and registers the skills. Run `/help` to confirm `/milky-kit:new`, `:retrofit`, `:upgrade`, `:realign`, `:edit`, `:kit-modify`, `:check-version`, `:purge`, `:mode`, `:decisions`, `:here`, plus the pre-existing `:ship`, `:land`, `:rulify`, `:simplify`, etc. all appear.
+Claude clones the repo to its own plugin cache and registers the skills. Run `/help` to confirm `/milky-kit:new`, `:retrofit`, `:upgrade`, `:realign`, `:edit`, `:kit-modify`, `:check-version`, `:purge`, `:mode`, `:decisions`, `:desk`, `:here`, plus the pre-existing `:ship`, `:land`, `:rulify`, `:simplify`, etc. all appear.
 
 To pull future kit changes:
 
@@ -154,7 +155,7 @@ Each project picks one workflow mode via the `.milky-kit-mode` file at its root:
 |---|---|---|---|---|
 | `main` | no — on `main` | no | push to `main` | the kit itself, solo solo work, no review wanted |
 | `branch` (default) | yes — in root checkout | no | PR to `main` | typical solo work, GitHub-native flow |
-| `worktrees` | yes — in the worktree | yes — **every task by default**, in `../<worktree-dir>/<num>/`; root only via `/milky-kit:here` | PR to `main` | parallel multi-agent work, autopilot, keeping the root free |
+| `worktrees` | yes — in the worktree | yes — **every task by default**, in `../<worktree-dir>/<num>/`; root only via `/milky-kit:here` | PR to `main` | parallel multi-agent work, the desk, keeping the root free |
 
 Flip per project at any time:
 
@@ -169,9 +170,11 @@ Flip per project at any time:
 
 In `worktrees` mode a worktree is the **default** for every task. To work in the root checkout instead — a typo fix, a one-line config change, anything not worth paying worktree setup for — use `/milky-kit:here`.
 
-## Autopilot
+## The desk
 
-Autopilot is the protocol an autonomous agent follows to take an eligible issue from `stage:ready` to a PR. The state machine, the four stop criteria, and the decision comment format live in `modules/autopilot/rules/autopilot.md`. The `skills/autopilot` skill and the autopilot scaffold are deleted; the rebuild on Orca is phase 2 of `docs/desk/plan.md`.
+The desk is how autonomous workers take eligible issues from `stage:ready` to a pull request. GitHub Issues hold all state. A coordinator, started with `/milky-kit:desk`, compares open issues with Orca's running workers each pass and fixes the difference. Workers record every outcome on their issue with the `desk` program (`desk claim`, `desk park`, `desk done`, `desk fail`) before they report back.
+
+The worker contract and the decision comment format are in `modules/desk/rules/desk.md`. The coordinator loop and its reference files are in `skills/desk/`. The design is in `docs/desk/phase-2.md`. A project configures the desk in a `## desk` section of its `CLAUDE.md`, copied from `modules/desk/desk-section.md`.
 
 ### Opting an issue in
 
@@ -197,7 +200,7 @@ When an agent hits something it must not guess at, it posts the question as an i
 /milky-kit:decisions
 ```
 
-presents each parked question with the options the agent proposed, and requeues whatever you answer. You can also reply on the GitHub issue, including from the mobile app, and then move the issue back to `stage:ready` yourself.
+presents each parked question with the options the agent proposed, and records whatever you answer with `desk answer`, which moves the issue back to `stage:ready`. You can also reply on the GitHub issue, including from the mobile app, and then move the issue back to `stage:ready` yourself.
 
 ## Versioning
 
@@ -211,7 +214,7 @@ Tagged releases may come later as the kit stabilizes; the skills will prefer tag
 milky-kit/
 ├── README.md
 ├── .claude-plugin/             Claude Code plugin manifest
-├── skills/                     Plugin skills (new, retrofit, upgrade, realign, edit, kit-modify, check-version, purge, mode, ship, land, write-pr, arch-diagrams, rulify, simplify, retrospective, and template-specific helpers)
+├── skills/                     Plugin skills (new, retrofit, upgrade, realign, edit, kit-modify, check-version, purge, mode, desk, decisions, ship, land, write-pr, arch-diagrams, rulify, simplify, retrospective, and template-specific helpers)
 ├── templates/                  Stack templates (alternatives — pick one per project)
 │   ├── effect-api/
 │   │   ├── rules/

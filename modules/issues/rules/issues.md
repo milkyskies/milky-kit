@@ -80,13 +80,13 @@ gh api -X DELETE repos/{owner}/{repo}/issues/<blocked>/dependencies/blocked_by/$
 
 Add and remove calls can hit secondary rate limits when sent in quick succession, so pause briefly between them.
 
-## Autopilot eligibility
+## Desk eligibility
 
 An autonomous agent may only claim an issue that is **opted in explicitly**. The issue must be `stage:ready`, unblocked, and carry the `autopilot` label: `gh issue list --label stage:ready --label autopilot`. Adding the label is a deliberate human act - consent per issue.
 
 **Opt-in, never opt-out.** Forgetting the label means an agent leaves the issue alone. A `no-autopilot` label would mean forgetting it lets an agent run unattended on work nobody vetted, which is the wrong way round.
 
-**The label is the whole gate.** Consent and specification are different questions and only the first is the tracker's to enforce. Whether an issue says enough to finish is a judgement the agent makes **while reading it**, and it already has somewhere to put that answer: the decision-comment protocol in `autopilot.md` parks an underspecified issue on `stage:needs-you`, states the question with numbered options, and proposes the issue body it needed. That is strictly more useful than being filtered out before anyone looked - you get a draft spec instead of silence.
+**The label is the whole gate.** Consent and specification are different questions and only the first is the tracker's to enforce. Whether an issue says enough to finish is a judgement the agent makes **while reading it**, and it already has somewhere to put that answer: the decision-comment protocol in `desk.md` parks an underspecified issue on `stage:needs-you`, states the question with numbered options, and proposes the issue body it needed. That is strictly more useful than being filtered out before anyone looked - you get a draft spec instead of silence.
 
 The house template below still asks for both `## Acceptance criteria` and `## Tests`, and issues are still better with them. That is a writing convention, not a gate.
 
@@ -107,7 +107,7 @@ Every issue carries exactly one `type:*` label:
 
 `feature` versus `change` is **"did this exist yesterday?"**, not how large the work is.
 
-The distinction is worth drawing because new capability has no existing pattern to copy while modifying one does — the same property the autopilot tier table measures. See `autopilot.md`.
+The distinction is worth drawing because new capability has no existing pattern to copy while modifying one does — the same property the desk routing table measures. See `skills/desk/reference/routing.md`.
 
 **No epic label.** An issue is an epic if it has sub-issues, which GitHub knows natively and renders with a progress bar. A label would be a second source of truth free to disagree with the real one. Never claim an issue that has open sub-issues; claim the sub-issues.
 
@@ -151,7 +151,7 @@ Urgency lives in what the filer needs next week, and the code does not record th
 - `## Problem` (or `## Goal`) — what's missing today and why it matters. Lead with the problem, not the solution. A concrete scenario often beats an abstract description.
 - **Key insight / rejected approach** (optional but valued) — the non-obvious framing, or why the naive approach is wrong. If the issue reframes an earlier idea, say so. This is the reasoning, not the spec.
 - `## What this issue does` (or `## What to do` / `## What to test`) — the concrete mechanics, broken into **named sub-behaviors**. Use code or data snippets (pseudocode, schema, example rows) to pin down intent.
-- `## Area` — the path globs this issue touches, one per line. Autopilot picks an implementation tier **before** the work exists, so it cannot inspect a diff; this section is the only record of where the change lands. Match the granularity of the project's `## Implementation tiers` table in `CLAUDE.md`. Write it even when the project declares no tier table — it tells a human where to look.
+- `## Area` — the path globs this issue touches, one per line. The desk coordinator picks a model **before** the work exists, so it cannot inspect a diff; this section is the only record of where the change lands. Match the granularity of the project's `### Hard areas` and `### Review paths` in the `## desk` section of `CLAUDE.md`. Write it even when the project declares neither — it tells a human where to look.
 - `## Out of scope` (optional) — what an executor might reasonably touch and must not. Unbounded scope is where an agent drifts, and one line here costs less than a review that unpicks it.
 - `## Reference points` (optional, high value) — paths to existing code that already does something analogous, each with one line on what to take from it. A pointer to a similar implementation keeps the output idiomatic better than a paragraph of description does.
 - `## Acceptance criteria` — bulleted, checkable outcomes: what must be true when this is done. Each one binary: "the endpoint returns 409 when the slug exists" beats "handles conflicts correctly".
