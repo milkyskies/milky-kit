@@ -133,18 +133,32 @@ When stopping, post a comment in exactly this shape. The marker is what `/decisi
 <!-- autopilot:decision -->
 ## Decision needed
 
+**Kind:** <code-detail | design>
+
 <the question, in one or two sentences>
 
 **Options:**
 1. <option> - <consequence>
 2. <option> - <consequence>
 
-**Recommendation:** <n>
+**Recommendation:** <the recommended option, written out>
 
 _Stopped at: <what you were doing>. Reply in a comment and I will pick it up._
 
 <!-- autopilot:agent -->
 ```
+
+The agent marks the **Kind** on every card. A code-detail call (a name, a retry count, which library function) keeps the **Recommendation** line with one recommended option. A design, product or pitch call drops that line and puts the pick in a collapsed block instead, so GitHub hides it until tapped:
+
+```markdown
+<details><summary>What would I pick?</summary>
+
+<the picked option, written out, and the reason>
+
+</details>
+```
+
+A pick shown up front anchors the human, and a design call is theirs to make unanchored. The agent still writes a pick on every card.
 
 Then `gh issue edit <num> --add-label stage:needs-you --remove-label stage:working` and exit. Leave the worktree in place; the next attempt resumes in it.
 

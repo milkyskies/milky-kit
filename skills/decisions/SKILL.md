@@ -38,13 +38,13 @@ Empty queue: say "Nothing waiting on you" and stop. Do not prompt.
 gh issue view <num> --comments
 ```
 
-Find the **last** comment containing `<!-- autopilot:decision -->` and parse out the question, the numbered options, the recommendation, and what the agent already checked. The protocol is in `.claude/rules/autopilot.md`.
+Find the **last** comment containing `<!-- autopilot:decision -->` and parse out the kind, the question, the numbered options, the recommendation or the hidden pick, and what the agent already checked. The protocol is in `.claude/rules/autopilot.md`.
 
 Three things to watch:
 
 - **Latest wins.** An issue may have parked more than once. Only the newest decision block is live.
 - **Malformed or missing marker.** Do not skip the issue. Fall back to presenting the last comment verbatim as free text and take a written answer.
-- **No agent comment at all.** The user filed this one themselves. Read `## Open questions` from the body and present those as the questions. Numbered items become the proposals where they read as alternatives, free text otherwise. A self-filed issue has no recommendation, and inventing one would answer it on the user's behalf.
+- **No agent comment at all.** The user filed this one themselves. Read `## Open questions` from the body and present those as the questions. Numbered items become the proposals where they read as alternatives, free text otherwise. A self-filed issue has no recommendation or pick, and inventing one would answer it on the user's behalf.
 
 An issue with several open questions yields several cards, one decision each.
 
@@ -52,7 +52,9 @@ An issue with several open questions yields several cards, one decision each.
 
 Present ONE card at a time, built the way `.claude/rules/cards.md` says: background, what the agent already checked, the question, then the proposals. Wait for the answer before showing the next.
 
-Put the agent's recommendation first among the proposals, marked `(Recommended)`.
+For a code-detail card, put the agent's recommendation first among the proposals, marked `(Recommended)`.
+
+For a design, product or pitch card, show no recommendation. Add one more option, "What would you pick?". When the user chooses it, show the agent's pick and its reason from the `<details>` block, then ask the same card again without that option.
 
 Ask with `AskUserQuestion`: the proposals are the options, and the user can always choose "Other" to write a free-text answer. Where the agent gave no usable proposals, ask for free text instead. Keep the agent's own wording, since this skill relays the question and does not re-author it.
 
