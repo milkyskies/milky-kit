@@ -81,7 +81,7 @@ Format:
 
 ### Conventions
 
-- **Stable scenario code**: `<FEATURE>-<NNN>` (3-digit zero-padded). The code never changes once assigned. Deleted scenarios don't get their number reused. Codes are independent of glb issue numbers; a scenario can reference an issue in its body, but the code is the canonical handle.
+- **Stable scenario code**: `<FEATURE>-<NNN>` (3-digit zero-padded). The code never changes once assigned. Deleted scenarios don't get their number reused. Codes are independent of issue numbers; a scenario can reference an issue in its body, but the code is the canonical handle.
 - **Checkbox semantic**: `[x]` = an automated test exists whose name contains this code. `[ ]` = spec'd, no automated test yet. Manage the box by hand when you add the test.
 - **Test name carries the code**: `it.effect("AUTH-001 rejects expired tokens", ...)`. `grep AUTH-001` finds the test from the spec, or the spec from the test.
 - **`Automated:` is the canonical link** — point at the use-case test (the lowest tier where this scenario is verified). If the scenario is also covered at integration/e2e tiers, those tests have the same code in their names and grep finds them.

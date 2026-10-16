@@ -1,6 +1,6 @@
 # milky-kit
 
-Personal project kit for full-stack work. Ships paradigm-complete stack templates, composable modules for cross-cutting concerns (CI, security, ghlobes), and a Claude Code plugin that scaffolds new projects and retrofits existing ones.
+Personal project kit for full-stack work. Ships paradigm-complete stack templates, composable modules for cross-cutting concerns (CI, security, issues), and a Claude Code plugin that scaffolds new projects and retrofits existing ones.
 
 ## The two layers
 
@@ -34,7 +34,7 @@ A **module** is one orthogonal concern that composes cleanly with any template. 
 | `modules/security` | OSV-Scanner, zizmor, pinned actions, GitHub-context shell-injection prevention |
 | `modules/pnpm` | pnpm workspace config + pnpm-specific supply-chain controls (cooldown, safe-chain, trust policy, onlyBuiltDependencies) |
 | `modules/bun` | Bun workspace + Bun-specific security notes (with honest gaps) |
-| `modules/ghlobes` | `.ghlobes.toml` scaffold + the glb agent rule file |
+| `modules/issues` | Label set, `setup-labels.sh`, and the issue-tracking agent rule file (plain `gh`, stage labels) |
 | `modules/postgres` | docker-compose Postgres + Effect-flavored `@effect/sql-pg` notes |
 | `modules/sqlite` | local SQLite scaffold |
 | `modules/release-please` | GitHub Actions release pipeline + Trusted Publishing OIDC (variants: npm publish / tag-only) |
@@ -78,7 +78,7 @@ Claude Code auto-loads every `.md` (including symlinks) under `.claude/rules/` a
 
 Edit a rule file in milky-kit, and every project picks it up immediately — the symlinks point to the live file. Single source of truth, no copy, no drift.
 
-Scaffold files (gitignore, biome.json, tsconfig, CI workflows, .ghlobes.toml) are **copied once at init**, then the project owns them. Updates flow through the upgrade skill.
+Scaffold files (gitignore, biome.json, tsconfig, CI workflows, setup-labels.sh) are **copied once at init**, then the project owns them. Updates flow through the upgrade skill.
 
 ## Setup
 
@@ -105,7 +105,7 @@ In any Claude Code session (project doesn't matter for the install):
 /plugin install milky-kit@milkyskies
 ```
 
-Claude clones the repo to its own plugin cache and registers the skills. Run `/help` to confirm `/milky-kit:new`, `:retrofit`, `:upgrade`, `:realign`, `:edit`, `:kit-modify`, `:check-version`, `:purge`, `:mode`, `:autopilot`, `:decisions`, `:here`, plus the pre-existing `:ship`, `:land`, `:rulify`, `:simplify`, etc. all appear.
+Claude clones the repo to its own plugin cache and registers the skills. Run `/help` to confirm `/milky-kit:new`, `:retrofit`, `:upgrade`, `:realign`, `:edit`, `:kit-modify`, `:check-version`, `:purge`, `:mode`, `:decisions`, `:here`, plus the pre-existing `:ship`, `:land`, `:rulify`, `:simplify`, etc. all appear.
 
 To pull future kit changes:
 
@@ -123,7 +123,7 @@ In Claude Code, in an empty directory:
 
 The skill asks:
 1. Which template? (`effect-api`, `hono-api`, `react-spa`, `axum-api`, `bun-scripts`)
-2. Which composable modules? (multi-select: ghlobes, security, ci, postgres, etc.)
+2. Which composable modules? (multi-select: issues, security, ci, postgres, etc.)
 3. Variants where applicable (db backend, auth, UI library)
 4. Project name + directory
 5. Any project-specific rules to append? (free-text, written under `## Project-specific` in CLAUDE.md)
@@ -171,84 +171,33 @@ In `worktrees` mode a worktree is the **default** for every task. To work in the
 
 ## Autopilot
 
-Autopilot drives eligible issues from `Todo` to a **draft PR** with no keystrokes from you. It stops there: promoting a draft to ready-for-review and merging are always yours.
+Autopilot is the protocol an autonomous agent follows to take an eligible issue from `stage:ready` to a PR. The state machine, the four stop criteria, and the decision comment format live in `modules/autopilot/rules/autopilot.md`. The `skills/autopilot` skill and the autopilot scaffold are deleted; the rebuild on Orca is phase 2 of `docs/desk/plan.md`.
 
-The protocol it follows — the state machine, the four stop criteria, the decision comment format — lives in `modules/autopilot/rules/autopilot.md`. This section is about operating it.
+### Opting an issue in
 
-### 1. Switch to worktrees mode
-
-```
-/milky-kit:mode worktrees
-```
-
-Autopilot refuses to run in `main` or `branch` mode. Both put every worker in one checkout, where parallel agents trample each other.
-
-### 2. Opt an issue in
-
-Fastest route — describe it and let the agent write it:
+Describe the work and let the agent write the issue:
 
 ```
 /milky-kit:todo add a reload-cancel when the player sprints
 ```
 
-It drafts the house body format, asks only what it cannot infer from the code, shows you the result, and files it with the `autopilot` label. Or do it by hand:
+The skill drafts the house body format, asks only what it cannot infer from the code, shows you the result, and files it with the `autopilot` label. Or add the label by hand:
+
+```bash
+gh issue edit <num> --add-label autopilot
+```
 
 Nothing runs on an issue you have not explicitly opted in. There is no `no-autopilot` label, because forgetting a label must mean an agent leaves the issue alone rather than running unattended on work nobody vetted.
 
-```bash
-glb create --autopilot -t "..." -b "..." -p P2 --points 3   # at creation
-gh issue edit <num> --add-label autopilot                    # after the fact
-```
+### Answering what an agent gets stuck on
 
-### 3. Check it actually qualifies
-
-The label is the whole gate — an agent may claim any labelled, unblocked `Todo` issue. It does not have to look well specified first: an agent that finds one too thin to implement parks it on `Needs Decision`, asks the question with numbered options, and proposes the issue body it needed.
-
-```bash
-glb ready --autopilot --explain
-```
-
-`--explain` accounts for every open issue and names why each was passed over: `no autopilot label`, `blocked by #136`, `status is Needs Decision`.
-
-**An empty first run is the gate working, not a failure.** On a fresh repository nothing carries the label, so autopilot correctly finds nothing to do.
-
-### 4. Dry run before you walk away
-
-```
-/milky-kit:autopilot --dry-run --explain
-```
-
-Prints the actions a wake would take and executes none of them. What makes an autonomous system safe to leave running is being able to see what it decided, not more approval gates.
-
-### 5. Run it
-
-```
-/milky-kit:autopilot
-```
-
-Inside herdr you get one workspace per in-flight issue, so you can watch any agent and take it over mid-run. Without herdr it runs headless; the board transitions are identical either way.
-
-### Answering what it gets stuck on
-
-When an agent hits something it must not guess at, it posts the question as an issue comment and parks the issue on `Needs Decision`.
+When an agent hits something it must not guess at, it posts the question as an issue comment and moves the issue to `stage:needs-you`.
 
 ```
 /milky-kit:decisions
 ```
 
-presents each parked question with the options the agent proposed, and requeues whatever you answer.
-
-You can also just reply on the GitHub issue — including from the mobile app. Install `modules/autopilot/scaffold/.github/workflows/autopilot-bookkeeping.yml` and the status flips server-side, so a decision answered on your commute is queued before you next open the laptop.
-
-### Running it continuously
-
-```bash
-herdr --session autopilot        # persistent, survives closing the terminal
-# then, in a pane inside it:
-/loop /milky-kit:autopilot       # no interval — it self-paces
-```
-
-Not cron: a cloud runner cannot reach your local worktrees or spawn local agents. Only the GitHub-side bookkeeping belongs in Actions.
+presents each parked question with the options the agent proposed, and requeues whatever you answer. You can also reply on the GitHub issue, including from the mobile app, and then move the issue back to `stage:ready` yourself.
 
 ## Versioning
 
@@ -279,7 +228,7 @@ milky-kit/
     ├── security/
     ├── pnpm/
     ├── bun/
-    ├── ghlobes/
+    ├── issues/
     ├── postgres/
     ├── sqlite/
     └── release-please/
@@ -287,10 +236,10 @@ milky-kit/
 
 ## Why templates vs modules
 
-The split exists because not every concern composes. Templates declare paradigm choices that conflict with each other (Effect's typed error channel vs Hono's middleware throws; Rust's Result vs TS's Promise). You pick one. Modules declare orthogonal concerns (CI is independent of the API framework; ghlobes is independent of the language). They layer freely.
+The split exists because not every concern composes. Templates declare paradigm choices that conflict with each other (Effect's typed error channel vs Hono's middleware throws; Rust's Result vs TS's Promise). You pick one. Modules declare orthogonal concerns (CI is independent of the API framework; issue tracking is independent of the language). They layer freely.
 
 This split is what makes the asymmetry between templates honest. `effect-api` ships MCP, `hono-api` does not — that's not a missing feature, it's a different paradigm with a different ceiling. Each template's `README.md` lists its capabilities so projects choose with eyes open.
 
 ## Task tracking
 
-This kit uses `glb` (ghlobes) for issue tracking via GitHub Issues + Projects. See `modules/ghlobes/rules/glb.md` for the agent workflow and command reference.
+This kit tracks work with GitHub Issues and labels through plain `gh`. See `modules/issues/rules/issues.md` for the labels, stages and command reference.

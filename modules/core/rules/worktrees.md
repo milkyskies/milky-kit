@@ -76,7 +76,7 @@ git worktree add ../{{worktree_dir}}/<sub-num> -b feature/#<epic-num>/#<sub-num>
 EnterWorktree(path: "../{{worktree_dir}}/<sub-num>")
 ```
 
-Check `glb show <num>` — if the issue has a parent, it's a sub-issue and should branch off the epic branch. If no parent, branch off `origin/main`.
+Check `gh api repos/{owner}/{repo}/issues/<num>/parent` — if the issue has a parent, it's a sub-issue and should branch off the epic branch. If no parent, branch off `origin/main`.
 
 ## Verify Before Doing Anything
 

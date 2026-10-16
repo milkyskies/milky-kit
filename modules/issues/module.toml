@@ -1,0 +1,4 @@
+[[files]]
+src = "scaffold/.github/scripts/setup-labels.sh"
+dest = ".github/scripts/setup-labels.sh"
+mode = "0755"
