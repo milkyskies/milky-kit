@@ -10,6 +10,7 @@ export type Context = {
 	out: (line: string) => void
 	readText: (path: string) => Promise<string>
 	readBytes: (path: string) => Promise<Uint8Array>
+	sleep?: (milliseconds: number) => Promise<void>
 }
 
 export type Command = (args: string[], context: Context) => Promise<void>

@@ -8,7 +8,13 @@ import { type Gh, type Repo, repoSlug } from "../github/gh.ts"
 import { readIssue, readPullRequest } from "../github/issue.ts"
 import { composeComment } from "../github/markers.ts"
 import { moveStage, postComment } from "../github/writes.ts"
-import { requireOwnedClaim, requireStage, verifyCommentCount, verifyStage } from "../guards.ts"
+import {
+	requireOwnedClaim,
+	requireStage,
+	verifyCommentsPosted,
+	verifyStage,
+	verifyStillOwned,
+} from "../guards.ts"
 import { parseJson, readField, readNumber, readString } from "../json.ts"
 
 export function renderPicture(url: string): string {
@@ -25,6 +31,9 @@ async function describeBase(gh: Gh, repo: Repo, baseRef: string, headSha: string
 		? `its head contains ${baseRef} at ${baseSha} (behind_by 0)`
 		: `its head is behind ${baseRef} at ${baseSha} by ${behindBy} commits`
 }
+
+const MERGEABLE_RETRIES = 5
+const MERGEABLE_WAIT_MS = 2000
 
 export const run: Command = async (args, context) => {
 	const { values, positionals } = parseOrUsage("done", () =>
@@ -63,7 +72,11 @@ export const run: Command = async (args, context) => {
 	requireStage("done", before, "stage:working")
 	const claim = requireOwnedClaim("done", before, dispatch)
 
-	const pr = await readPullRequest(gh, repo, prNumber)
+	let pr = await readPullRequest(gh, repo, prNumber)
+	for (let attempt = 0; attempt < MERGEABLE_RETRIES && pr.mergeable === "UNKNOWN"; attempt += 1) {
+		await (context.sleep ?? Bun.sleep)(MERGEABLE_WAIT_MS)
+		pr = await readPullRequest(gh, repo, prNumber)
+	}
 	const firstLine = pr.body.split("\n", 1)[0]?.trim()
 	const problem = !pr.open
 		? "the pull request is not open"
@@ -104,14 +117,16 @@ export const run: Command = async (args, context) => {
 			? "**Decisions used:** none"
 			: `**Decisions used:**\n${decisions.join("\n")}`,
 		`**Small calls:** ${smallCalls === 0 ? "none" : `${smallCalls}, listed under \`## Small calls\` in the description`}`,
-		`**Verified by desk:** the pull request is not CONFLICTING (GitHub says ${pr.mergeable}), and ${baseText}.`,
+		pr.mergeable === "UNKNOWN"
+			? `**Verified by desk:** ${baseText}.\n**Mergeable state:** GitHub had not computed it after ${MERGEABLE_RETRIES} retries (UNKNOWN), so conflicts are unchecked.`
+			: `**Verified by desk:** the pull request is not CONFLICTING (GitHub says ${pr.mergeable}), and ${baseText}.`,
 		`**Worker says:** ${checked}`,
 		...(proposed.length === 0 ? [] : [`**Proposed requests:** ${proposed.join(", ")}`]),
 		"",
 		"Reply `looks good` to merge, or `no, because …` to send it back.",
 	]
 
-	await postComment(
+	const resultId = await postComment(
 		gh,
 		repo,
 		number,
@@ -120,8 +135,9 @@ export const run: Command = async (args, context) => {
 	await moveStage(gh, repo, number, "stage:working", "stage:check")
 
 	const after = await readIssue(gh, repo, number)
-	verifyCommentCount("done", before, after, 1)
+	verifyCommentsPosted("done", before, after, [resultId])
 	verifyStage("done", before, after, "stage:check")
+	verifyStillOwned("done", before, after, claim.id)
 
 	emit(context, `#${number} → stage:check (pull request #${prNumber})`, {
 		issue: number,

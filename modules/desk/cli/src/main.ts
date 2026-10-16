@@ -4,7 +4,6 @@ import { join } from "node:path"
 import type { Command, Context } from "./context.ts"
 import { DeskError, EXIT } from "./errors.ts"
 import { type Gh, GhError, resolveRepo, spawnGh } from "./github/gh.ts"
-import { ShapeError } from "./json.ts"
 
 const COMMAND_NAME = /^[a-z]+$/
 
@@ -54,7 +53,22 @@ async function loadCommand(name: string | undefined): Promise<Command> {
 	return run
 }
 
-export async function main(argv: string[], gh: Gh = spawnGh): Promise<number> {
+function isWrite(args: readonly string[]): boolean {
+	if (args[0] === "issue") return args[1] === "edit" || args[1] === "create"
+
+	const method = args[args.indexOf("-X") + 1]
+
+	return args.includes("-X") && method !== undefined && method !== "GET"
+}
+
+export async function main(argv: string[], baseGh: Gh = spawnGh): Promise<number> {
+	let wrote = false
+	const gh: Gh = (args, input) => {
+		if (isWrite(args)) wrote = true
+
+		return baseGh(args, input)
+	}
+
 	const { repo: repoFlag, json, rest } = splitGlobals(argv)
 	const [name, ...args] = rest
 
@@ -81,13 +95,18 @@ export async function main(argv: string[], gh: Gh = spawnGh): Promise<number> {
 			return error.exitCode
 		}
 
-		if (error instanceof GhError || error instanceof ShapeError) {
+		if (error instanceof GhError) {
 			process.stderr.write(`desk: ${name ?? ""}: ${error.message}\n`)
 
 			return EXIT.external
 		}
 
-		throw error
+		const detail = error instanceof Error ? error.message : String(error)
+		const code = wrote ? EXIT.mismatch : EXIT.external
+		const note = wrote ? " (writes already made; read the issue before retrying)" : ""
+		process.stderr.write(`desk: ${name ?? ""}: unexpected failure: ${detail}${note}\n`)
+
+		return code
 	}
 }
 

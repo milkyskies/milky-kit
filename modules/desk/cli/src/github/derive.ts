@@ -21,6 +21,8 @@ export type Claim = {
 	comment: ParsedComment
 }
 
+const NON_ATTEMPT_REASONS = ["answered", "reopened", "lost-race"]
+
 export function parseComments(comments: readonly Comment[]): ParsedComment[] {
 	return comments.map((comment) => ({
 		...comment,
@@ -57,13 +59,13 @@ export function activeClaims(comments: readonly ParsedComment[]): Claim[] {
 	return active
 }
 
-export function newestClaim(comments: readonly ParsedComment[]): Claim | undefined {
-	return activeClaims(comments).at(-1)
-}
-
-export function earliestClaim(comments: readonly ParsedComment[]): Claim | undefined {
+export function owningClaim(comments: readonly ParsedComment[]): Claim | undefined {
 	return activeClaims(comments)[0]
 }
+
+export const newestClaim = owningClaim
+
+export const earliestClaim = owningClaim
 
 export function lastHumanComment(comments: readonly ParsedComment[]): ParsedComment | undefined {
 	return comments.findLast((comment) => !comment.agent)
@@ -76,7 +78,7 @@ export function attemptCount(comments: readonly ParsedComment[]): number {
 		const marker = comment.marker
 		if (marker?.kind === "failed") return true
 
-		return marker?.kind === "release" && marker.attrs.reason !== "answered"
+		return marker?.kind === "release" && !NON_ATTEMPT_REASONS.includes(marker.attrs.reason ?? "")
 	}).length
 }
 

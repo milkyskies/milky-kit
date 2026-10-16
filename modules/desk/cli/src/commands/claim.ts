@@ -3,7 +3,7 @@ import { parseArgs } from "node:util"
 import { parseNumber, parseOrUsage, requireFlag } from "../args.ts"
 import { type Command, emit, isoSeconds } from "../context.ts"
 import { mismatch, refusal } from "../errors.ts"
-import { activeClaims, earliestClaim } from "../github/derive.ts"
+import { activeClaims, owningClaim } from "../github/derive.ts"
 import { hasStage, readIssue, stageText } from "../github/issue.ts"
 import { composeComment } from "../github/markers.ts"
 import { moveStage, postComment } from "../github/writes.ts"
@@ -73,7 +73,7 @@ export const run: Command = async (args, context) => {
 	await moveStage(gh, repo, number, "stage:ready", "stage:working", true)
 
 	const after = await readIssue(gh, repo, number)
-	const winner = earliestClaim(after.comments)
+	const winner = owningClaim(after.comments)
 
 	if (winner?.id !== id) {
 		const mine = activeClaims(after.comments).some((claim) => claim.id === id)

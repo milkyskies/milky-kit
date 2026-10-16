@@ -3,8 +3,8 @@ import { parseArgs } from "node:util"
 import { parseNumber, parseOrUsage, requireFlag } from "../args.ts"
 import { type Command, emit, isoDay, readInputFile } from "../context.ts"
 import { mismatch, usageError } from "../errors.ts"
-import { appendToSection, sectionLines } from "../github/body.ts"
-import { activeClaims, newestClaim } from "../github/derive.ts"
+import { appendToSection, lostProgramLines, sectionLines } from "../github/body.ts"
+import { activeClaims, owningClaim } from "../github/derive.ts"
 import { readIssue } from "../github/issue.ts"
 import { AGENT_MARKER, composeComment } from "../github/markers.ts"
 import { editBody, moveStage, postComment } from "../github/writes.ts"
@@ -36,10 +36,11 @@ export const run: Command = async (args, context) => {
 	requireStage("answer", before, "stage:needs-you")
 
 	const entry = `- ${isoDay(context.now())}: ${decision}`
-	const claim = newestClaim(before.comments)
+	const claim = owningClaim(before.comments)
 
 	await postComment(gh, repo, number, answer)
-	await editBody(gh, repo, number, appendToSection(before.body, "Decisions", entry))
+	const fresh = await readIssue(gh, repo, number)
+	await editBody(gh, repo, number, appendToSection(fresh.body, "Decisions", entry))
 
 	if (claim) {
 		await postComment(
@@ -61,6 +62,7 @@ export const run: Command = async (args, context) => {
 
 	if (
 		!sectionLines(after.body, "Decisions").includes(entry) ||
+		lostProgramLines(fresh.body, after.body).length > 0 ||
 		activeClaims(after.comments).length > 0
 	) {
 		throw mismatch(
