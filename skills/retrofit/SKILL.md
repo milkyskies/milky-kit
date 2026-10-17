@@ -128,7 +128,7 @@ Report findings briefly. Then ask which modules to apply.
    - For `AGENTS.md`: if the file ships with a literal `{{rule_refs}}` placeholder under '## Rules library', substitute it with the project's actual rule list (one `@.claude/rules/<rule>.md` per line, plus a one-line description). Reflects what was symlinked in step 1. Same format as the `new` skill's step 7a.
    - For `.mise/tasks/worktree/{setup,cleanup,sync-env}`: render with placeholders substituted AND with the DB block conditional on whether `postgres` was applied. If `postgres` not in the applied set, strip `createdb`, the `DATABASE_URL` patch, and `mise run db:migrate` from worktree/setup; strip `dropdb` from cleanup. Same install-step logic as the `new` skill (pnpm/bun/none).
 
-3. **Add `.milky-kit-version`** if missing. Same format as the `new` skill — kit SHA + timestamp + applied-modules list.
+3. **Add `.milky-kit-version`** if missing. Same format as the `new` skill — kit SHA + timestamp + applied-modules list, plus the `variants:` line when the detected template has variants (ask which choice each axis has if the project's files do not make it obvious, for `hono-api` the `runtime`, `db`, `api_style` and `auth` axes). When retrofit compares or copies template scaffold files, compose them the way the upgrade skill's "Compose the effective scaffold" describes.
 
 3a. **Add `.milky-kit-mode`** if missing. Default `branch` (single word, single line). The user can flip with `/milky-kit:mode main | branch | worktrees` later. If the file already exists, leave it alone — the user's prior choice stands.
 

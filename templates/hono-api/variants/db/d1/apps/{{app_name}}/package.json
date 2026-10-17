@@ -1,6 +1,13 @@
 {
 	"scripts": {
+		"db:generate": "drizzle-kit generate",
 		"db:migrate:local": "wrangler d1 migrations apply {{project_name}} --local",
 		"db:migrate:remote": "wrangler d1 migrations apply {{project_name}} --remote"
+	},
+	"dependencies": {
+		"drizzle-orm": "^0.45.4"
+	},
+	"devDependencies": {
+		"drizzle-kit": "^0.31.11"
 	}
 }

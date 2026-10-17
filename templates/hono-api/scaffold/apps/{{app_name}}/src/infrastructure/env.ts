@@ -5,7 +5,7 @@ import type { DbBindings } from "./env-db"
 type CoreBindings = {
 	// Comma-separated allowed CORS origins, e.g.
 	// "http://localhost:5173,capacitor://localhost,https://my-app.com".
-	// Set in wrangler.jsonc `vars` (prod) and override locally via .dev.vars.
+	// Set in wrangler.jsonc `vars` (prod) and override locally via .dev.vars on Workers; read from the process environment on Bun.
 	CORS_ORIGINS: string
 }
 

@@ -13,10 +13,23 @@ User says any of: "upgrade milky-kit", "check for milky-kit updates", "/milky-ki
 
 ## Detect first
 
-1. Read `./.milky-kit-version` at the project root. Extract the **base SHA**, the **template**, and the list of **applied modules**.
+1. Read `./.milky-kit-version` at the project root. Extract the **base SHA**, the **template**, the list of **applied modules**, and the **variants** line (`variants: runtime=workers, db=d1, ...`). Older files may carry a `<template>:` prefix after `variants:` (`variants: hono-api: db=d1, api_style=openapi, auth=none`); read it the same way. A missing line, or an axis the line does not list, falls back to that axis's `default` in the template's `module.toml`.
 2. If the file doesn't exist, suggest running `/milky-kit:retrofit` instead — the project wasn't scaffolded from the kit (or pre-dates the version-tracking convention).
 3. Read `git -C ~/.claude/kit rev-parse HEAD` for the **current kit SHA**.
 4. If `base == current`, report "you're already up to date" and exit.
+
+## Compose the effective scaffold
+
+A template's `scaffold/` directory is only the base. What a project received is the base plus its variant overlays, so diff and copy that composed set, never the raw `scaffold/` tree. A variant change that moves a file between `scaffold/` and an overlay (for example Workers pieces moving into `variants/runtime/workers`) then shows up as no change at all.
+
+Compose the set twice, once at the project's base SHA and once at the current kit, with the same recorded variants:
+
+1. Start from `templates/<template>/scaffold/`.
+2. Apply each axis in the order `module.toml` documents, copying `variants/<axis>/<choice>/` over the result with the same merge rules as the `new` skill's step 4 (JSON and JSONC merge by key, arrays replace, everything else overwrites).
+3. Delete every path in `[variants.<axis>.<choice>] remove` after that overlay.
+4. Substitute placeholders and strip the `_` prefix, as the `new` skill does.
+
+Read the base-SHA version with `git -C ~/.claude/kit archive <base> templates/<template> | tar -x -C <scratch>`, never by checking out the kit. A file in the old composed set and not in the new one is a real removal; a file in the new set and not in the old one is an addition. When the current `module.toml` has an axis the base did not (a new axis), compose the old set without it and the new set with its `default`, so a project that never chose it lands on the default.
 
 ## Build the upgrade plan
 
@@ -38,7 +51,7 @@ Group the commits into themes. For each, decide whether it's:
 
 For each change the user accepts:
 
-1. **Apply the diff** to the project. For scaffold files, copy the new version from `~/.claude/kit/...` over the project's copy — but only after showing the diff. For rule symlinks whose kit target moved, retarget `.claude/rules/<rule>.md` to the new path (or run `/milky-kit:retrofit`, which reconciles symlinks idempotently).
+1. **Apply the diff** to the project. For scaffold files, copy the new version from the composed set over the project's copy — but only after showing the diff. For rule symlinks whose kit target moved, retarget `.claude/rules/<rule>.md` to the new path (or run `/milky-kit:retrofit`, which reconciles symlinks idempotently).
 2. **Run lint + typecheck** after each substantive change. New rules will surface new violations — let the user decide which to fix now vs file as TODOs.
 3. **Commit** with a clear scope: `chore: upgrade milky-kit <description>` referencing the kit commit SHA in the body.
 
@@ -46,7 +59,7 @@ After all changes are applied (or skipped):
 
 1. **Scan `.claude/rules/` for broken symlinks.** Now that the kit has moved, some kit-pointed symlinks may point at files that were renamed or deleted. Detect by reading each symlink's target and checking it resolves to a real file. Propose fixes (retarget to new path, or remove if the rule was deleted) — or invoke `/milky-kit:retrofit` which reconciles automatically. Walk one at a time.
 2. **Invoke the `realign` skill.** Pass it the list of rules that changed in this upgrade so realign focuses on those rather than scanning everything. The user accepts/skips each violation realign finds.
-3. **Update `.milky-kit-version`** to the new kit SHA + new timestamp. Preserve the template + modules list.
+3. **Update `.milky-kit-version`** to the new kit SHA + new timestamp. Preserve the template, modules and variants lines, and add any new axis with the default value it fell back to.
 4. **Final summary** — applied N, skipped M, what's still TODO, plus manual setup steps the user must complete (with direct links). Substitute `{{owner}}`, `{{repo}}`, `{{package}}`.
 
    Always check and surface (skip the ones that don't apply):
