@@ -345,7 +345,7 @@ describe("desk reconcile", () => {
 		expect(codes({ issues: retried })).toEqual([[12, "auto-land"]])
 	})
 
-	test("auto-land: a clean review newer than a blocked=review attempt tries again, a blocking one does not", () => {
+	test("auto-land: only a clean review newer than a blocked=review attempt tries again", () => {
 		const blocked = composeComment("autoland", { pr: "45", blocked: "review" }, "Not landed.")
 		const clean = composeComment("review", { pr: "45", verdict: "clean" }, "Fine.")
 		const blocking = composeComment("review", { pr: "45", verdict: "blocking" }, "No.")
@@ -357,11 +357,18 @@ describe("desk reconcile", () => {
 		)
 		expect(
 			codes({ issues: [issue(12, [...CHECK, "land:auto"], bodies(blocked, blocking))] }),
-		).toEqual([[12, "auto-land"]])
+		).toEqual([])
 		expect(codes({ issues: [issue(12, [...CHECK, "land:auto"], bodies(blocked))] })).toEqual([])
 		expect(
 			codes({ issues: [issue(12, [...CHECK, "land:auto"], bodies(checkBlocked, clean))] }),
 		).toEqual([])
+	})
+
+	test("auto-land: a result that names no pull request number is left alone", () => {
+		const noNumber = composeComment("result", { claim: "c_1" }, "## Done, check it")
+		const issues = [issue(12, [...CHECK, "land:auto"], [claim("c_1", "ctx_y"), noNumber])]
+
+		expect(codes({ issues })).toEqual([])
 	})
 
 	test("auto-land: a human comment, a conflict or a busy worker comes first", () => {

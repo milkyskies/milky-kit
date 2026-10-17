@@ -526,12 +526,14 @@ describe("desk merge", () => {
 			expect(autoComments(fake)[0]?.body).toStartWith("<!-- desk:autoland pr=99 blocked=merge -->")
 		})
 
-		test("a human-approved merge of a pull request that does not close this issue is refused", async () => {
+		test("a human looks good merges a pull request that GitHub does not list as closing the issue", async () => {
 			const { fake, context, deps } = setup({ humanComment: "looks good" })
 			fake.issue(12).pullRequests = []
 
-			expect((await failureOf(runWith(deps, ["12"], context))).code).toBe(1)
-			expect(fake.callsMatching(["pr", "merge"])).toHaveLength(0)
+			const failure = await failureOf(runWith(deps, ["12"], context))
+
+			expect(fake.callsMatching(["pr", "merge", "45"])).toHaveLength(1)
+			expect(failure.message).toContain("land #12")
 		})
 
 		test("a check that outlives its timeout blocks the landing and names the timeout", async () => {

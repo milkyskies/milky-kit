@@ -286,7 +286,10 @@ async function verifyAndMerge(
 	const { gh, repo } = context
 	const { prNumber } = approval
 
-	if (!before.pullRequests.some((candidate) => candidate.number === prNumber)) {
+	if (
+		approval.by === "auto" &&
+		!before.pullRequests.some((candidate) => candidate.number === prNumber)
+	) {
 		throw new Blocked(
 			"merge",
 			`pull request #${prNumber} does not close this issue`,

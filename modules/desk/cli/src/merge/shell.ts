@@ -9,20 +9,38 @@ export type Shell = (
 ) => Promise<ShellResult>
 
 export const spawnShell: Shell = async (command, cwd, options) => {
+	// The command leads its own process group so a timeout can kill the pipelines and grandchildren that hold the output pipes open.
 	const child = Bun.spawn([...command], {
 		cwd,
 		stdin: "ignore",
 		stdout: "pipe",
 		stderr: "pipe",
-		timeout: options?.timeoutMs,
+		detached: true,
 	})
-	const [stdout, stderr, code] = await Promise.all([
-		new Response(child.stdout).text(),
-		new Response(child.stderr).text(),
-		child.exited,
-	])
+	let timedOut = false
+	const timer =
+		options?.timeoutMs === undefined
+			? undefined
+			: setTimeout(() => {
+					timedOut = true
+					try {
+						process.kill(-child.pid, "SIGKILL")
+					} catch {
+						child.kill("SIGKILL")
+					}
+				}, options.timeoutMs)
 
-	return { code, stdout, stderr, timedOut: child.killed && options?.timeoutMs !== undefined }
+	try {
+		const [stdout, stderr, code] = await Promise.all([
+			new Response(child.stdout).text(),
+			new Response(child.stderr).text(),
+			child.exited,
+		])
+
+		return { code, stdout, stderr, timedOut }
+	} finally {
+		clearTimeout(timer)
+	}
 }
 
 const FAILURE_LINE = /\b(fail|failed|failing|error|errors)\b/i

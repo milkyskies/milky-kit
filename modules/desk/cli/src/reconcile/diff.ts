@@ -106,6 +106,7 @@ function classifyCheck(
 
 	const autoLands =
 		resultAt >= 0 &&
+		Number.isInteger(Number(issue.comments[resultAt]?.marker?.attrs.pr)) &&
 		!human &&
 		landingOf(issue.labels, input.section) === "land:auto" &&
 		!autolandHeld(issue.comments, resultAt)
