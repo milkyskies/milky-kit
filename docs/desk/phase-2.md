@@ -658,7 +658,6 @@ T4 starts at once, alongside T1. T2 and T3 start when T1 merges and run side by 
 
 ## Open
 
-- **Whether the inline picture renders in the GitHub mobile app** for a private repository. Milky checks during T1; the fallback is a plain link (section 2).
 - **The final names** of the desk, the command and the markers ([the desk plan](plan.md), section 11). A rename is one search-and-replace.
 
 ## 14. Small calls made in this design
