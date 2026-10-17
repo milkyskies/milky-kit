@@ -30,7 +30,7 @@ Designed for the cases where Effect's full Layer / Context machinery is overkill
 
 Two combinations are constrained. `runtime: bun` needs `db: none` and `auth: none`, because the db variants bind through Wrangler and the firebase variant uses Workers KV. `db: none` needs `api_style: rpc`, because the OpenAPI variant has no status-route counterpart yet.
 
-Variants overlay the base scaffold in this order: `runtime`, `api_style`, `auth`, `db`. The `db: none` overlay also lists the base example files it deletes under `[variants.db.none] remove` in `module.toml`.
+Variants overlay the base scaffold in this order: `runtime`, `api_style`, `auth`, `db`. `package.json`, `tsconfig.json` and `wrangler.jsonc` merge by key across overlays. The `db: none` overlay also lists the base example files it deletes under `[variants.db.none] remove` in `module.toml`.
 
 ## Stack
 

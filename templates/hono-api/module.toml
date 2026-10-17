@@ -2,7 +2,7 @@
 src = "mise-tasks/dev/api"
 dest = ".mise/tasks/dev/api"
 
-# Axes apply in this order: runtime, api_style, auth, db. A later overlay overwrites an earlier one, which is how `db = "none"` replaces the Post example that `api_style` ships.
+# Axes apply in this order: runtime, api_style, auth, db. A later overlay overwrites an earlier one, which is how `db = "none"` replaces the Post example that `api_style` ships. `wrangler.jsonc` is the exception: every overlay's copy merges by key, so the runtime, db and firebase pieces all survive.
 [variants.runtime]
 options = ["workers", "bun"]
 default = "workers"

@@ -51,7 +51,7 @@ User says any of: "scaffold a new project", "set up an Effect API", "new milky-k
 
    **Underscore-prefixed config files** ship in the scaffold as `_<name>` and must be renamed to `<name>` on copy. Today that covers `_biome.json` → `biome.json` (the underscore prefix prevents the kit's own biome CI from treating each scaffold's config as a nested root, per the vite/astro `_gitignore` pattern). When copying any file whose basename starts with `_`, strip the leading underscore at the destination.
 
-4. **Apply variant overlays.** For each chosen variant, copy `~/.claude/kit/templates/<template>/variants/<axis>/<choice>/` over the base scaffold (overlay, not merge). JSON files (`package.json`, `tsconfig.json`) merge by key when both exist, and an array in the overlay replaces the base array; everything else overwrites the base. Apply the axes in the order the template's `module.toml` documents (`hono-api`: `runtime`, `api_style`, `auth`, `db`), because a later overlay overwrites an earlier one. After copying a choice, delete every path listed under `[variants.<axis>.<choice>] remove` in `module.toml` (after placeholder substitution; a directory is deleted recursively). Today only `hono-api`'s `db = "none"` has a `remove` list.
+4. **Apply variant overlays.** For each chosen variant, copy `~/.claude/kit/templates/<template>/variants/<axis>/<choice>/` over the base scaffold (overlay, not merge). JSON files (`package.json`, `tsconfig.json`) and JSONC files (`wrangler.jsonc`) merge by key when both exist, and an array in the overlay replaces the base array (in a JSONC file keep the comments of whichever file contributes each key); everything else overwrites the base. Apply the axes in the order the template's `module.toml` documents (`hono-api`: `runtime`, `api_style`, `auth`, `db`), because a later overlay overwrites an earlier one. After copying a choice, delete every path listed under `[variants.<axis>.<choice>] remove` in `module.toml` (after placeholder substitution; a directory is deleted recursively). Today only `hono-api`'s `db = "none"` has a `remove` list.
 
 5. **Apply composable module scaffolds.** For each chosen module in `~/.claude/kit/modules/<name>/scaffold/`, copy files into the project root (or wherever the module's `module.toml` says). Same merge rules: JSON merge, others overwrite.
 
@@ -161,8 +161,10 @@ User says any of: "scaffold a new project", "set up an Effect API", "new milky-k
    <iso-8601 timestamp of scaffold>
    <template>
    modules: <comma-separated list>
+   variants: <axis>=<choice>, <axis>=<choice>
    ```
 
+   The `variants:` line lists every axis of the template with its chosen value, including axes left at their default (`variants: runtime=workers, db=d1, api_style=rpc, auth=none`). Omit the line for a template with no variants. `upgrade` and `retrofit` read it to compose the effective scaffold (see the upgrade skill's "Compose the effective scaffold").
 10a. **Write `.milky-kit-mode`** at the project root. Default `branch` (single word, single line). The user can flip with `/milky-kit:mode main | branch | worktrees` later. Don't ask at scaffold — `branch` is the GitHub-native default (feature branch + PR to main). Switching to `main` (direct push, no PRs) or `worktrees` (multi-agent isolation) is a deliberate later choice.
 
 11. **Initialize git.** `git init -b main`. Add a `.gitignore` if not already present (most scaffolds ship one). Make the initial commit:
