@@ -1,4 +1,4 @@
-import { attemptCount, owningClaim } from "../github/derive.ts"
+import { attemptCount, openCards, owningClaim } from "../github/derive.ts"
 import { type IssueState, stageOf } from "../github/issue.ts"
 import { autolandHeld } from "../merge/autoland.ts"
 import { machineOfHost } from "../orca/hosts.ts"
@@ -12,6 +12,7 @@ import type { Mismatch, ReconcileInput } from "./types.ts"
 const MINUTE = 60_000
 export const CLAIM_GRACE_MS = 10 * MINUTE
 
+const STARTS_WORKER = ["dispatch", "intake", "escalate"]
 const LOOKS_GOOD = /^looks good/i
 const FIRST_WORD_NO = /^no(?![\p{L}\p{N}'])/iu
 const PRIORITY = /^priority:P(\d)$/
@@ -121,13 +122,27 @@ function classifyCheck(
 	return classifyConversation(issue, resultAt, live)
 }
 
+function withoutCardAnswers(
+	issue: IssueState,
+	after: number,
+): { issue: IssueState; after: number } {
+	const anchor = issue.comments[after]
+	const comments = issue.comments.filter((comment) => comment.marker?.kind !== "answer")
+
+	return {
+		issue: { ...issue, comments },
+		after: anchor === undefined ? -1 : comments.indexOf(anchor),
+	}
+}
+
 function classifyConversation(
 	issue: IssueState,
 	after: number,
 	live: Worker | undefined,
 ): Mismatch | undefined {
-	const newest = issue.comments.at(-1)
-	const human = humanComment(issue, after)
+	const conversation = withoutCardAnswers(issue, after)
+	const newest = conversation.issue.comments.at(-1)
+	const human = humanComment(conversation.issue, conversation.after)
 	if (!newest || newest.agent || !human) return undefined
 
 	return {
@@ -234,6 +249,48 @@ function classifyWorking(
 	return undefined
 }
 
+function unclaimedWorker(
+	input: ReconcileInput,
+	issue: IssueState,
+	workers: Worker[],
+): Mismatch | undefined {
+	const cutoff = input.now.getTime() - CLAIM_GRACE_MS
+	const never = workers.find((worker) => {
+		const started = startedAt(input, worker)
+
+		return !isGone(worker) && isLive(worker) && started !== undefined && started.getTime() < cutoff
+	})
+	if (!never) return undefined
+
+	return {
+		issue: issue.number,
+		code: "unclaimed-worker",
+		detail: `worker ${never.dispatchId} never claimed the request: read its terminal, then worker-stop it`,
+		worker: never.dispatchId,
+	}
+}
+
+function classifyIntake(
+	input: ReconcileInput,
+	issue: IssueState,
+	workers: Worker[],
+): Mismatch | undefined {
+	const eligible =
+		issue.labels.includes("request") &&
+		!issue.labels.includes("proposed") &&
+		openCards(issue.comments).length === 0
+	if (!eligible) return undefined
+
+	if (workers.some((worker) => !isGone(worker))) return unclaimedWorker(input, issue, workers)
+
+	return {
+		issue: issue.number,
+		code: "intake",
+		detail:
+			"filed and not yet written up: start a frontman worker (Opus, high effort) that claims it with desk claim --role frontman",
+	}
+}
+
 function classifyReady(
 	input: ReconcileInput,
 	issue: IssueState,
@@ -245,23 +302,7 @@ function classifyReady(
 		issue.openSubIssues.length === 0
 	if (!eligible) return undefined
 
-	const present = workers.filter((worker) => !isGone(worker))
-	if (present.length > 0) {
-		const cutoff = input.now.getTime() - CLAIM_GRACE_MS
-		const never = present.find((worker) => {
-			const started = startedAt(input, worker)
-
-			return isLive(worker) && started !== undefined && started.getTime() < cutoff
-		})
-		if (!never) return undefined
-
-		return {
-			issue: issue.number,
-			code: "unclaimed-worker",
-			detail: `worker ${never.dispatchId} never claimed the request: read its terminal, then worker-stop it`,
-			worker: never.dispatchId,
-		}
-	}
+	if (workers.some((worker) => !isGone(worker))) return unclaimedWorker(input, issue, workers)
 
 	const attempts = attemptCount(issue.comments)
 
@@ -318,6 +359,7 @@ function classifyIssue(
 		}
 	}
 
+	if (label === "stage:intake") return classifyIntake(input, issue, workers)
 	if (label === "stage:ready") return classifyReady(input, issue, workers)
 	if (label === "stage:working") return classifyWorking(input, issue, assignment.byDispatch)
 	if (label === "stage:needs-you") return classifyNeedsYou(issue, workers, assignment.byDispatch)
@@ -365,7 +407,7 @@ function assignMachines(input: ReconcileInput, mismatches: Mismatch[]): Mismatch
 	const free = freeSlots(input)
 	const priorities = new Map(input.issues.map((issue) => [issue.number, priorityOf(issue)]))
 	const startable = mismatches
-		.filter((mismatch) => mismatch.code === "dispatch" || mismatch.code === "escalate")
+		.filter((mismatch) => STARTS_WORKER.includes(mismatch.code))
 		.sort(
 			(left, right) =>
 				(priorities.get(left.issue) ?? 2) - (priorities.get(right.issue) ?? 2) ||
@@ -376,7 +418,7 @@ function assignMachines(input: ReconcileInput, mismatches: Mismatch[]): Mismatch
 	for (const mismatch of startable) {
 		const machine = [...free.entries()].find(([, left]) => left > 0)?.[0]
 		if (machine === undefined) {
-			if (mismatch.code === "dispatch") dropped.add(mismatch)
+			if (mismatch.code !== "escalate") dropped.add(mismatch)
 			continue
 		}
 

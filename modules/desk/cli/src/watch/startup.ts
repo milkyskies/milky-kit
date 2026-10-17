@@ -5,7 +5,7 @@ export function dispatchableAtStart(input: ReconcileInput): number[] {
 	return reconcile(input)
 		.filter(
 			(mismatch) =>
-				(mismatch.code === "dispatch" || mismatch.code === "escalate") &&
+				["dispatch", "intake", "escalate"].includes(mismatch.code) &&
 				mismatch.machine !== undefined,
 		)
 		.map((mismatch) => mismatch.issue)

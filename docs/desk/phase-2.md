@@ -110,7 +110,7 @@ Every comment the program writes starts with one marker line and ends with `<!--
 <!-- desk:<kind> key=value key=value -->
 ```
 
-Values never contain spaces. Kinds: `claim`, `release`, `failed`, `decision`, `proposed-body`, `result`, `reopen`, `merge`, `autoland`, `review`, `proposed-request`. A comment is the **human's** when it lacks `<!-- desk:agent -->`. Author login cannot tell them apart, because workers post with Milky's own `gh` login.
+Values never contain spaces. Kinds: `claim`, `release`, `failed`, `decision`, `answer`, `proposed-body`, `result`, `reopen`, `merge`, `autoland`, `review`, `proposed-request`. `desk:decision` carries `claim=<id> card=<claim>-<k>`, where `<k>` counts the cards of one park from 1. `desk:answer card=<id>` is the human's answer to that card, and it has no agent marker. `desk:claim` carries `role=frontman` when a frontman holds it. A comment is the **human's** when it lacks `<!-- desk:agent -->`. Author login cannot tell them apart, because workers post with Milky's own `gh` login.
 
 A comment the digest has pinged gets a trailing `<!-- desk:pinged at=<iso> -->` line appended by an edit. Section 7 explains why.
 
@@ -119,16 +119,18 @@ A comment the digest has pinged gets a trailing `<!-- desk:pinged at=<iso> -->` 
 `src/github/` computes these from the comments, so nothing else stores them:
 
 - **Owning claim**: the earliest `desk:claim` comment not followed by a `desk:release` or `desk:failed` naming its id. Every guard, `desk release --claim` and `desk status` use this one definition, and `desk claim` uses it to pick the winner of a race, so a loser whose `lost-race` release failed never owns the issue.
-- **Attempts**: the count of `desk:release` and `desk:failed` comments after the newest human comment, not counting releases with reason `lost-race`, `answered` or `reopened`. A human answer resets the count, because the next attempt starts from new information.
+- **Attempts**: the count of `desk:release` and `desk:failed` comments after the newest human comment, not counting releases with reason `lost-race`, `answered`, `reopened` or `ready`. A human answer resets the count, because the next attempt starts from new information.
 - **Last human comment**: the newest comment without the agent marker.
+- **Open cards**: the `desk:decision` comments of the newest park (the cards that share the claim of the newest card with an id) that no `desk:answer card=<id>` names. A card with no `card=` attribute predates card ids and is never open.
 
 ### Commands
 
 `<n>` is an issue number. `--dispatch <d>` is the worker's Orca dispatch id, which every worker has in its preamble. It proves the worker owns the owning claim.
 
-**`desk claim <n> --machine <m> --task <t> --dispatch <d>`**
+**`desk claim <n> --machine <m> --task <t> --dispatch <d> [--role frontman]`**
 - Precondition: open; `stage:ready`; label `autopilot`; no open `blocked_by` issue; no open sub-issue; no owning claim.
-- Writes a claim comment, then `--add-label stage:working --remove-label stage:ready --add-assignee @me`.
+- With `--role frontman` the precondition is instead: open; `stage:intake`; label `request`; no `proposed` label; no owning claim. It needs no `autopilot` label, and the claim comment carries `role=frontman` (phase 5, section 6).
+- Writes a claim comment, then `--add-label stage:working --remove-label stage:ready --add-assignee @me` (`stage:intake` for a frontman).
 - Comment:
   ```
   <!-- desk:claim id=c_8f3a2b machine=zeus task=task_x dispatch=ctx_y at=2026-10-16T14:02:00Z -->
@@ -140,8 +142,8 @@ A comment the digest has pinged gets a trailing `<!-- desk:pinged at=<iso> -->` 
 
 **`desk park <n> --dispatch <d> --card <file> [--card <file>…] [--proposed-body <file>]`**
 - Precondition: `stage:working`; the owning claim's dispatch is `<d>`.
-- Validates each card before posting anything. The card shape is the decision comment in `desk.md`, which follows [the cards rule](../../modules/core/rules/cards.md): marker; `**Kind:** code-detail` or `**Kind:** design`; background; an `**Already checked:**` line; one question; at least two numbered options, or a line saying options cannot be enumerated. A code-detail card carries a `**Recommendation:**` line. A design card carries no recommendation line and does carry a `<details><summary>What would I pick?</summary>` block. A card that fails validation exits 1 and names the missing part.
-- Posts each card, then the proposed body, then moves `stage:working` to `stage:needs-you`.
+- Validates each card before posting anything. The card shape is the decision comment in `desk.md`, which follows [the cards rule](../../modules/core/rules/cards.md): marker; `**Kind:** code-detail` or `**Kind:** design`; background; an `**Already checked:**` line; one question; at least two numbered options, or a line saying options cannot be enumerated. A code-detail card carries a `**Recommendation:**` line. A design card carries no recommendation line and does carry a `<details><summary>What would I pick?</summary>` block. Every numbered option ends with a say-back line, `→ <the answer said back in one line>`, on the option's own line or the line below it, unless the card says its options cannot be enumerated. A card that fails validation exits 1 and names the missing part.
+- Posts each card with `card=<claim>-<k>` on its marker, then the proposed body, then moves `stage:working` to `stage:needs-you`.
 - The worktree stays. The next attempt resumes in it.
 
 **`desk done <n> --dispatch <d> --pr <number> --summary "<one sentence>" (--picture <url>… | --no-picture "<why>") --checked "<text>" [--see "<how to see it>"]`**
@@ -159,14 +161,29 @@ A comment the digest has pinged gets a trailing `<!-- desk:pinged at=<iso> -->` 
 - Posts `<!-- desk:release claim=<id> reason=<reason> -->`. The stage moves from `stage:working` to `stage:ready` only when the issue is `stage:working` and no unreleased claim remains. Releasing a lingering race loser changes no label.
 - `desk fail`, `desk answer` and `desk reopen` close every unreleased claim, not only the owning one, so a race loser whose own release failed cannot take the issue over.
 
+**`desk intake --words <file> --ask <ask:everything|ask:choices|ask:own-feel>`**
+- Files a new request from the desk (phase 5, section 6): labels `request,stage:intake,priority:P2,<ask>` and no `autopilot`, a title of the first 60 characters of the line, and the body `## Your words`, the line verbatim, then empty `## Decisions` and `## Small calls`. Prints the issue number.
+
+**`desk accept <n>`** and **`desk drop <n>`**
+- Precondition for both: open; `stage:intake`; label `proposed`.
+- `accept` removes `proposed` and leaves `stage:intake`, so the frontman picks the request up.
+- `drop` swaps `stage:intake` and `proposed` for `stage:done`, then closes the issue as not planned.
+
+**`desk ready <n> --dispatch <d> --points <1|2|3|5|8|13>`**
+- The frontman's end. Precondition: `stage:working`; the owning claim is `<d>`'s and has `role=frontman`.
+- Releases the claim with reason `ready` (not an attempt), then adds `autopilot`, `points:<k>` and `stage:ready`, and removes `stage:working` and any earlier `points:*`. The `autopilot` label is Milky's consent, given when Milky answered the frontman's "Is this what you meant?" or pressed ✓ start.
+
 **`desk note <n> --dispatch <d> "Auto-decided: X over Y because Z"`**
 - Precondition: the owning claim is `<d>`'s. The line must start with `Auto-decided:` and contain ` over ` and ` because `.
 - Appends `- <date>: <line>` to the body's `## Small calls` section, creating the section if it is missing. The program edits no other part of the body. The body is re-read right before the edit and again after it; if the body's `userContentEdits.totalCount` moved by anything but our own edit (GitHub records 0 at creation, 2 after the first edit because the first edit also stores the original body, then 1 per edit), or an earlier `## Small calls` or `## Decisions` line is gone, the command exits 4 (`desk answer` follows the same rule for `## Decisions`). `desk answer` is idempotent on retry: when the newest human comment after the latest decision card is already the same answer, and `## Decisions` already holds the decision, it skips those two writes and continues with the claim releases and the stage move.
 
-**`desk answer <n> --body <file> --decision "<one line>"`**
-- The human's side, called by `/decisions` and later by the desk app.
+**`desk answer <n> --body <file> --decision "<one line>" [--card <id>]`**
+- The human's side, called by `/decisions` and the desk app. `--decision` is the say-back line of the option chosen, or the typed text for an "other…" answer.
 - Precondition: `stage:needs-you`.
-- Posts the answer with no agent marker, appends `- <date>: <decision>` to the body's `## Decisions` section, posts `<!-- desk:release claim=<id> reason=answered -->` for the owning claim, then moves the stage to `stage:ready`. The release is what lets the next `desk claim` pass its "no owning claim" check. A release with `reason=answered` is not counted as an attempt.
+- `--card <id>` names the card answered and must be a card of the newest park. Without it the only open card is answered; with two or more open cards the command exits 1 and lists their ids. A park with no card ids (cards from before card ids) is answered as one.
+- Posts the answer as `<!-- desk:answer card=<id> -->` plus the text, with no agent marker, and appends `- <date>: <decision>` to the body's `## Decisions` section. A card already answered with different text exits 1.
+- While another card of the newest park is still open, it stops there and the request stays on `stage:needs-you` with its claim.
+- Once no card is open, posts `<!-- desk:release claim=<id> reason=answered -->` for every unreleased claim, then moves the stage to `stage:ready`, or to `stage:intake` when the owning claim has `role=frontman`. The release is what lets the next `desk claim` pass its "no owning claim" check. A release with `reason=answered` is not counted as an attempt.
 
 **`desk propose --from <n> --title "<title>" --type <type> --body <file>`**
 - Files a side topic as a proposed request. The body must contain `## Problem`.
@@ -289,7 +306,8 @@ The coordinator is a Sonnet session at medium effort (plan), started with `/milk
 | `dispatch` | `stage:ready`, `autopilot`, unblocked, no open sub-issue | no live worker for `#n` | Route (`reference/routing.md`), then `worker-start` (below). Only while live workers are under the machine's limit. |
 | `escalate` | as `dispatch`, attempts ≥ 2 | no live worker | Dispatch one tier up: Haiku to Sonnet. A Sonnet request at 2 attempts goes to the coordinator itself, which parks it with a card listing what was tried (plan). |
 | `orphan-claim` | `stage:working`, owning claim names dispatch D | D is `exited`, released or absent, and the claim is older than 10 minutes. A claim on a remote machine whose worker row is absent becomes `remote-claim-unseen` instead: report only, because a missing remote row may only mean the remote listing is incomplete, and the silent-machine rule releases the claim if the machine goes silent. | `desk release --claim <id> --reason no-worker`. It becomes `dispatch` or `escalate` on the next pass. |
-| `unclaimed-worker` | `stage:ready` | a live worker titled `#n`, started more than 10 minutes ago | The worker never claimed. Read the tail of its terminal, `worker-stop` it, and let the next pass dispatch again. |
+| `intake` | `stage:intake`, label `request`, no `proposed` label, no open card | no worker for `#n` that is not gone | Start a frontman worker (Opus, high effort) that runs `desk claim --role frontman`. Only while live workers are under the machine's limit. A worker for `#n` started more than 10 minutes ago that never claimed becomes `unclaimed-worker`. |
+| `unclaimed-worker` | `stage:ready` or an `intake` request | a live worker titled `#n`, started more than 10 minutes ago | The worker never claimed. Read the tail of its terminal, `worker-stop` it, and let the next pass dispatch again. |
 | `unrecorded-result` | `stage:working`, claim names D | D sent `worker_done`, or sits idle at its prompt | Send to D's terminal: "Record your result on #n with desk done, desk park or desk fail, then send worker_done again." If the terminal is gone, `desk release --reason stopped`. |
 | `parked-worker` | `stage:needs-you`, claim names D | D is live | `worker-release --dispatch D`. The worktree stays for the next attempt. |
 | `looks-good` | `stage:check`, newest human comment starts `looks good` | any | `desk merge`. On a conflict or failing check, dispatch a merge worker (Sonnet, low effort) into the request's worktree. |
@@ -303,7 +321,7 @@ The coordinator is a Sonnet session at medium effort (plan), started with `/milk
 | `remote-claim-unseen` | `stage:working`, owning claim on a remote machine | no row for dispatch D | Change nothing. The digest reports it once. |
 | `bad-labels` | an open issue with no `stage:*` label, or more than one | any | Change nothing. Report it in the digest. The program does not guess which stage is right. |
 
-`stage:intake`, `stage:backlog`, `proposed` and `stage:done` are ignored. A `stage:needs-you` issue with no worker needs nothing but the digest.
+`stage:backlog`, `stage:done` and a `proposed` request at `stage:intake` are ignored. A `desk:answer` comment is not a `conversation`, because it answers a card. A `stage:needs-you` issue with no worker needs nothing but the digest.
 
 `desk reconcile` computes the codes. The coordinator chooses the model and writes the brief. The program never decides routing.
 
@@ -441,6 +459,8 @@ DESK_NTFY_TOPIC=
 # optional — an access token, required for a reserved ntfy.sh topic
 DESK_NTFY_TOKEN=
 ```
+
+One more key is optional, read by `desk digest`: `DESK_APP_URL`, the desk's address. When it is set, the digest's link is that address instead of the GitHub search below; a link to one auto-merged request stays a GitHub link.
 
 `modules/desk/cli/.env.example` lists the same keys. PushNotification is not a second path: it reaches the phone only when Remote Control is connected, and it skips itself when it judges the user is at the terminal (relayed: one reliable path beats two half-reliable ones).
 

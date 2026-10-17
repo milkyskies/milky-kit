@@ -18,10 +18,13 @@ export type Claim = {
 	task: string
 	dispatch: string
 	at: string
+	role: string | undefined
 	comment: ParsedComment
 }
 
-const NON_ATTEMPT_REASONS = ["answered", "reopened", "lost-race"]
+export type OpenCard = { id: string; claim: string | undefined; comment: ParsedComment }
+
+const NON_ATTEMPT_REASONS = ["answered", "reopened", "lost-race", "ready"]
 
 export function parseComments(comments: readonly Comment[]): ParsedComment[] {
 	return comments.map((comment) => ({
@@ -35,10 +38,10 @@ function claimFrom(comment: ParsedComment): Claim | undefined {
 	const { marker } = comment
 	if (marker?.kind !== "claim") return undefined
 
-	const { id, machine, task, dispatch, at } = marker.attrs
+	const { id, machine, task, dispatch, at, role } = marker.attrs
 	if (!id || !machine || !task || !dispatch || !at) return undefined
 
-	return { id, machine, task, dispatch, at, comment }
+	return { id, machine, task, dispatch, at, role, comment }
 }
 
 export function activeClaims(comments: readonly ParsedComment[]): Claim[] {
@@ -61,6 +64,34 @@ export function activeClaims(comments: readonly ParsedComment[]): Claim[] {
 
 export function owningClaim(comments: readonly ParsedComment[]): Claim | undefined {
 	return activeClaims(comments)[0]
+}
+
+export function answeredCardIds(comments: readonly ParsedComment[]): Set<string> {
+	const ids = comments.flatMap((comment) =>
+		comment.marker?.kind === "answer" && comment.marker.attrs.card !== undefined
+			? [comment.marker.attrs.card]
+			: [],
+	)
+
+	return new Set(ids)
+}
+
+export function newestPark(comments: readonly ParsedComment[]): OpenCard[] {
+	const cards = comments.flatMap((comment) =>
+		comment.marker?.kind === "decision" && comment.marker.attrs.card !== undefined
+			? [{ id: comment.marker.attrs.card, claim: comment.marker.attrs.claim, comment }]
+			: [],
+	)
+	const newest = cards.at(-1)
+	if (newest === undefined) return []
+
+	return cards.filter((card) => card.claim === newest.claim)
+}
+
+export function openCards(comments: readonly ParsedComment[]): OpenCard[] {
+	const answered = answeredCardIds(comments)
+
+	return newestPark(comments).filter((card) => !answered.has(card.id))
 }
 
 export function lastHumanComment(comments: readonly ParsedComment[]): ParsedComment | undefined {

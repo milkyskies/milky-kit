@@ -3,9 +3,40 @@ import { AGENT_MARKER, formatMarker, parseMarker } from "./markers.ts"
 const KIND_LINE = /^\*\*Kind:\*\*\s*(code-detail|design)\s*$/m
 const CHECKED_LINE = /^\*\*Already checked:\*\*\s*\S/m
 const NUMBERED_OPTION = /^\s*\d+\.\s+\S/gm
+const OPTION_START = /^\s*\d+\.\s+\S/
+const SAY_BACK = /→[ \t]*(\S.*)$/m
 const OPTIONS_NOT_ENUMERABLE = /cannot be enumerated/i
 const RECOMMENDATION_LINE = /^\*\*Recommendation:\*\*/m
 const PICK_BLOCK = /<details>\s*<summary>What would I pick\?<\/summary>/
+
+function optionBlocks(card: string): string[] {
+	const blocks: string[] = []
+	let current: string[] | undefined
+
+	for (const line of card.split("\n")) {
+		if (OPTION_START.test(line)) {
+			if (current) blocks.push(current.join("\n"))
+			current = [line]
+		} else if (line.trim() === "") {
+			if (current) blocks.push(current.join("\n"))
+			current = undefined
+		} else {
+			current?.push(line)
+		}
+	}
+
+	if (current) blocks.push(current.join("\n"))
+
+	return blocks
+}
+
+export function sayBackLines(card: string): string[] {
+	return optionBlocks(card).flatMap((block) => {
+		const line = SAY_BACK.exec(block)?.[1]?.trim()
+
+		return line === undefined || line === "" ? [] : [line]
+	})
+}
 
 export function cardProblems(card: string): string[] {
 	const problems: string[] = []
@@ -28,6 +59,16 @@ export function cardProblems(card: string): string[] {
 		)
 	}
 
+	if (!OPTIONS_NOT_ENUMERABLE.test(card)) {
+		optionBlocks(card).forEach((block, index) => {
+			if (!SAY_BACK.test(block)) {
+				problems.push(
+					`option ${index + 1} needs a say-back line after its consequence: \`→ <the answer said back in one line>\``,
+				)
+			}
+		})
+	}
+
 	if (kind === "code-detail" && !RECOMMENDATION_LINE.test(card)) {
 		problems.push("a code-detail card needs a `**Recommendation:**` line")
 	}
@@ -44,7 +85,11 @@ export function cardProblems(card: string): string[] {
 	return problems
 }
 
-export function canonicalCard(card: string, claimId: string): string {
+export function cardIdFor(claimId: string, position: number): string {
+	return `${claimId}-${position}`
+}
+
+export function canonicalCard(card: string, claimId: string, position: number): string {
 	const rest = card
 		.split("\n")
 		.slice(1)
@@ -52,5 +97,5 @@ export function canonicalCard(card: string, claimId: string): string {
 		.join("\n")
 		.trim()
 
-	return `${formatMarker("decision", { claim: claimId })}\n${rest}\n\n${AGENT_MARKER}\n`
+	return `${formatMarker("decision", { claim: claimId, card: cardIdFor(claimId, position) })}\n${rest}\n\n${AGENT_MARKER}\n`
 }

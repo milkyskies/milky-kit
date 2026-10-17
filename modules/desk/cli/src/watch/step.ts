@@ -66,6 +66,19 @@ export function newWatchState(now: Date): WatchState {
 	}
 }
 
+function awaitsWorker(issue: IssueState): boolean {
+	const stage = stageOf(issue)
+	if (!issue.open || stage.kind !== "one") return false
+
+	if (stage.label === "stage:ready") return true
+
+	return (
+		stage.label === "stage:intake" &&
+		issue.labels.includes("request") &&
+		!issue.labels.includes("proposed")
+	)
+}
+
 function baselineOf(issues: readonly IssueState[]): GithubBaseline {
 	const waiting = issues.filter((issue) => {
 		const stage = stageOf(issue)
@@ -78,14 +91,7 @@ function baselineOf(issues: readonly IssueState[]): GithubBaseline {
 	})
 
 	return {
-		ready: new Set(
-			issues
-				.filter(
-					(issue) =>
-						issue.open && stageOf(issue).kind === "one" && issue.labels.includes("stage:ready"),
-				)
-				.map((issue) => issue.number),
-		),
+		ready: new Set(issues.filter(awaitsWorker).map((issue) => issue.number)),
 		merged: new Set(
 			issues.filter((issue) => landedPullRequest(issue) !== undefined).map((issue) => issue.number),
 		),

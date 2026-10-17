@@ -283,6 +283,26 @@ describe("desk watch", () => {
 		expect(await h.poll()).toEqual([{ event: "ready", issue: 2 }])
 	})
 
+	test("a parked frontman request that is answered back to intake wakes the coordinator", async () => {
+		const h = new Harness()
+		h.issues = [issue(5, ["request", "stage:needs-you"])]
+		expect(await h.poll()).toEqual([])
+		h.advance(1)
+		h.issues = [issue(5, ["request", "stage:intake"])]
+
+		expect(await h.poll()).toEqual([{ event: "ready", issue: 5 }])
+	})
+
+	test("a proposal waiting for Milky's yes does not wake the coordinator", async () => {
+		const h = new Harness()
+		h.issues = [issue(5, ["request", "stage:needs-you"])]
+		expect(await h.poll()).toEqual([])
+		h.advance(1)
+		h.issues = [issue(5, ["request", "proposed", "stage:intake"])]
+
+		expect(await h.poll()).toEqual([])
+	})
+
 	test("released_request_does_not_wait_for_the_tick", async () => {
 		const h = new Harness()
 		h.issues = [issue(34, ["request", "autopilot", "stage:ready"])]

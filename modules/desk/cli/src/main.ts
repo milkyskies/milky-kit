@@ -67,7 +67,7 @@ function isRepoFree(value: unknown): value is RepoFreeCommand {
 }
 
 function isWrite(args: readonly string[]): boolean {
-	if (args[0] === "issue") return args[1] === "edit" || args[1] === "create"
+	if (args[0] === "issue") return ["edit", "create", "close"].includes(args[1] ?? "")
 
 	const method = args[args.indexOf("-X") + 1]
 

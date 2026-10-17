@@ -68,7 +68,8 @@ export async function runWith(deps: DigestDeps, args: string[], context: Context
 		return
 	}
 
-	const message = digestMessage(repo, digest)
+	const appUrl = (await deps.ping.loadEnv()).DESK_APP_URL || undefined
+	const message = digestMessage(repo, digest, appUrl)
 
 	if (!values.send) {
 		context.out(context.json ? JSON.stringify({ sent: false, message }) : message)

@@ -18,6 +18,14 @@ export function requireStage(command: string, issue: IssueState, stage: string):
 	}
 }
 
+export function requireProposal(command: string, issue: IssueState): void {
+	requireStage(command, issue, "stage:intake")
+
+	if (!issue.labels.includes("proposed")) {
+		throw refusal(command, issue.number, "the request is not a proposal", "the proposed label")
+	}
+}
+
 export function requireOwnedClaim(command: string, issue: IssueState, dispatch: string): Claim {
 	const claim = owningClaim(issue.comments)
 	if (!claim) {

@@ -58,7 +58,7 @@ For a design, product or pitch card, show no recommendation. Add one more option
 
 Ask with `AskUserQuestion`: the proposals are the options, and the user can always choose "Other" to write a free-text answer. Where the agent gave no usable proposals, ask for free text instead. Keep the agent's own wording, since this skill relays the question and does not re-author it.
 
-After the answer, say it back in one line ("Retry limit = 3. The other queues follow it") and move to the next card.
+After the answer, say it back in one line ("Retry limit = 3. The other queues follow it") and move to the next card. For a proposal the user picked, the line is the `→` text the agent wrote after that option. For "Other", write it from the user's words.
 
 ### 4. Offer proposed bodies
 
@@ -79,13 +79,15 @@ Never replace a body without preserving the original in a comment first. Never a
 
 ### 5. Record the answer
 
-For each answered issue:
+For each answered card:
 
 ```bash
-~/.claude/kit/modules/desk/bin/desk answer <num> --body <file> --decision "<one line>"
+~/.claude/kit/modules/desk/bin/desk answer <num> --card <card id> --body <file> --decision "<one line>"
 ```
 
-`desk answer` posts the answer with no agent marker, appends `- <date>: <decision>` to the body's `## Decisions` section, moves the stage to `stage:ready`, releases the parked claim with `desk:release reason=answered`, and reads the issue back to confirm. It writes the comment first, so a failed stage move leaves the answer on the issue; a non-zero exit means the state is not what was meant, so report the stderr line and stop. The one-line decision is the user's answer said back, in their words.
+The card id is the `card=` attribute on the card's `<!-- desk:decision -->` marker. A card from before card ids has none, and then `--card` is left out.
+
+`desk answer` posts the answer with no agent marker, appends `- <date>: <decision>` to the body's `## Decisions` section, and reads the issue back to confirm. While another card of the same park is open, the issue stays on `stage:needs-you`. After the last card it moves the stage to `stage:ready` (`stage:intake` when a frontman parked it) and releases the parked claim with `desk:release reason=answered`. It writes the comment first, so a failed stage move leaves the answer on the issue; a non-zero exit means the state is not what was meant, so report the stderr line and stop. The one-line decision is the user's answer said back, in their words.
 
 A **self-filed** issue answered this way reaches `stage:ready` still carrying only `## Problem` and the answered question: no acceptance criteria, no tests, and no `autopilot` label, so no agent claims it. Say so, and offer `/todo` to write the spec now that the fork is resolved.
 

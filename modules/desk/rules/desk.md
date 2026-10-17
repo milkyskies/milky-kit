@@ -20,6 +20,8 @@ A worker takes one issue to a pull request and records every outcome on the issu
 
 Before running `desk park`, read `~/.claude/kit/modules/desk/reference/parking.md`.
 
+A frontman worker follows the same sequence with three differences. It claims with `desk claim <n> --machine <machine> --task <task id> --dispatch <dispatch id> --role frontman`. It asks through `desk park` cards, and Milky's answer returns the request to `stage:intake` for a fresh frontman. It ends with `desk ready <n> --dispatch <dispatch id> --points <k>` instead of `desk done`.
+
 ## The ask setting
 
 The issue's `ask:*` label, or the project default, decides what you ask. `ask:everything`: every unclear point becomes a card. `ask:choices`: code details are yours, design and product become cards. `ask:own-feel`: everything is yours. Log every call you make with `desk note`.
