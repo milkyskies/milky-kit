@@ -14,10 +14,25 @@ import { parseJson, readString } from "../json.ts"
 import { type CiStatus, ciStatus } from "../merge/ci.ts"
 import { firstFailingLine, type Shell, spawnShell } from "../merge/shell.ts"
 import { type OrcaDeps, realOrcaDeps } from "../orca/deps.ts"
+import { type DeskSection, landingOf } from "../project/section.ts"
 import { parseDuration } from "../watch/loop.ts"
 import { landIssue } from "./land.ts"
 
 const LOOKS_GOOD = /^looks good/i
+
+type BlockedCheck = "merge" | "check" | "review" | "ci"
+
+class Blocked extends Error {
+	constructor(
+		readonly check: BlockedCheck,
+		readonly got: string,
+		readonly expected: string,
+	) {
+		super(got)
+	}
+}
+
+type Approval = { prNumber: number; by: "human" | "auto" }
 
 export type MergeDeps = OrcaDeps & {
 	shell: Shell
@@ -83,7 +98,7 @@ async function git(deps: MergeDeps, number: number, args: string[], cwd?: string
 	return result.stdout.trim()
 }
 
-function requireApproval(issue: IssueState, number: number): number {
+function requireApproval(issue: IssueState, number: number, section: DeskSection): Approval {
 	requireStage("merge", issue, "stage:check")
 
 	const resultIndex = issue.comments.findLastIndex((comment) => comment.marker?.kind === "result")
@@ -92,29 +107,59 @@ function requireApproval(issue: IssueState, number: number): number {
 		throw refusal("merge", number, "there is no result comment", "a desk:result comment")
 	}
 
-	const humanIndex = issue.comments.findLastIndex((comment) => !comment.agent)
-	const human = issue.comments[humanIndex]
-	if (!human || humanIndex < resultIndex || !LOOKS_GOOD.test(human.body.trim())) {
-		throw refusal(
-			"merge",
-			number,
-			"the newest human comment is not a looks good newer than the result",
-			'a human comment starting "looks good" after the result',
-		)
-	}
-
 	const prNumber = Number(resultComment.marker?.attrs.pr)
 	if (!Number.isInteger(prNumber)) {
 		throw refusal("merge", number, "the result comment names no pull request", "pr=<number>")
 	}
 
-	return prNumber
+	const humanIndex = issue.comments.findLastIndex((comment) => !comment.agent)
+	const human = issue.comments[humanIndex]
+	const answered = human !== undefined && humanIndex > resultIndex
+	if (answered && LOOKS_GOOD.test(human.body.trim())) return { prNumber, by: "human" }
+
+	if (!answered && landingOf(issue.labels, section) === "land:auto") return { prNumber, by: "auto" }
+
+	throw refusal(
+		"merge",
+		number,
+		"the newest human comment is not a looks good newer than the result",
+		'a human comment starting "looks good" after the result',
+	)
+}
+
+function requireCleanReview(
+	issue: IssueState,
+	prNumber: number,
+	changedFiles: readonly string[],
+	reviewPaths: readonly string[],
+): void {
+	const touched = changedFiles.find((file) =>
+		reviewPaths.some((glob) => new Bun.Glob(glob).match(file)),
+	)
+	if (touched === undefined) return
+
+	const resultIndex = issue.comments.findLastIndex((comment) => comment.marker?.kind === "result")
+	const review = issue.comments
+		.slice(resultIndex + 1)
+		.findLast(
+			(comment) =>
+				comment.marker?.kind === "review" && comment.marker.attrs.pr === String(prNumber),
+		)
+
+	if (review?.marker?.attrs.verdict === "clean") return
+
+	throw new Blocked(
+		"review",
+		review === undefined
+			? `\`${touched}\` is on a review path and the standing reviewer has not reported on this result`
+			: "the standing reviewer reported a blocking finding",
+		"a clean review newer than the result",
+	)
 }
 
 async function waitForCi(
 	deps: MergeDeps,
 	context: Context,
-	number: number,
 	sha: string,
 	hasWorkflows: boolean,
 	timeoutMs: number,
@@ -125,7 +170,7 @@ async function waitForCi(
 	for (;;) {
 		const status = await ciStatus(context.gh, context.repo, sha, hasWorkflows)
 		if (status.kind === "failing") {
-			throw refusal("merge", number, describeCi(status).text, "no failing check")
+			throw new Blocked("ci", describeCi(status).text, "no failing check")
 		}
 		if (status.kind !== "pending") return status
 
@@ -134,9 +179,8 @@ async function waitForCi(
 		}
 
 		if (deps.nowMs() >= deadline) {
-			throw refusal(
-				"merge",
-				number,
+			throw new Blocked(
+				"ci",
 				`CI on ${sha.slice(0, 7)} did not finish within ${Math.round(timeoutMs / 60_000)} minutes`,
 				"CI finished and passing",
 			)
@@ -144,6 +188,63 @@ async function waitForCi(
 
 		await deps.sleep(CI_POLL_MS)
 	}
+}
+
+type Verified = { ci: CiStatus; checkedSha: string }
+
+async function verifyInWorktree(
+	deps: MergeDeps,
+	context: Context,
+	input: {
+		number: number
+		headRef: string
+		worktree: string
+		issue: IssueState
+		approval: Approval
+		section: DeskSection
+		ciTimeout: string
+	},
+): Promise<Verified> {
+	const { number, headRef, worktree, issue, approval, section } = input
+	const { check } = section.coordinator
+
+	const merged = await deps.shell(
+		["git", "merge", "origin/main", "-m", `Merge origin/main into ${headRef}`],
+		worktree,
+	)
+	if (merged.code !== 0) {
+		const conflicts = await deps.shell(["git", "diff", "--name-only", "--diff-filter=U"], worktree)
+		await deps.shell(["git", "merge", "--abort"], worktree)
+		const files = conflicts.stdout.split("\n").filter((line) => line.trim() !== "")
+
+		throw new Blocked(
+			"merge",
+			`merging origin/main conflicts in ${files.join(", ") || "the pull request branch"}`,
+			"a clean merge",
+		)
+	}
+
+	const checked = await deps.shell(["sh", "-c", check], worktree)
+	if (checked.code !== 0) {
+		throw new Blocked(
+			"check",
+			`the check \`${check}\` failed: ${firstFailingLine(checked)}`,
+			"a passing check",
+		)
+	}
+
+	if (approval.by === "auto") {
+		const diff = await git(deps, number, ["diff", "--name-only", "origin/main", "HEAD"], worktree)
+		requireCleanReview(issue, approval.prNumber, diff.split("\n"), section.reviewPaths)
+	}
+
+	await git(deps, number, ["push", "origin", `HEAD:${headRef}`], worktree)
+	const checkedSha = await git(deps, number, ["rev-parse", "HEAD"], worktree)
+
+	const timeout = parseDuration(input.ciTimeout)
+	const ci = await waitForCi(deps, context, checkedSha, await deps.hasWorkflows(worktree), timeout)
+
+	return { ci, checkedSha }
 }
 
 export async function runWith(deps: MergeDeps, args: string[], context: Context): Promise<void> {
@@ -157,8 +258,10 @@ export async function runWith(deps: MergeDeps, args: string[], context: Context)
 	const number = parseNumber("merge", positionals[0], "the issue number")
 	const { gh, repo } = context
 
+	const section = await deps.loadSection()
 	const before = await readIssue(gh, repo, number)
-	const prNumber = requireApproval(before, number)
+	const approval = requireApproval(before, number, section)
+	const { prNumber } = approval
 
 	const pr = parseJson(
 		await gh([
@@ -176,7 +279,7 @@ export async function runWith(deps: MergeDeps, args: string[], context: Context)
 		throw refusal("merge", number, `pull request #${prNumber} is not open`, "an open pull request")
 	}
 
-	const { check } = (await deps.loadSection()).coordinator
+	const { check } = section.coordinator
 	const topLevel = await git(deps, number, ["rev-parse", "--show-toplevel"])
 	const worktreeDir =
 		values["worktree-dir"] ?? join(dirname(topLevel), `${basename(topLevel)}-worktrees`)
@@ -186,50 +289,44 @@ export async function runWith(deps: MergeDeps, args: string[], context: Context)
 	await deps.shell(["git", "worktree", "remove", "--force", worktree])
 	await git(deps, number, ["worktree", "add", "--detach", worktree, `origin/${headRef}`])
 
-	let ci: CiStatus
-	let checkedSha: string
+	let verified: Verified
 	try {
-		const merged = await deps.shell(
-			["git", "merge", "origin/main", "-m", `Merge origin/main into ${headRef}`],
+		verified = await verifyInWorktree(deps, context, {
+			number,
+			headRef,
 			worktree,
+			issue: before,
+			approval,
+			section,
+			ciTimeout: values["ci-timeout"] ?? DEFAULT_CI_TIMEOUT,
+		})
+	} catch (error) {
+		if (!(error instanceof Blocked)) throw error
+		if (approval.by === "human") throw refusal("merge", number, error.got, error.expected)
+
+		await postComment(
+			gh,
+			repo,
+			number,
+			composeComment(
+				"autoland",
+				{ pr: String(prNumber), blocked: error.check },
+				`Not landed automatically: ${error.got}.\n\nThe request stays at \`stage:check\` for a human. Comment \`looks good\` to merge it anyway.`,
+			),
 		)
-		if (merged.code !== 0) {
-			const conflicts = await deps.shell(
-				["git", "diff", "--name-only", "--diff-filter=U"],
-				worktree,
-			)
-			await deps.shell(["git", "merge", "--abort"], worktree)
-			const files = conflicts.stdout.split("\n").filter((line) => line.trim() !== "")
+		emit(context, `#${number} waits for a human: ${error.got}`, {
+			issue: number,
+			pr: prNumber,
+			blocked: error.check,
+		})
 
-			throw refusal(
-				"merge",
-				number,
-				`merging origin/main conflicts in ${files.join(", ") || "the pull request branch"}`,
-				"a clean merge",
-			)
-		}
-
-		const checked = await deps.shell(["sh", "-c", check], worktree)
-		if (checked.code !== 0) {
-			throw refusal(
-				"merge",
-				number,
-				`the check \`${check}\` failed: ${firstFailingLine(checked)}`,
-				"a passing check",
-			)
-		}
-
-		await git(deps, number, ["push", "origin", `HEAD:${headRef}`], worktree)
-		const sha = await git(deps, number, ["rev-parse", "HEAD"], worktree)
-
-		const timeout = parseDuration(values["ci-timeout"] ?? DEFAULT_CI_TIMEOUT)
-		ci = await waitForCi(deps, context, number, sha, await deps.hasWorkflows(worktree), timeout)
-		checkedSha = sha
+		return
 	} finally {
 		await deps.shell(["git", "worktree", "remove", "--force", worktree])
 	}
 
-	requireApproval(await readIssue(gh, repo, number), number)
+	const { ci, checkedSha } = verified
+	requireApproval(await readIssue(gh, repo, number), number, section)
 
 	await gh([
 		"pr",
@@ -249,7 +346,12 @@ export async function runWith(deps: MergeDeps, args: string[], context: Context)
 		number,
 		composeComment(
 			"merge",
-			{ pr: String(prNumber), ci: described.marker, check: "passed" },
+			{
+				pr: String(prNumber),
+				ci: described.marker,
+				check: "passed",
+				...(approval.by === "auto" ? { by: "auto" } : {}),
+			},
 			`Merged pull request #${prNumber} with a merge commit.\n\n**CI:** ${described.text}\n**Local check:** passed (\`${check}\`)`,
 		),
 	)

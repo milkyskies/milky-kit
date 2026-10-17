@@ -3,14 +3,19 @@ import { readFile } from "node:fs/promises"
 export const ASK_SETTINGS = ["ask:everything", "ask:choices", "ask:own-feel"]
 export const DEFAULT_CHECK_COMMAND = "mise run check"
 export const DEFAULT_WORKER_LIMIT = 3
+export const DEFAULT_LANDING = "land:check"
+export const LANDINGS = ["land:check", "land:auto"] as const
+
+export type Landing = (typeof LANDINGS)[number]
 
 export type Machine = { name: string; workers: number; repo: string | undefined }
 
 export type PreflightNeed = { command: string; fix: string }
 
 export type DeskSection = {
-	coordinator: { machine: string; ask: string; check: string }
+	coordinator: { machine: string; ask: string; check: string; land: Landing }
 	machines: Machine[]
+	reviewPaths: string[]
 	preflight: { needs: PreflightNeed[]; mcp: string[] }
 }
 
@@ -32,6 +37,7 @@ const SUBSECTION_HEADING = /^### (.+?)\s*$/
 const KEY_VALUE_BULLET = /^-\s+([^:]+?):\s*(.*?)\s*$/
 const COMMAND_BULLET = /^-\s+`([^`]+)`(?:\s+-\s+fix:\s+`([^`]+)`)?\s*$/
 const WORKER_ITEM = /^workers\s+(\d+)$/
+const GLOB_BULLET = /^-\s+`([^`]+)`(?:\s+-\s+.*)?$/
 const REPO_ITEM = /^repo\s+`([^`]+)`$/
 
 function splitSubsections(
@@ -110,7 +116,7 @@ function parseCoordinator(
 			continue
 		}
 
-		if (key !== "machine" && key !== "ask" && key !== "check") {
+		if (key !== "machine" && key !== "ask" && key !== "check" && key !== "land") {
 			issues.push({ line: line.number, message: `unknown key "${key}" in ### Coordinator` })
 			continue
 		}
@@ -132,7 +138,48 @@ function parseCoordinator(
 		})
 	}
 
-	return { machine, ask, check: values.get("check") || DEFAULT_CHECK_COMMAND }
+	const configuredLand = values.get("land")
+	const land = LANDINGS.find((landing) => landing === configuredLand)
+	if (subsection !== undefined && configuredLand !== undefined && land === undefined) {
+		issues.push({
+			line: subsection.line,
+			message: `### Coordinator land must be one of ${LANDINGS.join(", ")}, got "${configuredLand}"`,
+		})
+	}
+
+	return {
+		machine,
+		ask,
+		check: values.get("check") || DEFAULT_CHECK_COMMAND,
+		land: land ?? DEFAULT_LANDING,
+	}
+}
+
+function parseReviewPaths(subsection: Subsection | undefined, issues: SectionIssue[]): string[] {
+	const globs: string[] = []
+
+	for (const line of subsection ? contentLines(subsection) : []) {
+		const glob = GLOB_BULLET.exec(line.text)?.[1]
+		if (glob === undefined) {
+			issues.push({
+				line: line.number,
+				message: `expected "- \`glob\`" in ### Review paths, got "${line.text}"`,
+			})
+			continue
+		}
+
+		globs.push(glob)
+	}
+
+	return globs
+}
+
+export function landingOf(labels: readonly string[], section: DeskSection): Landing {
+	const requested = LANDINGS.filter((landing) => labels.includes(landing))
+
+	if (requested.length > 1) return "land:check"
+
+	return requested[0] ?? section.coordinator.land
 }
 
 function parseMachines(subsection: Subsection | undefined, issues: SectionIssue[]): Machine[] {
@@ -240,10 +287,11 @@ export function parseDeskSection(markdown: string): SectionResult {
 	const coordinator = parseCoordinator(find("Coordinator"), split.heading, issues)
 	const machines = parseMachines(find("Machines"), issues)
 	const preflight = parsePreflight(find("Preflight"), issues)
+	const reviewPaths = parseReviewPaths(find("Review paths"), issues)
 
 	if (issues.length > 0) return { kind: "invalid", issues: issues.sort((a, b) => a.line - b.line) }
 
-	return { kind: "ok", section: { coordinator, machines, preflight } }
+	return { kind: "ok", section: { coordinator, machines, preflight, reviewPaths } }
 }
 
 export function describeIssue(file: string, issue: SectionIssue): string {

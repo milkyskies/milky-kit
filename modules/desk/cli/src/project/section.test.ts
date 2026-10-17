@@ -5,7 +5,13 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 import { DESK_SECTION } from "../preflight/testing/world.ts"
-import { parseDeskSection, readDeskSection, remoteMachines, workerMachines } from "./section.ts"
+import {
+	landingOf,
+	parseDeskSection,
+	readDeskSection,
+	remoteMachines,
+	workerMachines,
+} from "./section.ts"
 
 function parsed(markdown: string) {
 	const result = parseDeskSection(markdown)
@@ -22,6 +28,7 @@ describe("parseDeskSection", () => {
 			machine: "Minerva",
 			ask: "ask:choices",
 			check: "mise run check",
+			land: "land:check",
 		})
 		expect(section.machines).toEqual([
 			{ name: "Minerva", workers: 3, repo: undefined },
@@ -47,8 +54,60 @@ describe("parseDeskSection", () => {
 		const section = parsed("## desk\n\n### Coordinator\n- machine: Minerva\n- ask: ask:own-feel\n")
 
 		expect(section.coordinator.check).toBe("mise run check")
+		expect(section.coordinator.land).toBe("land:check")
+		expect(section.reviewPaths).toEqual([])
 		expect(workerMachines(section)).toEqual([{ name: "Minerva", workers: 3, repo: undefined }])
 		expect(remoteMachines(section)).toEqual([])
+	})
+
+	test("reads the landing default and the review path globs", () => {
+		const section = parsed(
+			[
+				"## desk",
+				"### Coordinator",
+				"- machine: Minerva",
+				"- ask: ask:choices",
+				"- land: land:auto",
+				"### Review paths",
+				"<!-- a comment is skipped -->",
+				"- `apps/api/drizzle/migrations/**`",
+				"- `scripts/**/*.sh` - kills processes",
+			].join("\n"),
+		)
+
+		expect(section.coordinator.land).toBe("land:auto")
+		expect(section.reviewPaths).toEqual(["apps/api/drizzle/migrations/**", "scripts/**/*.sh"])
+	})
+
+	test("a land value that is not a landing label, and a review path without a glob, name their line", () => {
+		const result = parseDeskSection(
+			[
+				"## desk",
+				"### Coordinator",
+				"- machine: Minerva",
+				"- ask: ask:choices",
+				"- land: sometimes",
+				"### Review paths",
+				"- migrations",
+			].join("\n"),
+		)
+
+		if (result.kind !== "invalid") throw new Error("expected invalid")
+
+		expect(result.issues.map((issue) => issue.line)).toEqual([2, 7])
+	})
+
+	test("landingOf takes the request label, falls back to the default, and treats both labels as land:check", () => {
+		const auto = parsed(
+			"## desk\n### Coordinator\n- machine: M\n- ask: ask:choices\n- land: land:auto\n",
+		)
+		const plain = parsed("## desk\n### Coordinator\n- machine: M\n- ask: ask:choices\n")
+
+		expect(landingOf(["request"], auto)).toBe("land:auto")
+		expect(landingOf(["land:check"], auto)).toBe("land:check")
+		expect(landingOf(["land:auto"], plain)).toBe("land:auto")
+		expect(landingOf(["request"], plain)).toBe("land:check")
+		expect(landingOf(["land:auto", "land:check"], auto)).toBe("land:check")
 	})
 
 	test("reports a missing section", () => {

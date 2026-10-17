@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test"
+import { composeComment } from "../github/markers.ts"
 import { reconcile } from "./diff.ts"
 import {
 	claim,
@@ -301,6 +302,79 @@ describe("desk reconcile", () => {
 		const issues = [issue(12, CHECK, [claim("c_1", "ctx_y"), result("c_1"), "Looks good, ship it"])]
 
 		expect(codes({ issues })).toEqual([[12, "looks-good"]])
+	})
+
+	test("auto-land: a land:auto request at check with no human comment after the result", () => {
+		const issues = [
+			issue(12, [...CHECK, "land:auto"], [claim("c_1", "ctx_y"), result("c_1")]),
+			issue(13, CHECK, [claim("c_2", "ctx_z"), result("c_2", "46")]),
+		]
+
+		expect(codes({ issues })).toEqual([[12, "auto-land"]])
+	})
+
+	test("auto-land: a request with no landing label follows the project default", () => {
+		const issues = [issue(12, CHECK, [claim("c_1", "ctx_y"), result("c_1")])]
+		const auto = { ...SECTION, coordinator: { ...SECTION.coordinator, land: "land:auto" as const } }
+
+		expect(codes({ issues, section: auto })).toEqual([[12, "auto-land"]])
+		expect(codes({ issues })).toEqual([])
+	})
+
+	test("auto-land: a land:check label beats a land:auto project default", () => {
+		const issues = [issue(12, [...CHECK, "land:check"], [claim("c_1", "ctx_y"), result("c_1")])]
+		const auto = { ...SECTION, coordinator: { ...SECTION.coordinator, land: "land:auto" as const } }
+
+		expect(codes({ issues, section: auto })).toEqual([])
+	})
+
+	test("auto-land: a blocked attempt after the result waits for the human, a new result tries again", () => {
+		const blocked = composeComment("autoland", { pr: "45", blocked: "check" }, "Not landed.")
+		const waiting = [
+			issue(12, [...CHECK, "land:auto"], [claim("c_1", "ctx_y"), result("c_1"), blocked]),
+		]
+		const retried = [
+			issue(
+				12,
+				[...CHECK, "land:auto"],
+				[claim("c_1", "ctx_y"), result("c_1"), blocked, result("c_1", "46")],
+			),
+		]
+
+		expect(codes({ issues: waiting })).toEqual([])
+		expect(codes({ issues: retried })).toEqual([[12, "auto-land"]])
+	})
+
+	test("auto-land: a human comment, a conflict or a busy worker comes first", () => {
+		const labels = [...CHECK, "land:auto"]
+		const conflicting = [{ number: 45, state: "OPEN", isDraft: false, mergeable: "CONFLICTING" }]
+
+		expect(
+			codes({
+				issues: [issue(12, labels, [claim("c_1", "ctx_y"), result("c_1"), "no, because x"])],
+			}),
+		).toEqual([[12, "rejected"]])
+		expect(
+			codes({ issues: [issue(12, labels, [claim("c_1", "ctx_y"), result("c_1"), "why this?"])] }),
+		).toEqual([[12, "conversation"]])
+		expect(
+			codes({
+				issues: [issue(12, labels, [claim("c_1", "ctx_y"), result("c_1"), "looks good"])],
+			}),
+		).toEqual([[12, "looks-good"]])
+		expect(
+			codes({
+				issues: [
+					issue(12, labels, [claim("c_1", "ctx_y"), result("c_1")], { pullRequests: conflicting }),
+				],
+			}),
+		).toEqual([[12, "check-red"]])
+		expect(
+			codes({
+				issues: [issue(12, labels, [claim("c_1", "ctx_y"), result("c_1")])],
+				workers: [worker()],
+			}),
+		).toEqual([])
 	})
 
 	test("looks-good: a looks good older than the result does not count", () => {

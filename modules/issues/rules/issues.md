@@ -17,6 +17,7 @@ Run `.github/scripts/setup-labels.sh` once per repository to create every label 
 | Points | `points:1`, `points:2`, `points:3`, `points:5`, `points:8`, `points:13` | one per request |
 | Type | `type:feature`, `type:change`, `type:fix`, `type:chore`, `type:docs`, `type:refactor` | exactly one per issue |
 | Consent | `autopilot` | opt-in per issue |
+| Landing | `land:check`, `land:auto` | at most one per request; project default in `CLAUDE.md` |
 
 ## Stages
 
@@ -91,6 +92,12 @@ An autonomous agent may only claim an issue that is **opted in explicitly**. The
 The house template below still asks for both `## Acceptance criteria` and `## Tests`, and issues are still better with them. That is a writing convention, not a gate.
 
 Eligibility is a filter, not a transition: an ineligible issue is skipped and its stage is never changed.
+
+## Landing
+
+`land:check` is the human-merge landing: the pull request waits at `stage:check` until a person comments `looks good`. `land:auto` lets the desk merge the pull request itself once the merge, the project's check command and, on a review path, the standing reviewer all pass (`modules/desk/desk-section.md`). A request with neither label takes the project's `- land:` line under `### Coordinator`, and `land:check` when the line is missing. A request carrying both labels lands as `land:check`.
+
+Only the human adds `land:auto`, the same consent rule as `autopilot`. Workers and the coordinator never add or remove it.
 
 ## Type labels
 

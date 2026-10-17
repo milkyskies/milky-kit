@@ -13,6 +13,7 @@ export const MISMATCH_CODES = [
 	"unrecorded-result",
 	"parked-worker",
 	"looks-good",
+	"auto-land",
 	"rejected",
 	"conversation",
 	"merged",
