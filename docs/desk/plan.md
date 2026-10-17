@@ -87,7 +87,7 @@ Re-explain context, decode labels like "option B", touch worktrees, models, merg
 
 | Role | Job | Talks to | Model |
 |---|---|---|---|
-| **Frontman** (desk agent) | Turns a one-line request into a well-written request, asking the unclear parts as cards | You | Opus, medium |
+| **Frontman** (desk agent) | Turns a one-line request into a well-written request, asking the unclear parts as cards | You | Opus, high |
 | **Request agent** | Builds one request, and parks design questions as cards | The coordinator, and you through cards and 💬 | By difficulty, the routing table below |
 | **Coordinator** | Dispatches, routes models, merges, cleans up. Invisible to you | Request agents | Sonnet, medium |
 
