@@ -1,0 +1,4 @@
+# wrangler dev reads this for local Worker runtime env.
+
+# Local CORS origins — overrides wrangler.jsonc's prod value.
+CORS_ORIGINS = "http://localhost:5173,capacitor://localhost"

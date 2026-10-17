@@ -21,13 +21,13 @@ User says any of: "scaffold a new project", "set up an Effect API", "new milky-k
    - `bun-scripts` — Bun + TS scripts
 
 2. **Composable modules** (multi-select): `issues`, `security`, `ci`, `release-please`, `postgres`, `sqlite`, `pnpm` or `bun`. Default selections per template (`security` and `release-please` are always default — supply-chain workflows + dependabot + tagged releases):
-   - `effect-api` / `hono-api`: `issues`, `security`, `release-please`, `ci`, `pnpm`, `postgres`
+   - `effect-api` / `hono-api`: `issues`, `security`, `release-please`, `ci`, `pnpm`, `postgres` (drop `postgres` for `hono-api` with `db` = `d1` or `none`)
    - `react-spa`: `issues`, `security`, `release-please`, `ci`, `pnpm`
    - `axum-api`: `issues`, `security`, `release-please`, `ci`, `postgres`
    - `bun-scripts`: `issues`, `security`, `release-please`, `bun`
 
 3. **Variants** (only when the chosen template has them). Read `~/.claude/kit/templates/<template>/variants/` to discover axes. Examples:
-   - `hono-api`: `db` (d1/neon/supabase), `api_style` (rpc/openapi), `auth` (firebase/none)
+   - `hono-api`: `runtime` (workers/bun), `db` (d1/neon/supabase/none), `api_style` (rpc/openapi), `auth` (firebase/none). Offer only valid combinations: `runtime` = `bun` needs `db` = `none` and `auth` = `none`; `db` = `none` needs `api_style` = `rpc`. The template's README lists them.
    - `react-spa`: `mobile` (none/tauri/capacitor), `ui` (none/shadcn/heroui/base-ui), `auth` (firebase/none)
    - `release-please`: `publish` (`none` / `npm`). Default `none` — tag-only releases. Pick `npm` only when the project will publish to npm; that variant requires the Trusted Publisher setup step in the post-scaffold instructions.
 
@@ -51,7 +51,7 @@ User says any of: "scaffold a new project", "set up an Effect API", "new milky-k
 
    **Underscore-prefixed config files** ship in the scaffold as `_<name>` and must be renamed to `<name>` on copy. Today that covers `_biome.json` → `biome.json` (the underscore prefix prevents the kit's own biome CI from treating each scaffold's config as a nested root, per the vite/astro `_gitignore` pattern). When copying any file whose basename starts with `_`, strip the leading underscore at the destination.
 
-4. **Apply variant overlays.** For each chosen variant, copy `~/.claude/kit/templates/<template>/variants/<axis>/<choice>/` over the base scaffold (overlay, not merge). JSON files (`package.json`, `tsconfig.json`) merge by key when both exist; everything else overwrites the base.
+4. **Apply variant overlays.** For each chosen variant, copy `~/.claude/kit/templates/<template>/variants/<axis>/<choice>/` over the base scaffold (overlay, not merge). JSON files (`package.json`, `tsconfig.json`) merge by key when both exist, and an array in the overlay replaces the base array; everything else overwrites the base. Apply the axes in the order the template's `module.toml` documents (`hono-api`: `runtime`, `api_style`, `auth`, `db`), because a later overlay overwrites an earlier one. After copying a choice, delete every path listed under `[variants.<axis>.<choice>] remove` in `module.toml` (after placeholder substitution; a directory is deleted recursively). Today only `hono-api`'s `db = "none"` has a `remove` list.
 
 5. **Apply composable module scaffolds.** For each chosen module in `~/.claude/kit/modules/<name>/scaffold/`, copy files into the project root (or wherever the module's `module.toml` says). Same merge rules: JSON merge, others overwrite.
 
@@ -112,7 +112,7 @@ User says any of: "scaffold a new project", "set up an Effect API", "new milky-k
    | Template | `[tools]` |
    |---|---|
    | effect-api | `bun = "latest"`, `node = "24"` |
-   | hono-api | `node = "24"` |
+   | hono-api | `node = "24"` (+ `bun = "latest"` when `runtime` = `bun`) |
    | react-spa | `node = "24"` |
    | axum-api | `rust = "latest"` (+ `node = "24"` if a co-located web app exists) |
    | bun-scripts | `bun = "latest"` |
