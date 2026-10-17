@@ -1,16 +1,46 @@
-export type ShellResult = { code: number; stdout: string; stderr: string }
+export type ShellResult = { code: number; stdout: string; stderr: string; timedOut?: boolean }
 
-export type Shell = (command: readonly string[], cwd?: string) => Promise<ShellResult>
+export type ShellOptions = { timeoutMs?: number }
 
-export const spawnShell: Shell = async (command, cwd) => {
-	const child = Bun.spawn([...command], { cwd, stdin: "ignore", stdout: "pipe", stderr: "pipe" })
-	const [stdout, stderr, code] = await Promise.all([
-		new Response(child.stdout).text(),
-		new Response(child.stderr).text(),
-		child.exited,
-	])
+export type Shell = (
+	command: readonly string[],
+	cwd?: string,
+	options?: ShellOptions,
+) => Promise<ShellResult>
 
-	return { code, stdout, stderr }
+export const spawnShell: Shell = async (command, cwd, options) => {
+	// The command leads its own process group so a timeout can kill the pipelines and grandchildren that hold the output pipes open.
+	const child = Bun.spawn([...command], {
+		cwd,
+		stdin: "ignore",
+		stdout: "pipe",
+		stderr: "pipe",
+		detached: true,
+	})
+	let timedOut = false
+	const timer =
+		options?.timeoutMs === undefined
+			? undefined
+			: setTimeout(() => {
+					timedOut = true
+					try {
+						process.kill(-child.pid, "SIGKILL")
+					} catch {
+						child.kill("SIGKILL")
+					}
+				}, options.timeoutMs)
+
+	try {
+		const [stdout, stderr, code] = await Promise.all([
+			new Response(child.stdout).text(),
+			new Response(child.stderr).text(),
+			child.exited,
+		])
+
+		return { code, stdout, stderr, timedOut }
+	} finally {
+		clearTimeout(timer)
+	}
 }
 
 const FAILURE_LINE = /\b(fail|failed|failing|error|errors)\b/i

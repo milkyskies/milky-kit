@@ -58,9 +58,11 @@ export async function runWith(deps: DigestDeps, args: string[], context: Context
 		items: collected.items,
 		badLabels: unseenBadLabels(collected.badLabels, badLedger),
 		needsLook: unseenBadLabels(reportOnly, badLedger),
+		autoMerged: collected.autoMerged,
 	}
 
-	if (digest.items.length === 0 && digest.badLabels.length === 0 && digest.needsLook.length === 0) {
+	const lists = [digest.items, digest.badLabels, digest.needsLook, digest.autoMerged]
+	if (lists.every((list) => list.length === 0)) {
 		context.out(context.json ? JSON.stringify({ sent: false, message: null }) : "nothing to ping")
 
 		return
@@ -77,7 +79,7 @@ export async function runWith(deps: DigestDeps, args: string[], context: Context
 	await sendPing(deps.ping, message)
 
 	const failures: string[] = []
-	for (const item of digest.items) {
+	for (const item of [...digest.items, ...digest.autoMerged]) {
 		try {
 			await markPinged(gh, repo, item.comment, now)
 		} catch (error) {

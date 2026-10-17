@@ -11,7 +11,13 @@ import type { ReconcileInput } from "../types.ts"
 export const NOW = new Date("2026-10-16T15:00:00Z")
 
 export const SECTION: DeskSection = {
-	coordinator: { machine: "Minerva", ask: "ask:choices", check: "mise run check" },
+	coordinator: {
+		machine: "Minerva",
+		ask: "ask:choices",
+		check: "mise run check",
+		land: "land:check",
+	},
+	reviewPaths: [],
 	machines: [{ name: "Minerva", workers: 3, repo: undefined }],
 	preflight: { needs: [], mcp: [] },
 }

@@ -15,7 +15,14 @@ export type DigestItem = {
 
 export type BadLabels = { issue: number; labels: string }
 
-export type Digest = { items: DigestItem[]; badLabels: BadLabels[]; needsLook: BadLabels[] }
+export type AutoMerged = { issue: number; comment: ParsedComment }
+
+export type Digest = {
+	items: DigestItem[]
+	badLabels: BadLabels[]
+	needsLook: BadLabels[]
+	autoMerged: AutoMerged[]
+}
 
 export function pingedAt(body: string): Date | undefined {
 	const match = PINGED_LINE.exec(body)
@@ -66,7 +73,19 @@ export function collectDigest(issues: readonly IssueState[], now: Date): Digest 
 		.filter((issue) => issue.open && stageOf(issue).kind === "ambiguous")
 		.map((issue) => ({ issue: issue.number, labels: stageLabelsKey(issue) }))
 
-	return { items, badLabels, needsLook: [] }
+	const autoMerged = issues.flatMap((issue) =>
+		issue.comments
+			.filter(
+				(comment) =>
+					comment.marker?.kind === "merge" &&
+					comment.marker.attrs.by === "auto" &&
+					pingedAt(comment.body) === undefined,
+			)
+			.map((comment) => ({ issue: issue.number, comment })),
+	)
+	autoMerged.sort((left, right) => left.issue - right.issue)
+
+	return { items, badLabels, needsLook: [], autoMerged }
 }
 
 function stageLabelsKey(issue: IssueState): string {
@@ -94,13 +113,23 @@ export function digestMessage(repo: Repo, digest: Digest): string {
 		parts.push(plural(digest.needsLook.length, "request needs a look", "requests need a look"))
 	}
 
+	if (digest.autoMerged.length > 0) {
+		parts.push(plural(digest.autoMerged.length, "merged by an agent", "merged by agents"))
+	}
+
 	const labels = [
 		...(decisions > 0 ? ["stage:needs-you"] : []),
 		...(results > 0 ? ["stage:check"] : []),
 	]
 	const query = labels.length > 0 ? `is:open+label:${labels.join(",")}` : "is:open"
+	const base = `https://github.com/${repoSlug(repo)}/issues`
+	const showQueryLink = labels.length > 0 || digest.autoMerged.length === 0
+	const links = [
+		...(showQueryLink ? [`${base}?q=${query}`] : []),
+		...digest.autoMerged.map((merged) => `${base}/${merged.issue}`),
+	]
 
-	return `${repo.name}: ${parts.join(", ")}\nhttps://github.com/${repoSlug(repo)}/issues?q=${query}`
+	return `${repo.name}: ${parts.join(", ")}\n${links.join("\n")}`
 }
 
 export function markedBody(body: string, now: Date): string {

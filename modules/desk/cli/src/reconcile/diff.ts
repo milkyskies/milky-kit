@@ -1,10 +1,11 @@
 import { attemptCount, owningClaim } from "../github/derive.ts"
 import { type IssueState, stageOf } from "../github/issue.ts"
+import { autolandHeld } from "../merge/autoland.ts"
 import { machineOfHost } from "../orca/hosts.ts"
 import { issueNumberOfTitle } from "../orca/tasks.ts"
 import { isBusy, isGone, isLive, isSettled, type Worker } from "../orca/workers.ts"
 import { worktreesOfIssue } from "../orca/worktrees.ts"
-import { workerMachines } from "../project/section.ts"
+import { landingOf, workerMachines } from "../project/section.ts"
 import { landedPullRequest } from "./landed.ts"
 import type { Mismatch, ReconcileInput } from "./types.ts"
 
@@ -65,7 +66,11 @@ function humanComment(issue: IssueState, after: number) {
 	return index > after ? { index, body: issue.comments[index]?.body ?? "" } : undefined
 }
 
-function classifyCheck(issue: IssueState, workers: Worker[]): Mismatch | undefined {
+function classifyCheck(
+	input: ReconcileInput,
+	issue: IssueState,
+	workers: Worker[],
+): Mismatch | undefined {
 	const number = issue.number
 	const resultAt = lastIndexOfKind(issue, "result")
 	const human = humanComment(issue, resultAt)
@@ -96,6 +101,20 @@ function classifyCheck(issue: IssueState, workers: Worker[]): Mismatch | undefin
 			issue: number,
 			code: "looks-good",
 			detail: "the human said looks good: run desk merge",
+		}
+	}
+
+	const autoLands =
+		resultAt >= 0 &&
+		Number.isInteger(Number(issue.comments[resultAt]?.marker?.attrs.pr)) &&
+		!human &&
+		landingOf(issue.labels, input.section) === "land:auto" &&
+		!autolandHeld(issue.comments, resultAt)
+	if (autoLands) {
+		return {
+			issue: number,
+			code: "auto-land",
+			detail: "the request lands automatically and no human has answered: run desk merge",
 		}
 	}
 
@@ -302,7 +321,7 @@ function classifyIssue(
 	if (label === "stage:ready") return classifyReady(input, issue, workers)
 	if (label === "stage:working") return classifyWorking(input, issue, assignment.byDispatch)
 	if (label === "stage:needs-you") return classifyNeedsYou(issue, workers, assignment.byDispatch)
-	if (label === "stage:check") return classifyCheck(issue, workers)
+	if (label === "stage:check") return classifyCheck(input, issue, workers)
 
 	return undefined
 }
