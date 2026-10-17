@@ -28,7 +28,7 @@ One Opus worker at medium effort. It reads and reports, and never pushes.
 - **Start.** The first time a pull request meets the standard. `worker-start --agent claude --model opus --effort medium --worktree current`, with `--task-title reviewer`. The title carries no `#<n> `, because `reconcile` joins workers to issues by that prefix and the reviewer belongs to no single issue. UNVERIFIED: how `reconcile` treats a live worker with no issue. Check on the first run, and name the title in `reference/routing.md` if it needs another form.
 - **Reuse.** The rest of the run reuses the same terminal through `worker-start --terminal`. The coordinator keeps no handle in memory: a fresh coordinator finds the reviewer in `worker-list` by its title.
 - **Between pull requests.** `/clear` the terminal before a pull request in an unrelated area (`reference/tokens.md`). Keep the context for a second look at the same pull request.
-- **Report.** Findings go on the Issue as a comment ending with `<!-- desk:agent -->`, so the record survives a crash and the comment does not read as a human answer. The coordinator forwards the findings to the request's worker.
+- **Report.** Findings go on the Issue as a comment whose first line is `<!-- desk:review pr=<n> verdict=<clean|blocking> -->` and which ends with `<!-- desk:agent -->`, so the record survives a crash and the comment does not read as a human answer. The coordinator forwards the findings to the request's worker. A `land:auto` request whose diff touches a review path merges only when its newest review comment after the result says `verdict=clean`.
 - **Never a fresh subagent.** The coordinator does not review from a subagent in its own session. The subagent's effort cannot be set or seen, and it starts from nothing. The coordinator runs no `/code-review` itself.
 - **End.** `worker-release` when the run has no more qualifying pull requests, as part of the end-of-run check below.
 
@@ -72,7 +72,7 @@ A stacked pull request gets its own worktree, so its worker cost stays its own.
 
 ## Merge is the gate
 
-Merge is the only gate, and it is human. A change reaches `main` because a person commented `looks good`. A worker marks its own pull request ready on finishing, which is what the state means: ready for the human's review. A finished draft looks exactly like a draft still being written, so the work that most needed attention would be the hardest to see.
+Merge is the only gate. A `land:check` request reaches `main` because a person commented `looks good`. A `land:auto` request reaches `main` because the desk ran the same merge, the same check command and, on a review path, the standing reviewer, and all of them passed. The human chose `land:auto` for that request, and a failed check hands the request back to the human at `stage:check`. A worker marks its own pull request ready on finishing, which is what the state means: ready for the human's review. A finished draft looks exactly like a draft still being written, so the work that most needed attention would be the hardest to see.
 
 The coordinator reads every pull request body before `desk merge`. `desk merge` runs the project's check command and refuses on a conflict.
 

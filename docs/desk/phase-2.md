@@ -110,7 +110,7 @@ Every comment the program writes starts with one marker line and ends with `<!--
 <!-- desk:<kind> key=value key=value -->
 ```
 
-Values never contain spaces. Kinds: `claim`, `release`, `failed`, `decision`, `proposed-body`, `result`, `reopen`, `merge`, `proposed-request`. A comment is the **human's** when it lacks `<!-- desk:agent -->`. Author login cannot tell them apart, because workers post with Milky's own `gh` login.
+Values never contain spaces. Kinds: `claim`, `release`, `failed`, `decision`, `proposed-body`, `result`, `reopen`, `merge`, `autoland`, `review`, `proposed-request`. A comment is the **human's** when it lacks `<!-- desk:agent -->`. Author login cannot tell them apart, because workers post with Milky's own `gh` login.
 
 A comment the digest has pinged gets a trailing `<!-- desk:pinged at=<iso> -->` line appended by an edit. Section 7 explains why.
 
@@ -183,17 +183,20 @@ A comment the digest has pinged gets a trailing `<!-- desk:pinged at=<iso> -->` 
 - Posts `<!-- desk:reopen comment=<id> -->` quoting Milky's reason, posts `<!-- desk:release claim=<id> reason=reopened -->` for the owning claim, then moves the stage to `stage:ready`. The next worker's brief carries the reason.
 
 **`desk merge <n>`**
-- Precondition: `stage:check`; the newest human comment is newer than the result comment and starts with `looks good` (relayed).
+- Precondition: `stage:check`, and either the newest human comment is newer than the result comment and starts with `looks good` (relayed), or the request lands automatically (`land:auto`, or the project default when no landing label is present) and no human comment is newer than the result.
+- Preconditions for both landings: the pull request named by the result is open and is not a draft. An automatic landing also needs that pull request in the issue's closing pull requests. Any failure on an automatic landing that is not a refusal, including a network failure or a head that moved, posts one `desk:autoland blocked=<merge|check|review|ci|error>` comment, exits 0 and hands the request to Milky at `stage:check`. A second automatic attempt for the same result is refused, except one more try after a `desk:review verdict=clean` comment newer than a `blocked=review` attempt. Step 7 also refuses when the result changed during the checks.
+- Landing: `land:check` is the human-merge flow above. `land:auto` merges when the checks pass. The label and the `- land:` line under `### Coordinator` are read by `landingOf`: the request label wins, both labels count as `land:check`, and no line means `land:check`.
 - Steps:
   1. Create a temporary worktree of the pull request's branch on the coordinator's machine, at `../<worktree-dir>/merge-<n>`.
   2. `git merge origin/main`. A conflict exits 1 with the conflicting files. The coordinator sends the request back to a worker (section 4).
-  3. Run the project's check command from `## desk` (default `mise run check`). A failure exits 1 with the first failing line.
-  4. Push.
-  5. Read the pushed commit's checks. No workflow configured: print `no CI configured`. Actions disabled or blocked by billing: print `CI blocked`. Either fact goes into the merge comment, and neither waits, because the local check in step 3 already ran (relayed). With workflows configured and not blocked, poll the pushed commit's check runs every 20 seconds until they finish. A failure exits 1, and so does `--ci-timeout` (default 20 minutes) running out on a run that started. When no check run exists for the commit after 2 minutes (path-filtered workflows), merge reports `no CI ran for this change` with `ci=none` and relies on the local check.
-  6. Re-read the issue. Exit 1 unless it is still `stage:check` and the newest human comment is still a `looks good` newer than the result, because the local check takes minutes and a `no, because …` may have arrived meanwhile.
-  7. `gh pr merge <pr> --merge --match-head-commit <sha>`, where `<sha>` is the commit that passed the check, so a push after the check cannot merge unchecked. Merge commits only; the kit never squashes or rebases.
-  8. Post `<!-- desk:merge pr=<pr> ci=<passed|none|blocked> check=<passed> -->`, then run `desk land <n>`.
-  9. Remove the temporary worktree.
+  3. Run the project's check command from `## desk` (default `mise run check`). A failure exits 1 with the first failing line. The command runs in its own process group and the whole group is killed after `--check-timeout` (default 20 minutes), which counts as a failure.
+  4. For an automatic landing only: when the diff against `origin/main` touches a `### Review paths` glob, the newest `desk:review pr=<n>` comment newer than the result must say `verdict=clean`.
+  5. Push.
+  6. Read the pushed commit's checks. No workflow configured: print `no CI configured`. Actions disabled or blocked by billing: print `CI blocked`. Either fact goes into the merge comment, and neither waits, because the local check in step 3 already ran (relayed). With workflows configured and not blocked, poll the pushed commit's check runs every 20 seconds until they finish. A failure exits 1, and so does `--ci-timeout` (default 20 minutes) running out on a run that started. When no check run exists for the commit after 2 minutes (path-filtered workflows), merge reports `no CI ran for this change` with `ci=none` and relies on the local check.
+  7. Re-read the issue. Exit 1 unless it is still `stage:check` and the approval still holds (a `looks good` newer than the result, or an automatic landing with no human comment newer than the result), because the local check takes minutes and a `no, because …` may have arrived meanwhile.
+  8. `gh pr merge <pr> --merge --match-head-commit <sha>`, where `<sha>` is the commit that passed the check, so a push after the check cannot merge unchecked. Merge commits only; the kit never squashes or rebases.
+  9. Post `<!-- desk:merge pr=<pr> ci=<passed|none|blocked> check=<passed> -->`, then run `desk land <n>`.
+  10. Remove the temporary worktree.
 
 **`desk land <n>`**
 - Precondition: for an open issue, the pull request named by the newest `desk:result` comment is merged, and no `desk:reopen` or `desk:claim` comment is newer than that result, so an old merged pull request on a reopened request never counts. For a closed issue, any merged linked pull request counts, which covers work merged by hand. The Orca Run is resolved before the first GitHub write. Idempotent.
@@ -293,6 +296,7 @@ The coordinator is a Sonnet session at medium effort (plan), started with `/milk
 | `rejected` | `stage:check`, newest human comment's first word is `no` | any | `desk reopen`. |
 | `conversation` | `stage:check` or `stage:needs-you`, a human comment that is neither | any | Forward the comment to the request's worker if it is live. Otherwise dispatch a reply-only worker (Sonnet, low effort): answer on the Issue, change no code, move no stage. |
 | `merged` | the pull request named by the newest result is merged, no reopen or claim is newer, stage not `stage:done` | any | `desk land`. |
+| `auto-land` | `stage:check`, landing is `land:auto`, no human comment after the result, no `desk:autoland` comment after the result | any | `desk merge`. |
 | `check-red` | `stage:check`, pull request `CONFLICTING` | any | Send the request back to its worker if live, otherwise dispatch a merge worker (Sonnet, low effort). |
 | `stray-worker` | issue closed or `stage:done` | a live worker for `#n` | `worker-stop`, then `worker-release`. |
 | `human-claimed` | `stage:working` with no `desk:claim` comment | any | Change nothing. Report it in the digest pass. A person or another session claimed it with plain `gh`, and desk does not own work it did not claim: never release, requeue or dispatch it. |
@@ -522,9 +526,10 @@ Each project's `CLAUDE.md` carries this section. `modules/desk/desk-section.md` 
 | `machine` | The Orca `machineName` the coordinator is pinned to. Required. |
 | `ask` | The default ask setting: `ask:everything`, `ask:choices` or `ask:own-feel`. A request's own `ask:*` label wins. Required. |
 | `check` | The local check command `desk merge` runs. Default `mise run check`. |
+| `land` | The landing for a request with no landing label: `land:check` or `land:auto`. Default `land:check`. |
 | `### Machines` lines | One per machine that runs workers: the worker limit, and for a remote machine the repository selector Orca uses there. With no `### Machines`, workers run only on the coordinator's machine, 3 at a time. |
 | `### Hard areas` | Path globs where the routing table's "hard area" row applies. |
-| `### Review paths` | Path globs that bring in the standing reviewer. |
+| `### Review paths` | Path globs that bring in the standing reviewer. One backticked glob per line. `desk merge` reads them for an automatic landing. |
 | `### Routing` | Extra rows, read before the kit's table and winning over it. |
 | `### Preflight` | A command and its fix per line; `mcp:` names MCP servers workers need beyond Serena. |
 | `### Blocked commands`, `### Holds` | Reserved for the desk guard hook (section 11). Nothing reads them yet. |

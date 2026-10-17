@@ -14,7 +14,7 @@ description: >
 
 The coordinator remembers nothing between passes. GitHub holds the truth: claims, attempts, results, cards, answers and pinged markers are Issue comments. Orca holds the running workers. Each pass reads both, computes the difference, and fixes it. A fresh coordinator after a crash runs the same pass and needs no handoff.
 
-The state program is `~/.claude/kit/modules/desk/bin/desk`, written below as `desk`. The worker contract is `.claude/rules/desk.md`. The project's settings are the `## desk` section of `CLAUDE.md`: `### Coordinator` (machine, default ask setting, check command), `### Machines` (worker limits), `### Hard areas`, `### Review paths`, `### Routing` and `### Preflight`. Read the subsections that are not program-parsed as prose.
+The state program is `~/.claude/kit/modules/desk/bin/desk`, written below as `desk`. The worker contract is `.claude/rules/desk.md`. The project's settings are the `## desk` section of `CLAUDE.md`: `### Coordinator` (machine, default ask setting, check command, default landing), `### Machines` (worker limits), `### Hard areas`, `### Review paths`, `### Routing` and `### Preflight`. `### Review paths` is program-parsed too, because `desk merge` reads it. Read the other subsections as prose.
 
 This session is Sonnet at medium effort. The human never talks to the coordinator. Everything the human needs to decide arrives as a card on an Issue and a ping.
 
@@ -24,7 +24,7 @@ This session is Sonnet at medium effort. The human never talks to the coordinato
 2. **Run.** On the first pass of a session, run `desk run`. It binds this terminal to the Orca Run named `desk <owner>/<repo>`, so a fresh coordinator gets the same Run and the mail it never read stays harmless.
 3. **Reconcile.** Run `desk reconcile --json`. It reads GitHub and Orca, never the mailbox, and prints one mismatch per line with a code.
 4. **Act, one action per mismatch**, from the table below.
-5. **Digest.** Run `desk digest --send`. It sends one ping for every card and result not yet pinged, and for every `bad-labels` issue.
+5. **Digest.** Run `desk digest --send`. It sends one ping for every card and result not yet pinged, for every `bad-labels` issue, and a `N merged by agents` count for every auto-landed request not yet counted.
 6. **Watch.** Start `desk watch` in the background (Bash `run_in_background`) and end the turn. The coordinator spends no tokens while the watchdog waits.
 7. **Wake.** The watchdog exits with one JSON line naming the event: `worker-stopped`, `worker-idle`, `worker-hung`, `worker-gone`, `machine-silent`, `human-comment`, `ready`, `merged`, `mail` or `tick`. The event is only a doorbell. Start the next pass at step 1 whatever it says, and never act on the event alone.
 
@@ -39,6 +39,7 @@ This session is Sonnet at medium effort. The human never talks to the coordinato
 | `unrecorded-result` | Send to the worker's terminal: "Record your result on #n with desk done, desk park or desk fail, then send worker_done again." If the terminal is gone, `desk release <n> --reason stopped`. |
 | `parked-worker` | `orca orchestration worker-release --dispatch <D>`. The worktree stays for the next attempt. |
 | `looks-good` | `desk merge <n>`. On a conflict or a failing check, dispatch a merge worker (Sonnet, low effort) into the request's worktree. |
+| `auto-land` | `desk merge <n>`. The request carries `land:auto` (or the project defaults to it) and no human has answered. The program merges when the merge, the check command and any required review pass. When one fails it posts one `desk:autoland` comment naming the check and leaves the request at `stage:check`, which stops this code until the next result. The coordinator never adds or removes `land:auto`. |
 | `rejected` | `desk reopen <n> --comment <comment id>`. |
 | `conversation` | Forward the comment to the request's worker if it is live. Otherwise dispatch a reply-only worker (Sonnet, low effort): answer on the Issue, change no code, move no stage. |
 | `merged` | `desk land <n>`. |
@@ -102,6 +103,6 @@ Two kinds go to the phone, through `desk ping` and `desk digest`: a decision is 
 
 - **The Issue is the only truth.** Never act on a message, a `worker_done` body, or your own memory of an earlier pass. Run `desk reconcile`.
 - **Never decide a design question.** Park it as a card. A recommendation on a design card stays hidden.
-- **Never merge by hand.** `desk merge` is the one path, and it needs a `looks good` comment newer than the result.
+- **Never merge by hand.** `desk merge` is the one path. It needs a `looks good` comment newer than the result, or a `land:auto` request that nobody has answered.
 - **Never change a label by hand** when a `desk` command does it. The commands read back what they wrote. A hand edit does not.
 - **Merge, never rebase. Never force push.**

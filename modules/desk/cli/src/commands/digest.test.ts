@@ -141,6 +141,49 @@ describe("desk digest", () => {
 		expect(harness.posted[0]?.body).toStartWith("kit: 2 requests need a look")
 	})
 
+	test("a request merged by an agent is counted once, linked, and marked", async () => {
+		const harness = setup()
+		harness.fake.addIssue({ number: 14, state: "CLOSED", labels: ["request", "stage:done"] })
+		const merged = harness.fake.addComment(
+			14,
+			composeComment("merge", { pr: "47", ci: "none", check: "passed", by: "auto" }, "Merged."),
+		)
+		harness.fake.addIssue({ number: 15, state: "CLOSED", labels: ["request", "stage:done"] })
+		harness.fake.addComment(
+			15,
+			composeComment("merge", { pr: "48", ci: "none", check: "passed" }, "Merged."),
+		)
+
+		await runWith(harness.deps, ["--send"], harness.context)
+		await runWith(harness.deps, ["--send"], harness.context)
+
+		expect(harness.posted).toHaveLength(1)
+		expect(harness.posted[0]?.body).toBe(
+			"kit: 1 merged by an agent\nhttps://github.com/milkyskies/kit/issues/14",
+		)
+		expect(pingedAt(merged.body)).toEqual(new Date("2026-10-16T14:02:00Z"))
+	})
+
+	test("the merged count joins the other counts and keeps their link", async () => {
+		const harness = setup()
+		seedParked(harness)
+		harness.fake.addIssue({ number: 14, state: "CLOSED", labels: ["request", "stage:done"] })
+		harness.fake.addComment(14, composeComment("merge", { pr: "47", by: "auto" }, "Merged."))
+		harness.fake.addIssue({ number: 16, state: "CLOSED", labels: ["request", "stage:done"] })
+		harness.fake.addComment(16, composeComment("merge", { pr: "49", by: "auto" }, "Merged."))
+
+		await runWith(harness.deps, [], harness.context)
+
+		expect(harness.output[0]).toBe(
+			[
+				"kit: 1 decision waiting, 1 done to check, 2 merged by agents",
+				"https://github.com/milkyskies/kit/issues?q=is:open+label:stage:needs-you,stage:check",
+				"https://github.com/milkyskies/kit/issues/14",
+				"https://github.com/milkyskies/kit/issues/16",
+			].join("\n"),
+		)
+	})
+
 	test("the message holds the project, counts and a link, never issue text", async () => {
 		const harness = setup()
 		seedParked(harness)

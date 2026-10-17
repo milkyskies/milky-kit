@@ -2,13 +2,22 @@ import { describe, expect, test } from "bun:test"
 
 import { composeComment } from "../github/markers.ts"
 import { claimBody, failureOf } from "../github/testing/seed.ts"
-import { FakeShell, failed } from "../merge/testing.ts"
+import { FakeShell, failed, ok } from "../merge/testing.ts"
 import { FakeOrca } from "../orca/testing/fake-orca.ts"
 import { SECTION, worker } from "../reconcile/testing/fixtures.ts"
 import { makeListingHarness } from "../reconcile/testing/github.ts"
 import { runWith } from "./merge.ts"
 
-function setup(options: { workflows?: boolean; check?: string } = {}) {
+function setup(
+	options: {
+		workflows?: boolean
+		check?: string
+		labels?: string[]
+		land?: "land:check" | "land:auto"
+		reviewPaths?: string[]
+		humanComment?: string | undefined
+	} = {},
+) {
 	const harness = makeListingHarness()
 	const fakeOrca = new FakeOrca()
 	const shell = new FakeShell()
@@ -33,19 +42,26 @@ function setup(options: { workflows?: boolean; check?: string } = {}) {
 	)
 	fake.addIssue({
 		number: 12,
-		labels: ["request", "autopilot", "stage:check"],
+		labels: ["request", "autopilot", "stage:check", ...(options.labels ?? [])],
 		pullRequests: [45],
 	})
 	fake.addComment(12, claimBody("c_1", "ctx_y"))
 	fake.addComment(12, composeComment("result", { claim: "c_1", pr: "45" }, "## Done, check it"))
-	fake.addComment(12, "Looks good, merge it")
+	if ("humanComment" in options) {
+		if (options.humanComment !== undefined) fake.addComment(12, options.humanComment)
+	} else fake.addComment(12, "Looks good, merge it")
 	fakeOrca.workers = [worker()]
 
 	const deps = {
 		orca: fakeOrca.orca,
 		loadSection: async () => ({
 			...SECTION,
-			coordinator: { ...SECTION.coordinator, check: options.check ?? SECTION.coordinator.check },
+			coordinator: {
+				...SECTION.coordinator,
+				check: options.check ?? SECTION.coordinator.check,
+				land: options.land ?? SECTION.coordinator.land,
+			},
+			reviewPaths: options.reviewPaths ?? [],
 		}),
 		shell: shell.shell,
 		hasWorkflows: async () => options.workflows ?? false,
@@ -267,5 +283,275 @@ describe("desk merge", () => {
 		await runWith(deps, ["12"], context)
 
 		expect(fakeOrca.called("worker-release", "ctx_y")).toHaveLength(1)
+	})
+
+	describe("per-request landing", () => {
+		const auto = { labels: ["land:auto"], humanComment: undefined }
+
+		function autoComments(fake: { issue: (n: number) => { comments: { body: string }[] } }) {
+			return fake
+				.issue(12)
+				.comments.filter((comment) => comment.body.startsWith("<!-- desk:autoland"))
+		}
+
+		test("auto_land_merges_when_checks_pass", async () => {
+			const { fake, context, shell, fakeOrca, deps } = setup(auto)
+
+			await runWith(deps, ["12"], context)
+
+			expect(shell.called("git merge origin/main")).toHaveLength(1)
+			expect(shell.called("sh -c mise run check")).toHaveLength(1)
+			expect(fake.callsMatching(["pr", "merge", "45"])).toHaveLength(1)
+			expect(fake.issue(12).labels).toContain("stage:done")
+			expect(fake.issue(12).state).toBe("CLOSED")
+			expect(fakeOrca.called("worker-release", "ctx_y")).toHaveLength(1)
+
+			const mergeComment = fake
+				.issue(12)
+				.comments.find((comment) => comment.body.startsWith("<!-- desk:merge"))
+			expect(mergeComment?.body).toStartWith(
+				"<!-- desk:merge pr=45 ci=none check=passed by=auto -->",
+			)
+		})
+
+		test("auto_land_waits_for_milky_when_check_command_fails", async () => {
+			const { fake, context, output, shell, deps } = setup({ ...auto, check: "bun test" })
+			shell.on("sh -c bun test", failed("1 fail: parser rejects empty input\n"))
+
+			await runWith(deps, ["12"], context)
+
+			expect(fake.callsMatching(["pr", "merge"])).toHaveLength(0)
+			expect(shell.called("git push")).toHaveLength(0)
+			expect(fake.issue(12).labels).toContain("stage:check")
+			expect(fake.issue(12).state).toBe("OPEN")
+
+			const comments = autoComments(fake)
+			expect(comments).toHaveLength(1)
+			expect(comments[0]?.body).toStartWith("<!-- desk:autoland pr=45 blocked=check -->")
+			expect(comments[0]?.body).toContain("bun test")
+			expect(comments[0]?.body).toContain("1 fail: parser rejects empty input")
+			expect(output[0]).toContain("waits for a human")
+		})
+
+		test("auto_land_waits_when_review_path_has_no_clean_review", async () => {
+			const { fake, context, shell, deps } = setup({ ...auto, reviewPaths: ["db/migrations/**"] })
+			shell.on("git diff --name-only origin/main HEAD", {
+				code: 0,
+				stdout: "src/a.ts\ndb/migrations/001.sql\n",
+				stderr: "",
+			})
+
+			await runWith(deps, ["12"], context)
+
+			expect(fake.callsMatching(["pr", "merge"])).toHaveLength(0)
+			expect(shell.called("git push")).toHaveLength(0)
+			expect(fake.issue(12).labels).toContain("stage:check")
+			expect(autoComments(fake)).toHaveLength(1)
+			expect(autoComments(fake)[0]?.body).toStartWith("<!-- desk:autoland pr=45 blocked=review -->")
+		})
+
+		test("auto_land_waits_when_the_newest_review_has_a_blocking_finding", async () => {
+			const { fake, context, shell, deps } = setup({ ...auto, reviewPaths: ["db/migrations/**"] })
+			shell.on("git diff --name-only origin/main HEAD", ok("db/migrations/001.sql\n"))
+			fake.addComment(12, composeComment("review", { pr: "45", verdict: "clean" }, "Fine."))
+			fake.addComment(
+				12,
+				composeComment("review", { pr: "45", verdict: "blocking" }, "Drops a column."),
+			)
+
+			await runWith(deps, ["12"], context)
+
+			expect(fake.callsMatching(["pr", "merge"])).toHaveLength(0)
+			expect(autoComments(fake)).toHaveLength(1)
+		})
+
+		test("auto_land_merges_when_review_path_has_a_clean_review_newer_than_the_result", async () => {
+			const { fake, context, shell, deps } = setup({ ...auto, reviewPaths: ["db/migrations/**"] })
+			shell.on("git diff --name-only origin/main HEAD", ok("db/migrations/001.sql\n"))
+			fake.addComment(
+				12,
+				composeComment("review", { pr: "45", verdict: "clean" }, "No blocking findings."),
+			)
+
+			await runWith(deps, ["12"], context)
+
+			expect(fake.callsMatching(["pr", "merge", "45"])).toHaveLength(1)
+		})
+
+		test("a diff outside every review path needs no review", async () => {
+			const { fake, context, shell, deps } = setup({ ...auto, reviewPaths: ["db/migrations/**"] })
+			shell.on("git diff --name-only origin/main HEAD", ok("src/a.ts\n"))
+
+			await runWith(deps, ["12"], context)
+
+			expect(fake.callsMatching(["pr", "merge", "45"])).toHaveLength(1)
+		})
+
+		test("auto_land_waits_on_a_conflict_with_main", async () => {
+			const { fake, context, shell, deps } = setup(auto)
+			shell.on("git merge origin/main", failed("CONFLICT (content)"))
+			shell.on("git diff --name-only --diff-filter=U", ok("src/a.ts\n"))
+
+			await runWith(deps, ["12"], context)
+
+			expect(fake.callsMatching(["pr", "merge"])).toHaveLength(0)
+			expect(autoComments(fake)[0]?.body).toStartWith("<!-- desk:autoland pr=45 blocked=merge -->")
+			expect(autoComments(fake)[0]?.body).toContain("src/a.ts")
+		})
+
+		test("a human comment during the checks stops an auto landing, and merges nothing", async () => {
+			const { fake, context, shell, deps } = setup(auto)
+			shell.on("sh -c", () => {
+				fake.addComment(12, "wait, the count should start at 0")
+
+				return ok("")
+			})
+
+			expect((await failureOf(runWith(deps, ["12"], context))).code).toBe(1)
+			expect(fake.callsMatching(["pr", "merge"])).toHaveLength(0)
+		})
+
+		test("a land:auto request with a human comment other than looks good is refused", async () => {
+			const { context, shell, deps } = setup({ ...auto, humanComment: "can you rename it first?" })
+
+			expect((await failureOf(runWith(deps, ["12"], context))).code).toBe(1)
+			expect(shell.calls).toHaveLength(0)
+		})
+
+		test("a land:check request with no human comment is refused and touches nothing", async () => {
+			const { context, shell, deps } = setup({ labels: ["land:check"], humanComment: undefined })
+
+			expect((await failureOf(runWith(deps, ["12"], context))).code).toBe(1)
+			expect(shell.calls).toHaveLength(0)
+		})
+
+		test("missing_label_uses_project_default", async () => {
+			const byDefault = setup({ land: "land:auto", humanComment: undefined })
+			await runWith(byDefault.deps, ["12"], byDefault.context)
+			expect(byDefault.fake.callsMatching(["pr", "merge", "45"])).toHaveLength(1)
+
+			const overridden = setup({
+				land: "land:auto",
+				labels: ["land:check"],
+				humanComment: undefined,
+			})
+			expect((await failureOf(runWith(overridden.deps, ["12"], overridden.context))).code).toBe(1)
+
+			const unconfigured = setup({ humanComment: undefined })
+			expect((await failureOf(runWith(unconfigured.deps, ["12"], unconfigured.context))).code).toBe(
+				1,
+			)
+			expect(unconfigured.fake.callsMatching(["pr", "merge"])).toHaveLength(0)
+		})
+
+		test("a clean review that arrives after a blocked=review attempt lets the request land", async () => {
+			const { fake, context, shell, deps } = setup({ ...auto, reviewPaths: ["db/migrations/**"] })
+			shell.on("git diff --name-only origin/main HEAD", ok("db/migrations/001.sql\n"))
+			await runWith(deps, ["12"], context)
+			expect(fake.callsMatching(["pr", "merge"])).toHaveLength(0)
+
+			fake.addComment(12, composeComment("review", { pr: "45", verdict: "clean" }, "Fine."))
+			await runWith(deps, ["12"], context)
+
+			expect(fake.callsMatching(["pr", "merge", "45"])).toHaveLength(1)
+		})
+
+		test("a second auto attempt after a blocked one for the same result is refused and touches nothing", async () => {
+			const { fake, context, shell, deps } = setup({ ...auto, check: "bun test" })
+			shell.on("sh -c bun test", failed("1 fail\n"))
+			await runWith(deps, ["12"], context)
+			shell.calls.length = 0
+
+			expect((await failureOf(runWith(deps, ["12"], context))).code).toBe(1)
+			expect(shell.calls).toHaveLength(0)
+			expect(autoComments(fake)).toHaveLength(1)
+		})
+
+		test("a label removed during the checks stops the landing and merges nothing", async () => {
+			const { fake, context, shell, deps } = setup(auto)
+			shell.on("sh -c", () => {
+				fake.issue(12).labels = fake.issue(12).labels.filter((label) => label !== "land:auto")
+
+				return ok("")
+			})
+
+			expect((await failureOf(runWith(deps, ["12"], context))).code).toBe(1)
+			expect(fake.callsMatching(["pr", "merge"])).toHaveLength(0)
+		})
+
+		test("a new result naming another pull request during the checks stops the landing", async () => {
+			const { fake, context, shell, deps } = setup(auto)
+			shell.on("sh -c", () => {
+				fake.addComment(12, composeComment("result", { claim: "c_1", pr: "46" }, "## Done again"))
+
+				return ok("")
+			})
+
+			expect((await failureOf(runWith(deps, ["12"], context))).code).toBe(1)
+			expect(fake.callsMatching(["pr", "merge"])).toHaveLength(0)
+		})
+
+		test("a head that moved before the merge leaves the request at check with one comment", async () => {
+			const { fake, context, extras, deps } = setup(auto)
+			extras.failMerge = true
+
+			await runWith(deps, ["12"], context)
+
+			expect(fake.issue(12).labels).toContain("stage:check")
+			expect(autoComments(fake)).toHaveLength(1)
+			expect(autoComments(fake)[0]?.body).toStartWith("<!-- desk:autoland pr=45 blocked=error -->")
+		})
+
+		test("a draft pull request leaves the request at check and runs no check", async () => {
+			const { fake, context, shell, deps } = setup(auto)
+			const draft = fake.pullRequests.get(45)
+			if (draft) draft.isDraft = true
+
+			await runWith(deps, ["12"], context)
+
+			expect(shell.called("sh -c")).toHaveLength(0)
+			expect(autoComments(fake)[0]?.body).toStartWith("<!-- desk:autoland pr=45 blocked=merge -->")
+		})
+
+		test("a result naming a pull request that does not close this issue is not merged", async () => {
+			const { fake, context, shell, deps } = setup(auto)
+			fake.issue(12).comments = fake
+				.issue(12)
+				.comments.map((comment) => ({ ...comment, body: comment.body.replace("pr=45", "pr=99") }))
+
+			await runWith(deps, ["12"], context)
+
+			expect(shell.called("git fetch")).toHaveLength(0)
+			expect(fake.callsMatching(["pr", "merge"])).toHaveLength(0)
+			expect(autoComments(fake)[0]?.body).toStartWith("<!-- desk:autoland pr=99 blocked=merge -->")
+		})
+
+		test("a human looks good merges a pull request that GitHub does not list as closing the issue", async () => {
+			const { fake, context, deps } = setup({ humanComment: "looks good" })
+			fake.issue(12).pullRequests = []
+
+			const failure = await failureOf(runWith(deps, ["12"], context))
+
+			expect(fake.callsMatching(["pr", "merge", "45"])).toHaveLength(1)
+			expect(failure.message).toContain("land #12")
+		})
+
+		test("a check that outlives its timeout blocks the landing and names the timeout", async () => {
+			const { fake, context, shell, deps } = setup(auto)
+			shell.on("sh -c", { code: 143, stdout: "", stderr: "", timedOut: true })
+
+			await runWith(deps, ["12", "--check-timeout", "5m"], context)
+
+			expect(autoComments(fake)[0]?.body).toContain("timed out after 5 minutes")
+			expect(shell.called("git push")).toHaveLength(0)
+		})
+
+		test("the check runs with the check timeout", async () => {
+			const { context, shell, deps } = setup(auto)
+
+			await runWith(deps, ["12"], context)
+
+			expect(shell.called("sh -c")[0]?.timeoutMs).toBe(20 * 60_000)
+		})
 	})
 })

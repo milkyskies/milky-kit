@@ -17,7 +17,7 @@ const ISSUE_QUERY = `query($owner: String!, $name: String!, $number: Int!, $befo
       userContentEdits(first: 1) { totalCount }
       blockedBy(first: 20) { nodes { number state } }
       subIssues(first: 50) { nodes { number state } }
-      closedByPullRequestsReferences(first: 5, includeClosedPrs: true) {
+      closedByPullRequestsReferences(first: 20, includeClosedPrs: true) {
         nodes { number state isDraft mergeable }
       }
     }
