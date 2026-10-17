@@ -2,8 +2,10 @@ import type { Shell, ShellResult } from "./shell.ts"
 
 type Handler = ShellResult | ((command: readonly string[], cwd: string | undefined) => ShellResult)
 
+type Call = { command: string[]; cwd: string | undefined; timeoutMs: number | undefined }
+
 export class FakeShell {
-	readonly calls: { command: string[]; cwd: string | undefined }[] = []
+	readonly calls: Call[] = []
 	private readonly handlers: { prefix: string; handler: Handler }[] = []
 
 	constructor() {
@@ -15,8 +17,8 @@ export class FakeShell {
 		this.handlers.unshift({ prefix, handler })
 	}
 
-	readonly shell: Shell = async (command, cwd) => {
-		this.calls.push({ command: [...command], cwd })
+	readonly shell: Shell = async (command, cwd, options) => {
+		this.calls.push({ command: [...command], cwd, timeoutMs: options?.timeoutMs })
 		const line = command.join(" ")
 		const match = this.handlers.find((candidate) => line.startsWith(candidate.prefix))
 		if (!match) return ok("")
@@ -24,7 +26,7 @@ export class FakeShell {
 		return typeof match.handler === "function" ? match.handler(command, cwd) : match.handler
 	}
 
-	called(prefix: string): { command: string[]; cwd: string | undefined }[] {
+	called(prefix: string): Call[] {
 		return this.calls.filter((call) => call.command.join(" ").startsWith(prefix))
 	}
 }

@@ -1,16 +1,28 @@
-export type ShellResult = { code: number; stdout: string; stderr: string }
+export type ShellResult = { code: number; stdout: string; stderr: string; timedOut?: boolean }
 
-export type Shell = (command: readonly string[], cwd?: string) => Promise<ShellResult>
+export type ShellOptions = { timeoutMs?: number }
 
-export const spawnShell: Shell = async (command, cwd) => {
-	const child = Bun.spawn([...command], { cwd, stdin: "ignore", stdout: "pipe", stderr: "pipe" })
+export type Shell = (
+	command: readonly string[],
+	cwd?: string,
+	options?: ShellOptions,
+) => Promise<ShellResult>
+
+export const spawnShell: Shell = async (command, cwd, options) => {
+	const child = Bun.spawn([...command], {
+		cwd,
+		stdin: "ignore",
+		stdout: "pipe",
+		stderr: "pipe",
+		timeout: options?.timeoutMs,
+	})
 	const [stdout, stderr, code] = await Promise.all([
 		new Response(child.stdout).text(),
 		new Response(child.stderr).text(),
 		child.exited,
 	])
 
-	return { code, stdout, stderr }
+	return { code, stdout, stderr, timedOut: child.killed && options?.timeoutMs !== undefined }
 }
 
 const FAILURE_LINE = /\b(fail|failed|failing|error|errors)\b/i

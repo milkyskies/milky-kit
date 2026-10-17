@@ -443,5 +443,113 @@ describe("desk merge", () => {
 			)
 			expect(unconfigured.fake.callsMatching(["pr", "merge"])).toHaveLength(0)
 		})
+
+		test("a clean review that arrives after a blocked=review attempt lets the request land", async () => {
+			const { fake, context, shell, deps } = setup({ ...auto, reviewPaths: ["db/migrations/**"] })
+			shell.on("git diff --name-only origin/main HEAD", ok("db/migrations/001.sql\n"))
+			await runWith(deps, ["12"], context)
+			expect(fake.callsMatching(["pr", "merge"])).toHaveLength(0)
+
+			fake.addComment(12, composeComment("review", { pr: "45", verdict: "clean" }, "Fine."))
+			await runWith(deps, ["12"], context)
+
+			expect(fake.callsMatching(["pr", "merge", "45"])).toHaveLength(1)
+		})
+
+		test("a second auto attempt after a blocked one for the same result is refused and touches nothing", async () => {
+			const { fake, context, shell, deps } = setup({ ...auto, check: "bun test" })
+			shell.on("sh -c bun test", failed("1 fail\n"))
+			await runWith(deps, ["12"], context)
+			shell.calls.length = 0
+
+			expect((await failureOf(runWith(deps, ["12"], context))).code).toBe(1)
+			expect(shell.calls).toHaveLength(0)
+			expect(autoComments(fake)).toHaveLength(1)
+		})
+
+		test("a label removed during the checks stops the landing and merges nothing", async () => {
+			const { fake, context, shell, deps } = setup(auto)
+			shell.on("sh -c", () => {
+				fake.issue(12).labels = fake.issue(12).labels.filter((label) => label !== "land:auto")
+
+				return ok("")
+			})
+
+			expect((await failureOf(runWith(deps, ["12"], context))).code).toBe(1)
+			expect(fake.callsMatching(["pr", "merge"])).toHaveLength(0)
+		})
+
+		test("a new result naming another pull request during the checks stops the landing", async () => {
+			const { fake, context, shell, deps } = setup(auto)
+			shell.on("sh -c", () => {
+				fake.addComment(12, composeComment("result", { claim: "c_1", pr: "46" }, "## Done again"))
+
+				return ok("")
+			})
+
+			expect((await failureOf(runWith(deps, ["12"], context))).code).toBe(1)
+			expect(fake.callsMatching(["pr", "merge"])).toHaveLength(0)
+		})
+
+		test("a head that moved before the merge leaves the request at check with one comment", async () => {
+			const { fake, context, extras, deps } = setup(auto)
+			extras.failMerge = true
+
+			await runWith(deps, ["12"], context)
+
+			expect(fake.issue(12).labels).toContain("stage:check")
+			expect(autoComments(fake)).toHaveLength(1)
+			expect(autoComments(fake)[0]?.body).toStartWith("<!-- desk:autoland pr=45 blocked=error -->")
+		})
+
+		test("a draft pull request leaves the request at check and runs no check", async () => {
+			const { fake, context, shell, deps } = setup(auto)
+			const draft = fake.pullRequests.get(45)
+			if (draft) draft.isDraft = true
+
+			await runWith(deps, ["12"], context)
+
+			expect(shell.called("sh -c")).toHaveLength(0)
+			expect(autoComments(fake)[0]?.body).toStartWith("<!-- desk:autoland pr=45 blocked=merge -->")
+		})
+
+		test("a result naming a pull request that does not close this issue is not merged", async () => {
+			const { fake, context, shell, deps } = setup(auto)
+			fake.issue(12).comments = fake
+				.issue(12)
+				.comments.map((comment) => ({ ...comment, body: comment.body.replace("pr=45", "pr=99") }))
+
+			await runWith(deps, ["12"], context)
+
+			expect(shell.called("git fetch")).toHaveLength(0)
+			expect(fake.callsMatching(["pr", "merge"])).toHaveLength(0)
+			expect(autoComments(fake)[0]?.body).toStartWith("<!-- desk:autoland pr=99 blocked=merge -->")
+		})
+
+		test("a human-approved merge of a pull request that does not close this issue is refused", async () => {
+			const { fake, context, deps } = setup({ humanComment: "looks good" })
+			fake.issue(12).pullRequests = []
+
+			expect((await failureOf(runWith(deps, ["12"], context))).code).toBe(1)
+			expect(fake.callsMatching(["pr", "merge"])).toHaveLength(0)
+		})
+
+		test("a check that outlives its timeout blocks the landing and names the timeout", async () => {
+			const { fake, context, shell, deps } = setup(auto)
+			shell.on("sh -c", { code: 143, stdout: "", stderr: "", timedOut: true })
+
+			await runWith(deps, ["12", "--check-timeout", "5m"], context)
+
+			expect(autoComments(fake)[0]?.body).toContain("timed out after 5 minutes")
+			expect(shell.called("git push")).toHaveLength(0)
+		})
+
+		test("the check runs with the check timeout", async () => {
+			const { context, shell, deps } = setup(auto)
+
+			await runWith(deps, ["12"], context)
+
+			expect(shell.called("sh -c")[0]?.timeoutMs).toBe(20 * 60_000)
+		})
 	})
 })

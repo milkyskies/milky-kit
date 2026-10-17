@@ -10,7 +10,8 @@ import { type IssueState, readIssue } from "../github/issue.ts"
 import { composeComment } from "../github/markers.ts"
 import { postComment } from "../github/writes.ts"
 import { requireStage } from "../guards.ts"
-import { parseJson, readString } from "../json.ts"
+import { parseJson, readField, readString } from "../json.ts"
+import { autolandHeld } from "../merge/autoland.ts"
 import { type CiStatus, ciStatus } from "../merge/ci.ts"
 import { firstFailingLine, type Shell, spawnShell } from "../merge/shell.ts"
 import { type OrcaDeps, realOrcaDeps } from "../orca/deps.ts"
@@ -20,7 +21,7 @@ import { landIssue } from "./land.ts"
 
 const LOOKS_GOOD = /^looks good/i
 
-type BlockedCheck = "merge" | "check" | "review" | "ci"
+type BlockedCheck = "merge" | "check" | "review" | "ci" | "error"
 
 class Blocked extends Error {
 	constructor(
@@ -43,6 +44,7 @@ export type MergeDeps = OrcaDeps & {
 
 const CI_POLL_MS = 20_000
 const DEFAULT_CI_TIMEOUT = "20m"
+const DEFAULT_CHECK_TIMEOUT = "20m"
 const NO_RUNS_GRACE_MS = 2 * 60_000
 
 export function realMergeDeps(): MergeDeps {
@@ -117,8 +119,17 @@ function requireApproval(issue: IssueState, number: number, section: DeskSection
 	const answered = human !== undefined && humanIndex > resultIndex
 	if (answered && LOOKS_GOOD.test(human.body.trim())) return { prNumber, resultIndex, by: "human" }
 
-	if (!answered && landingOf(issue.labels, section) === "land:auto")
-		return { prNumber, resultIndex, by: "auto" }
+	const landsAutomatically = !answered && landingOf(issue.labels, section) === "land:auto"
+	if (landsAutomatically && autolandHeld(issue.comments, resultIndex)) {
+		throw refusal(
+			"merge",
+			number,
+			"an automatic landing was already blocked for this result",
+			"a new result, or a human looks good",
+		)
+	}
+
+	if (landsAutomatically) return { prNumber, resultIndex, by: "auto" }
 
 	throw refusal(
 		"merge",
@@ -202,6 +213,7 @@ async function verifyInWorktree(
 		approval: Approval
 		section: DeskSection
 		ciTimeout: string
+		checkTimeout: string
 	},
 ): Promise<Verified> {
 	const { number, headRef, worktree, issue, approval, section } = input
@@ -228,7 +240,16 @@ async function verifyInWorktree(
 		requireCleanReview(issue, approval, diff.split("\n"), section.reviewPaths)
 	}
 
-	const checked = await deps.shell(["sh", "-c", check], worktree)
+	const checkTimeoutMs = parseDuration(input.checkTimeout)
+	const checked = await deps.shell(["sh", "-c", check], worktree, { timeoutMs: checkTimeoutMs })
+	if (checked.timedOut) {
+		throw new Blocked(
+			"check",
+			`the check \`${check}\` timed out after ${Math.round(checkTimeoutMs / 60_000)} minutes`,
+			"a check that finishes",
+		)
+	}
+
 	if (checked.code !== 0) {
 		throw new Blocked(
 			"check",
@@ -246,21 +267,32 @@ async function verifyInWorktree(
 	return { ci, checkedSha }
 }
 
-export async function runWith(deps: MergeDeps, args: string[], context: Context): Promise<void> {
-	const { values, positionals } = parseOrUsage("merge", () =>
-		parseArgs({
-			args,
-			allowPositionals: true,
-			options: { "worktree-dir": { type: "string" }, "ci-timeout": { type: "string" } },
-		}),
-	)
-	const number = parseNumber("merge", positionals[0], "the issue number")
-	const { gh, repo } = context
+type Landing = { ci: CiStatus; check: string }
 
-	const section = await deps.loadSection()
-	const before = await readIssue(gh, repo, number)
-	const approval = requireApproval(before, number, section)
+async function verifyAndMerge(
+	deps: MergeDeps,
+	context: Context,
+	input: {
+		number: number
+		before: IssueState
+		approval: Approval
+		section: DeskSection
+		worktreeDir: string | undefined
+		ciTimeout: string
+		checkTimeout: string
+	},
+): Promise<Landing> {
+	const { number, before, approval, section } = input
+	const { gh, repo } = context
 	const { prNumber } = approval
+
+	if (!before.pullRequests.some((candidate) => candidate.number === prNumber)) {
+		throw new Blocked(
+			"merge",
+			`pull request #${prNumber} does not close this issue`,
+			"the pull request that closes this issue",
+		)
+	}
 
 	const pr = parseJson(
 		await gh([
@@ -270,18 +302,25 @@ export async function runWith(deps: MergeDeps, args: string[], context: Context)
 			"--repo",
 			repoSlug(repo),
 			"--json",
-			"state,headRefName",
+			"state,headRefName,isDraft",
 		]),
 	)
 	const headRef = readString(pr, "headRefName")
 	if (readString(pr, "state") !== "OPEN") {
-		throw refusal("merge", number, `pull request #${prNumber} is not open`, "an open pull request")
+		throw new Blocked("merge", `pull request #${prNumber} is not open`, "an open pull request")
 	}
 
-	const { check } = section.coordinator
+	if (readField(pr, "isDraft") === true) {
+		throw new Blocked(
+			"merge",
+			`pull request #${prNumber} is a draft`,
+			"a pull request ready for review",
+		)
+	}
+
 	const topLevel = await git(deps, number, ["rev-parse", "--show-toplevel"])
 	const worktreeDir =
-		values["worktree-dir"] ?? join(dirname(topLevel), `${basename(topLevel)}-worktrees`)
+		input.worktreeDir ?? join(dirname(topLevel), `${basename(topLevel)}-worktrees`)
 	const worktree = join(worktreeDir, `merge-${number}`)
 
 	await git(deps, number, ["fetch", "origin", "main", headRef])
@@ -297,35 +336,22 @@ export async function runWith(deps: MergeDeps, args: string[], context: Context)
 			issue: before,
 			approval,
 			section,
-			ciTimeout: values["ci-timeout"] ?? DEFAULT_CI_TIMEOUT,
+			ciTimeout: input.ciTimeout,
+			checkTimeout: input.checkTimeout,
 		})
-	} catch (error) {
-		if (!(error instanceof Blocked)) throw error
-		if (approval.by === "human") throw refusal("merge", number, error.got, error.expected)
-
-		await postComment(
-			gh,
-			repo,
-			number,
-			composeComment(
-				"autoland",
-				{ pr: String(prNumber), blocked: error.check },
-				`Not landed automatically: ${error.got}.\n\nThe request stays at \`stage:check\` for a human. Comment \`looks good\` to merge it anyway.`,
-			),
-		)
-		emit(context, `#${number} waits for a human: ${error.got}`, {
-			issue: number,
-			pr: prNumber,
-			blocked: error.check,
-		})
-
-		return
 	} finally {
 		await deps.shell(["git", "worktree", "remove", "--force", worktree])
 	}
 
-	const { ci, checkedSha } = verified
-	requireApproval(await readIssue(gh, repo, number), number, section)
+	const fresh = requireApproval(await readIssue(gh, repo, number), number, section)
+	if (fresh.prNumber !== prNumber || fresh.resultIndex !== approval.resultIndex) {
+		throw refusal(
+			"merge",
+			number,
+			"a newer result arrived while the checks ran",
+			`the result for pull request #${prNumber} that was checked`,
+		)
+	}
 
 	await gh([
 		"pr",
@@ -335,9 +361,83 @@ export async function runWith(deps: MergeDeps, args: string[], context: Context)
 		repoSlug(repo),
 		"--merge",
 		"--match-head-commit",
-		checkedSha,
+		verified.checkedSha,
 	])
 
+	return { ci: verified.ci, check: section.coordinator.check }
+}
+
+async function holdForHuman(
+	context: Context,
+	number: number,
+	prNumber: number,
+	blocked: { check: BlockedCheck; got: string },
+): Promise<void> {
+	await postComment(
+		context.gh,
+		context.repo,
+		number,
+		composeComment(
+			"autoland",
+			{ pr: String(prNumber), blocked: blocked.check },
+			`Not landed automatically: ${blocked.got}.\n\nThe request stays at \`stage:check\` for a human. Comment \`looks good\` to merge it anyway.`,
+		),
+	)
+	emit(context, `#${number} waits for a human: ${blocked.got}`, {
+		issue: number,
+		pr: prNumber,
+		blocked: blocked.check,
+	})
+}
+
+export async function runWith(deps: MergeDeps, args: string[], context: Context): Promise<void> {
+	const { values, positionals } = parseOrUsage("merge", () =>
+		parseArgs({
+			args,
+			allowPositionals: true,
+			options: {
+				"worktree-dir": { type: "string" },
+				"ci-timeout": { type: "string" },
+				"check-timeout": { type: "string" },
+			},
+		}),
+	)
+	const number = parseNumber("merge", positionals[0], "the issue number")
+	const { gh, repo } = context
+
+	const section = await deps.loadSection()
+	const before = await readIssue(gh, repo, number)
+	const approval = requireApproval(before, number, section)
+	const { prNumber } = approval
+
+	let landing: Landing
+	try {
+		landing = await verifyAndMerge(deps, context, {
+			number,
+			before,
+			approval,
+			section,
+			worktreeDir: values["worktree-dir"],
+			ciTimeout: values["ci-timeout"] ?? DEFAULT_CI_TIMEOUT,
+			checkTimeout: values["check-timeout"] ?? DEFAULT_CHECK_TIMEOUT,
+		})
+	} catch (error) {
+		if (error instanceof Blocked) {
+			if (approval.by === "human") throw refusal("merge", number, error.got, error.expected)
+
+			return holdForHuman(context, number, prNumber, error)
+		}
+
+		// A refusal is a person's answer arriving mid-run; every other failure on an automatic landing would otherwise repeat on each pass.
+		const refused = error instanceof DeskError && error.exitCode === EXIT.refused
+		if (approval.by === "human" || refused) throw error
+
+		const got = error instanceof Error ? error.message : String(error)
+
+		return holdForHuman(context, number, prNumber, { check: "error", got })
+	}
+
+	const { ci, check } = landing
 	const described = describeCi(ci)
 	await postComment(
 		gh,

@@ -345,6 +345,25 @@ describe("desk reconcile", () => {
 		expect(codes({ issues: retried })).toEqual([[12, "auto-land"]])
 	})
 
+	test("auto-land: a clean review newer than a blocked=review attempt tries again, a blocking one does not", () => {
+		const blocked = composeComment("autoland", { pr: "45", blocked: "review" }, "Not landed.")
+		const clean = composeComment("review", { pr: "45", verdict: "clean" }, "Fine.")
+		const blocking = composeComment("review", { pr: "45", verdict: "blocking" }, "No.")
+		const checkBlocked = composeComment("autoland", { pr: "45", blocked: "check" }, "Not landed.")
+		const bodies = (...rest: string[]) => [claim("c_1", "ctx_y"), result("c_1"), ...rest]
+
+		expect(codes({ issues: [issue(12, [...CHECK, "land:auto"], bodies(blocked, clean))] })).toEqual(
+			[[12, "auto-land"]],
+		)
+		expect(
+			codes({ issues: [issue(12, [...CHECK, "land:auto"], bodies(blocked, blocking))] }),
+		).toEqual([[12, "auto-land"]])
+		expect(codes({ issues: [issue(12, [...CHECK, "land:auto"], bodies(blocked))] })).toEqual([])
+		expect(
+			codes({ issues: [issue(12, [...CHECK, "land:auto"], bodies(checkBlocked, clean))] }),
+		).toEqual([])
+	})
+
 	test("auto-land: a human comment, a conflict or a busy worker comes first", () => {
 		const labels = [...CHECK, "land:auto"]
 		const conflicting = [{ number: 45, state: "OPEN", isDraft: false, mergeable: "CONFLICTING" }]

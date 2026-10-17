@@ -1,5 +1,6 @@
 import { attemptCount, owningClaim } from "../github/derive.ts"
 import { type IssueState, stageOf } from "../github/issue.ts"
+import { autolandHeld } from "../merge/autoland.ts"
 import { machineOfHost } from "../orca/hosts.ts"
 import { issueNumberOfTitle } from "../orca/tasks.ts"
 import { isBusy, isGone, isLive, isSettled, type Worker } from "../orca/workers.ts"
@@ -107,7 +108,7 @@ function classifyCheck(
 		resultAt >= 0 &&
 		!human &&
 		landingOf(issue.labels, input.section) === "land:auto" &&
-		lastIndexOfKind(issue, "autoland") < resultAt
+		!autolandHeld(issue.comments, resultAt)
 	if (autoLands) {
 		return {
 			issue: number,

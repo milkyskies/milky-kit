@@ -184,11 +184,12 @@ A comment the digest has pinged gets a trailing `<!-- desk:pinged at=<iso> -->` 
 
 **`desk merge <n>`**
 - Precondition: `stage:check`, and either the newest human comment is newer than the result comment and starts with `looks good` (relayed), or the request lands automatically (`land:auto`, or the project default when no landing label is present) and no human comment is newer than the result.
+- Preconditions for both landings: the pull request named by the result closes this issue, is open and is not a draft. An automatic landing that fails for any reason posts one `desk:autoland blocked=<merge|check|review|ci|error>` comment and exits 0. A second automatic attempt for the same result is refused, except one more try after a `desk:review` comment newer than a `blocked=review` attempt. Step 7 also refuses when the result changed during the checks.
 - Landing: `land:check` is the human-merge flow above. `land:auto` merges when the checks pass. The label and the `- land:` line under `### Coordinator` are read by `landingOf`: the request label wins, both labels count as `land:check`, and no line means `land:check`.
 - Steps:
   1. Create a temporary worktree of the pull request's branch on the coordinator's machine, at `../<worktree-dir>/merge-<n>`.
   2. `git merge origin/main`. A conflict exits 1 with the conflicting files. The coordinator sends the request back to a worker (section 4).
-  3. Run the project's check command from `## desk` (default `mise run check`). A failure exits 1 with the first failing line.
+  3. Run the project's check command from `## desk` (default `mise run check`). A failure exits 1 with the first failing line. The command is killed after `--check-timeout` (default 20 minutes), which counts as a failure.
   4. For an automatic landing only: when the diff against `origin/main` touches a `### Review paths` glob, the newest `desk:review pr=<n>` comment newer than the result must say `verdict=clean`.
   5. Push.
   6. Read the pushed commit's checks. No workflow configured: print `no CI configured`. Actions disabled or blocked by billing: print `CI blocked`. Either fact goes into the merge comment, and neither waits, because the local check in step 3 already ran (relayed). With workflows configured and not blocked, poll the pushed commit's check runs every 20 seconds until they finish. A failure exits 1, and so does `--ci-timeout` (default 20 minutes) running out on a run that started. When no check run exists for the commit after 2 minutes (path-filtered workflows), merge reports `no CI ran for this change` with `ci=none` and relies on the local check.
