@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test"
 
 import { owningClaim, parseComments } from "../github/derive.ts"
 import { makeHarness } from "../github/testing/fake-gh.ts"
-import { failureOf, seedWorking } from "../github/testing/seed.ts"
+import { failureOf, seedFrontmanWorking, seedWorking } from "../github/testing/seed.ts"
 import { run } from "./fail.ts"
 
 describe("desk fail", () => {
@@ -32,5 +32,16 @@ describe("desk fail", () => {
 
 		expect(result.code).toBe(1)
 		expect(fake.issue(12).labels).toContain("stage:working")
+	})
+
+	test("failed_frontman_returns_to_intake_not_ready", async () => {
+		const { fake, context } = makeHarness()
+		seedFrontmanWorking(fake, 12)
+		fake.files.set("reason.md", "Could not reach the repository.")
+
+		await run(["12", "--dispatch", "ctx_y", "--reason", "reason.md"], context)
+
+		expect(fake.issue(12).labels).toContain("stage:intake")
+		expect(fake.issue(12).labels).not.toContain("stage:ready")
 	})
 })

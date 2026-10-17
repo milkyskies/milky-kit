@@ -7,11 +7,12 @@ import { sectionLines } from "../github/body.ts"
 import { appendProgramLine } from "../github/body-edit.ts"
 import {
 	activeClaims,
-	FRONTMAN_ROLE,
 	newestPark,
 	type OpenCard,
 	openCards,
 	type ParsedComment,
+	parkingClaim,
+	returnStage,
 } from "../github/derive.ts"
 import { type IssueState, readIssue } from "../github/issue.ts"
 import { AGENT_MARKER, formatMarker } from "../github/markers.ts"
@@ -78,7 +79,7 @@ export const run: Command = async (args, context) => {
 	}
 
 	const claims = activeClaims(before.comments)
-	const next = claims[0]?.role === FRONTMAN_ROLE ? "stage:intake" : "stage:ready"
+	const next = returnStage(parkingClaim(before.comments))
 
 	await releaseClaims(gh, repo, number, claims, "answered")
 
@@ -134,7 +135,8 @@ function chooseCard(issue: IssueState, requested: string | undefined): OpenCard 
 	}
 
 	const open = openCards(issue.comments)
-	if (open.length <= 1) return open[0]
+	if (open.length === 0) return newestPark(issue.comments).at(-1)
+	if (open.length === 1) return open[0]
 
 	throw refusal(
 		"answer",

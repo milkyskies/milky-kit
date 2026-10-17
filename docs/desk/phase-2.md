@@ -121,7 +121,7 @@ A comment the digest has pinged gets a trailing `<!-- desk:pinged at=<iso> -->` 
 - **Owning claim**: the earliest `desk:claim` comment not followed by a `desk:release` or `desk:failed` naming its id. Every guard, `desk release --claim` and `desk status` use this one definition, and `desk claim` uses it to pick the winner of a race, so a loser whose `lost-race` release failed never owns the issue.
 - **Attempts**: the count of `desk:release` and `desk:failed` comments after the newest human comment, not counting releases with reason `lost-race`, `answered`, `reopened` or `ready`. A human answer resets the count, because the next attempt starts from new information.
 - **Last human comment**: the newest comment without the agent marker.
-- **Open cards**: the `desk:decision` comments of the newest park (the cards that share the claim of the newest card with an id) that no `desk:answer card=<id>` names. A card with no `card=` attribute predates card ids and is never open.
+- **Open cards**: the `desk:decision` comments of the newest park (the cards that share the claim of the newest card with an id) that no `desk:answer card=<id>` names. A decision with no `card=` attribute predates card ids and gets the id `legacy-<comment id>`, so the desk can answer it with `--card` like any other.
 
 ### Commands
 
@@ -152,13 +152,13 @@ A comment the digest has pinged gets a trailing `<!-- desk:pinged at=<iso> -->` 
 
 **`desk fail <n> --dispatch <d> --reason <file>`**
 - Precondition: `stage:working`; the owning claim is `<d>`'s.
-- Posts `<!-- desk:failed claim=<id> attempt=<k> -->` with what was tried and why each try failed, then moves the stage back to `stage:ready`. The coordinator reads the attempt count and escalates (section 4).
+- Posts `<!-- desk:failed claim=<id> attempt=<k> -->` with what was tried and why each try failed, then moves the stage back to `stage:ready` (`stage:intake` for a frontman's claim). The coordinator reads the attempt count and escalates (section 4).
 
 **`desk release <n> --reason <silent-machine|no-worker|stopped|lost-race|answered|reopened> [--claim <id>]`**
 - Used by the coordinator and the watchdog, never by a worker on its own claim. `answered` is written only by `desk answer`, and `reopened` only by `desk reopen`.
 - Without `--claim`: precondition `stage:working`; releases the owning claim. Releasing the owning claim also releases every later unreleased claim with reason `lost-race`, so a dead race loser never inherits the issue.
 - With `--claim <id>`: the claim must be unreleased, at any stage. This is how an orphaned claim is cleared when a worker died between its claim comment and its label write, which leaves `stage:ready` with a live claim.
-- Posts `<!-- desk:release claim=<id> reason=<reason> -->`. The stage moves from `stage:working` to `stage:ready` only when the issue is `stage:working` and no unreleased claim remains. Releasing a lingering race loser changes no label.
+- Posts `<!-- desk:release claim=<id> reason=<reason> -->`. The stage moves from `stage:working` to `stage:ready` (`stage:intake` for a frontman's claim) only when the issue is `stage:working` and no unreleased claim remains. Releasing a lingering race loser changes no label.
 - `desk fail`, `desk answer` and `desk reopen` close every unreleased claim, not only the owning one, so a race loser whose own release failed cannot take the issue over.
 
 **`desk intake --words <file> --ask <ask:everything|ask:choices|ask:own-feel>`**
@@ -167,11 +167,11 @@ A comment the digest has pinged gets a trailing `<!-- desk:pinged at=<iso> -->` 
 **`desk accept <n>`** and **`desk drop <n>`**
 - Precondition for both: open; `stage:intake`; label `proposed`.
 - `accept` removes `proposed` and leaves `stage:intake`, so the frontman picks the request up.
-- `drop` swaps `stage:intake` and `proposed` for `stage:done`, then closes the issue as not planned.
+- `drop` closes the issue as not planned, then swaps `stage:intake` and `proposed` for `stage:done`. A rerun after the close finishes the labels.
 
 **`desk ready <n> --dispatch <d> --points <1|2|3|5|8|13>`**
 - The frontman's end. Precondition: `stage:working`; the owning claim is `<d>`'s and has `role=frontman`.
-- Releases the claim with reason `ready` (not an attempt), then adds `autopilot`, `points:<k>` and `stage:ready`, and removes `stage:working` and any earlier `points:*`. The `autopilot` label is Milky's consent, given when Milky answered the frontman's "Is this what you meant?" or pressed ✓ start.
+- Releases the claim with reason `ready` (not an attempt), then adds `autopilot`, `points:<k>` and `stage:ready`, and removes `stage:working` and any earlier `points:*`. A rerun after the release but before the label edit finishes the label edit. The `autopilot` label is Milky's consent, given when Milky answered the frontman's "Is this what you meant?" or pressed ✓ start.
 
 **`desk note <n> --dispatch <d> "Auto-decided: X over Y because Z"`**
 - Precondition: the owning claim is `<d>`'s. The line must start with `Auto-decided:` and contain ` over ` and ` because `.
@@ -180,10 +180,10 @@ A comment the digest has pinged gets a trailing `<!-- desk:pinged at=<iso> -->` 
 **`desk answer <n> --body <file> --decision "<one line>" [--card <id>]`**
 - The human's side, called by `/decisions` and the desk app. `--decision` is the say-back line of the option chosen, or the typed text for an "other…" answer.
 - Precondition: `stage:needs-you`.
-- `--card <id>` names the card answered and must be a card of the newest park. Without it the only open card is answered; with two or more open cards the command exits 1 and lists their ids. A park with no card ids (cards from before card ids) is answered as one.
+- `--card <id>` names the card answered and must be a card of the newest park. Without it the only open card is answered; with two or more open cards the command exits 1 and lists their ids. With the newest park fully answered and `--card` absent, the last card is the target, so a rerun after a crash posts nothing twice.
 - Posts the answer as `<!-- desk:answer card=<id> -->` plus the text, with no agent marker, and appends `- <date>: <decision>` to the body's `## Decisions` section. A card already answered with different text exits 1.
 - While another card of the newest park is still open, it stops there and the request stays on `stage:needs-you` with its claim.
-- Once no card is open, posts `<!-- desk:release claim=<id> reason=answered -->` for every unreleased claim, then moves the stage to `stage:ready`, or to `stage:intake` when the owning claim has `role=frontman`. The release is what lets the next `desk claim` pass its "no owning claim" check. A release with `reason=answered` is not counted as an attempt.
+- Once no card is open, posts `<!-- desk:release claim=<id> reason=answered -->` for every unreleased claim, then moves the stage to `stage:ready`, or to `stage:intake` when the claim that parked the newest cards had `role=frontman` (read from the card's `claim=`, so a claim released or a crash in between changes nothing). The release is what lets the next `desk claim` pass its "no owning claim" check. A release with `reason=answered` is not counted as an attempt.
 
 **`desk propose --from <n> --title "<title>" --type <type> --body <file>`**
 - Files a side topic as a proposed request. The body must contain `## Problem`.
@@ -307,6 +307,8 @@ The coordinator is a Sonnet session at medium effort (plan), started with `/milk
 | `escalate` | as `dispatch`, attempts ≥ 2 | no live worker | Dispatch one tier up: Haiku to Sonnet. A Sonnet request at 2 attempts goes to the coordinator itself, which parks it with a card listing what was tried (plan). |
 | `orphan-claim` | `stage:working`, owning claim names dispatch D | D is `exited`, released or absent, and the claim is older than 10 minutes. A claim on a remote machine whose worker row is absent becomes `remote-claim-unseen` instead: report only, because a missing remote row may only mean the remote listing is incomplete, and the silent-machine rule releases the claim if the machine goes silent. | `desk release --claim <id> --reason no-worker`. It becomes `dispatch` or `escalate` on the next pass. |
 | `intake` | `stage:intake`, label `request`, no `proposed` label, no open card | no worker for `#n` that is not gone | Start a frontman worker (Opus, high effort) that runs `desk claim --role frontman`. Only while live workers are under the machine's limit. A worker for `#n` started more than 10 minutes ago that never claimed becomes `unclaimed-worker`. |
+| `intake-stuck` | as `intake`, with 2 or more releases or failures since the newest human comment | no worker for `#n` that is not gone | Change nothing. The digest reports it once. Opus has no tier above it, so a person looks. |
+| `answered-not-requeued` | `stage:needs-you`, every card of the newest park has a `desk:answer` | any | Change nothing. The digest reports it once; a person reruns `desk answer` for the last card, which finishes the requeue. |
 | `unclaimed-worker` | `stage:ready` or an `intake` request | a live worker titled `#n`, started more than 10 minutes ago | The worker never claimed. Read the tail of its terminal, `worker-stop` it, and let the next pass dispatch again. |
 | `unrecorded-result` | `stage:working`, claim names D | D sent `worker_done`, or sits idle at its prompt | Send to D's terminal: "Record your result on #n with desk done, desk park or desk fail, then send worker_done again." If the terminal is gone, `desk release --reason stopped`. |
 | `parked-worker` | `stage:needs-you`, claim names D | D is live | `worker-release --dispatch D`. The worktree stays for the next attempt. |

@@ -452,7 +452,9 @@ describe("re-review D: desk answer is idempotent on retry", () => {
 		await answer(["12", "--body", "answer.md", "--decision", "five"], context)
 
 		const issue = fake.issue(12)
-		expect(issue.comments.filter((comment) => comment.body === "Go with five.")).toHaveLength(1)
+		expect(issue.comments.filter((comment) => comment.body.endsWith("Go with five."))).toHaveLength(
+			1,
+		)
 		expect(issue.body.match(/: five$/gm)).toHaveLength(1)
 		expect(issue.labels).toContain("stage:ready")
 		expect(owningClaim(parseComments(issue.comments))).toBeUndefined()
@@ -467,6 +469,8 @@ describe("re-review D: desk answer is idempotent on retry", () => {
 
 		await answer(["12", "--body", "answer.md", "--decision", "go"], context)
 
-		expect(fake.issue(12).comments.filter((comment) => comment.body === "Go.")).toHaveLength(2)
+		expect(fake.issue(12).comments.filter((comment) => comment.body.endsWith("Go."))).toHaveLength(
+			2,
+		)
 	})
 })

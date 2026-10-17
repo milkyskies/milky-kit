@@ -33,9 +33,9 @@ describe("open cards", () => {
 		expect(openCards(both).map((open) => open.id)).toEqual(["c_2-1"])
 	})
 
-	test("a card from before card ids has no id and is never open", () => {
+	test("a card from before card ids is open under an id built from its comment id", () => {
 		const legacy = comments(composeComment("decision", {}, "## Decision needed"))
 
-		expect(openCards(legacy)).toEqual([])
+		expect(openCards(legacy).map((open) => open.id)).toEqual(["legacy-1000"])
 	})
 })

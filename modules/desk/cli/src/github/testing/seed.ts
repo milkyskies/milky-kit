@@ -60,6 +60,13 @@ export function seedParked(
 	return issue
 }
 
+export function seedFrontmanWorking(fake: FakeGithub, number: number): FakeIssue {
+	const issue = fake.addIssue({ number, labels: ["request", "priority:P2", "stage:working"] })
+	fake.addComment(number, claimBody("c_first1", DISPATCH, "zeus", "frontman"))
+
+	return issue
+}
+
 export function decisionCard(kind: "code-detail" | "design", extra = ""): string {
 	const closing =
 		kind === "code-detail"

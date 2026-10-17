@@ -70,4 +70,15 @@ describe("desk drop", () => {
 
 		expect(result.code).toBe(1)
 	})
+
+	test("drop_can_be_rerun_after_the_close_succeeded_but_the_labels_did_not_move", async () => {
+		const { fake, context } = makeHarness()
+		fake.addIssue({ number: 7, labels: PROPOSED, state: "CLOSED" })
+
+		await drop(["7"], context)
+
+		expect(fake.issue(7).labels).toContain("stage:done")
+		expect(fake.issue(7).labels).not.toContain("proposed")
+		expect(fake.callsMatching(["issue", "close"])).toHaveLength(0)
+	})
 })

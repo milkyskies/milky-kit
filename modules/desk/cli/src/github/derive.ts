@@ -78,10 +78,51 @@ export function answeredCardIds(comments: readonly ParsedComment[]): Set<string>
 	return new Set(ids)
 }
 
+export function claimReleasedForReady(
+	comments: readonly ParsedComment[],
+	dispatch: string,
+): Claim | undefined {
+	const claim = comments
+		.map(claimFrom)
+		.findLast((candidate) => candidate?.dispatch === dispatch && candidate.role === FRONTMAN_ROLE)
+	if (claim === undefined) return undefined
+
+	const released = comments.some(
+		(comment) =>
+			comment.marker?.kind === "release" &&
+			comment.marker.attrs.claim === claim.id &&
+			comment.marker.attrs.reason === "ready",
+	)
+
+	return released ? claim : undefined
+}
+
+export function returnStage(claim: Claim | undefined): "stage:intake" | "stage:ready" {
+	return claim?.role === FRONTMAN_ROLE ? "stage:intake" : "stage:ready"
+}
+
+export function parkingClaim(comments: readonly ParsedComment[]): Claim | undefined {
+	const parked = comments.findLast((comment) => comment.marker?.kind === "decision")
+	const claimId = parked?.marker?.attrs.claim
+	if (claimId === undefined) return owningClaim(comments)
+
+	const claim = comments
+		.map(claimFrom)
+		.find((candidate) => candidate !== undefined && candidate.id === claimId)
+
+	return claim ?? owningClaim(comments)
+}
+
 export function newestPark(comments: readonly ParsedComment[]): OpenCard[] {
 	const cards = comments.flatMap((comment) =>
-		comment.marker?.kind === "decision" && comment.marker.attrs.card !== undefined
-			? [{ id: comment.marker.attrs.card, claim: comment.marker.attrs.claim, comment }]
+		comment.marker?.kind === "decision"
+			? [
+					{
+						id: comment.marker.attrs.card ?? `legacy-${comment.databaseId}`,
+						claim: comment.marker.attrs.claim,
+						comment,
+					},
+				]
 			: [],
 	)
 	const newest = cards.at(-1)

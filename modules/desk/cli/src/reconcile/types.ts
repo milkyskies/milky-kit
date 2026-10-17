@@ -8,6 +8,8 @@ import type { DeskSection } from "../project/section.ts"
 export const MISMATCH_CODES = [
 	"dispatch",
 	"intake",
+	"intake-stuck",
+	"answered-not-requeued",
 	"escalate",
 	"orphan-claim",
 	"unclaimed-worker",

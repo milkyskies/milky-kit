@@ -629,6 +629,32 @@ describe("desk reconcile: intake", () => {
 		expect(found.map((mismatch) => [mismatch.issue, mismatch.code])).toEqual([[2, "intake"]])
 	})
 
+	test("intake_after_two_failed_attempts_is_stuck_not_dispatched", () => {
+		const bodies = [
+			claim("c_1", "ctx_a"),
+			composeFailure("c_1"),
+			claim("c_2", "ctx_b"),
+			composeFailure("c_2"),
+		]
+
+		expect(codes({ issues: [issue(12, INTAKE, bodies)] })).toEqual([[12, "intake-stuck"]])
+	})
+
+	test("intake: one failed attempt still dispatches", () => {
+		const bodies = [claim("c_1", "ctx_a"), composeFailure("c_1")]
+
+		expect(codes({ issues: [issue(12, INTAKE, bodies)] })).toEqual([[12, "intake"]])
+	})
+
+	test("answered_not_requeued: every card answered but the request still waits on needs-you", () => {
+		const card = composeComment("decision", { claim: "c_1", card: "c_1-1" }, "## Decision needed")
+		const answer = "<!-- desk:answer card=c_1-1 -->\nLHL."
+
+		expect(
+			codes({ issues: [issue(12, NEEDS_YOU, [claim("c_1", "ctx_y"), card, answer])] }),
+		).toEqual([[12, "answered-not-requeued"]])
+	})
+
 	test("a card answer is not a conversation, a chat comment still is", () => {
 		const card = composeComment("decision", { claim: "c_1", card: "c_1-1" }, "## Decision needed")
 		const second = composeComment("decision", { claim: "c_1", card: "c_1-2" }, "## Decision needed")

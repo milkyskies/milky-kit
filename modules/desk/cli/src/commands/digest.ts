@@ -24,7 +24,12 @@ const BAD_LABELS_FILE = "badlabels-pinged.json"
 
 export type DigestDeps = OrcaDeps & { ping: PingDeps; ledger: Ledger }
 
-const REPORT_ONLY = ["human-claimed", "remote-claim-unseen"]
+const REPORT_ONLY = [
+	"human-claimed",
+	"remote-claim-unseen",
+	"intake-stuck",
+	"answered-not-requeued",
+]
 
 export function realDigestDeps(context: Context): DigestDeps {
 	return {

@@ -2,7 +2,7 @@ import { parseArgs } from "node:util"
 
 import { parseNumber, parseOrUsage, requireFlag } from "../args.ts"
 import { type Command, emit, readInputFile } from "../context.ts"
-import { activeClaims, attemptCount } from "../github/derive.ts"
+import { activeClaims, attemptCount, returnStage } from "../github/derive.ts"
 import { readIssue } from "../github/issue.ts"
 import { composeComment } from "../github/markers.ts"
 import { moveStage, postComment, releaseClaims } from "../github/writes.ts"
@@ -42,15 +42,16 @@ export const run: Command = async (args, context) => {
 		activeClaims(before.comments).filter((other) => other.id !== claim.id),
 		"lost-race",
 	)
-	await moveStage(gh, repo, number, "stage:working", "stage:ready")
+	const next = returnStage(claim)
+	await moveStage(gh, repo, number, "stage:working", next)
 
 	const after = await readIssue(gh, repo, number)
-	verifyStage("fail", before, after, "stage:ready")
+	verifyStage("fail", before, after, next)
 	verifyClaimReleased("fail", before, after)
 
-	emit(context, `#${number} → stage:ready (attempt ${attempt} failed)`, {
+	emit(context, `#${number} → ${next} (attempt ${attempt} failed)`, {
 		issue: number,
-		stage: "stage:ready",
+		stage: next,
 		attempt,
 	})
 }

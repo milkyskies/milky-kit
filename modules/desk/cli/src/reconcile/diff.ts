@@ -1,4 +1,4 @@
-import { attemptCount, openCards, owningClaim } from "../github/derive.ts"
+import { attemptCount, newestPark, openCards, owningClaim } from "../github/derive.ts"
 import { type IssueState, isUnclaimedIntake, stageOf } from "../github/issue.ts"
 import { autolandHeld } from "../merge/autoland.ts"
 import { machineOfHost } from "../orca/hosts.ts"
@@ -10,6 +10,7 @@ import { landedPullRequest } from "./landed.ts"
 import { type Mismatch, type ReconcileInput, STARTS_WORKER } from "./types.ts"
 
 const MINUTE = 60_000
+const MAX_INTAKE_ATTEMPTS = 2
 export const CLAIM_GRACE_MS = 10 * MINUTE
 
 const LOOKS_GOOD = /^looks good/i
@@ -165,6 +166,15 @@ function classifyNeedsYou(
 	const parked = claim === undefined ? undefined : byDispatch.get(claim.dispatch)
 	const live = parked && isLive(parked) ? parked : workers.find(isLive)
 
+	if (newestPark(issue.comments).length > 0 && openCards(issue.comments).length === 0) {
+		return {
+			issue: issue.number,
+			code: "answered-not-requeued",
+			detail:
+				"every card of the newest park is answered but the request is still parked: change nothing, report it, a human reruns desk answer for the last card",
+		}
+	}
+
 	const conversation = classifyConversation(issue, lastIndexOfKind(issue, "decision"), live)
 	if (conversation) return conversation
 
@@ -278,6 +288,16 @@ function classifyIntake(
 	if (!eligible) return undefined
 
 	if (workers.some((worker) => !isGone(worker))) return unclaimedWorker(input, issue, workers)
+
+	const attempts = attemptCount(issue.comments)
+	if (attempts >= MAX_INTAKE_ATTEMPTS) {
+		return {
+			issue: issue.number,
+			code: "intake-stuck",
+			detail: `the frontman failed or stopped ${attempts} times: change nothing, report it, Opus has no tier above it`,
+			attempts,
+		}
+	}
 
 	return {
 		issue: issue.number,

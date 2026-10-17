@@ -35,6 +35,16 @@ describe("card say-back lines", () => {
 		])
 	})
 
+	test("a numbered list outside the options is not read as options", () => {
+		const card = decisionCard("code-detail").replace(
+			"The background sentence.",
+			"The background sentence.\n1. first fact\n2. second fact\n",
+		)
+
+		expect(cardProblems(card)).toEqual([])
+		expect(sayBackLines(card)).toHaveLength(2)
+	})
+
 	test("a card whose options cannot be enumerated needs no say-back line", () => {
 		const card = `<!-- desk:decision -->
 **Kind:** code-detail

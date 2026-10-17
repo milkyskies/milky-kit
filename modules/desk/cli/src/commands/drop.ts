@@ -16,13 +16,13 @@ export const run: Command = async (args, context) => {
 	const { gh, repo } = context
 	const before = await readIssue(gh, repo, number)
 
-	requireProposal("drop", before)
+	requireProposal("drop", before, true)
 
+	if (before.open) await closeNotPlanned(gh, repo, number)
 	await editLabels(gh, repo, number, {
 		add: ["stage:done"],
 		remove: ["stage:intake", "proposed"],
 	})
-	await closeNotPlanned(gh, repo, number)
 
 	const after = await readIssue(gh, repo, number)
 	if (after.open || !hasStage(after, "stage:done") || after.labels.includes("proposed")) {

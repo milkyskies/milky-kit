@@ -83,4 +83,17 @@ describe("desk ready", () => {
 		expect(result.message).toContain("belongs to dispatch ctx_y")
 		expect(fake.issue(12).labels).toContain("stage:working")
 	})
+
+	test("ready_can_be_rerun_after_the_claim_was_released_but_the_labels_did_not_move", async () => {
+		const { fake, context } = await frontmanWorking()
+		fake.dropLabelWrites = true
+		await failureOf(run(["12", ...FLAGS, "--points", "3"], context))
+		fake.dropLabelWrites = false
+
+		await run(["12", ...FLAGS, "--points", "3"], context)
+
+		expect(fake.issue(12).labels).toContain("stage:ready")
+		expect(fake.issue(12).labels).toContain("autopilot")
+		expect(fake.issue(12).comments.filter((c) => c.body.includes("reason=ready"))).toHaveLength(1)
+	})
 })

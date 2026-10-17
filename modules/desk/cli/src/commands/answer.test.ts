@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, test } from "bun:test"
-
 import { activeClaims, attemptCount, parseComments } from "../github/derive.ts"
+import { composeComment } from "../github/markers.ts"
 import { makeHarness } from "../github/testing/fake-gh.ts"
-import { failureOf, seedParked, seedWorking } from "../github/testing/seed.ts"
+import { claimBody, failureOf, seedParked, seedWorking } from "../github/testing/seed.ts"
 import { run as answer } from "./answer.ts"
 import { run as claim } from "./claim.ts"
 
@@ -149,6 +149,46 @@ describe("desk answer", () => {
 			expect(h.fake.issue(12).comments.at(-2)?.body).toStartWith(
 				"<!-- desk:answer card=c_first1-1 -->",
 			)
+			expect(h.fake.issue(12).labels).toContain("stage:ready")
+		})
+
+		test("answer_after_the_frontman_claim_was_released_still_returns_to_intake", async () => {
+			seedParked(h.fake, 12, 1, "frontman")
+			h.fake.addComment(
+				12,
+				composeComment("release", { claim: "c_first1", reason: "no-worker" }, "x"),
+			)
+
+			await answerCard("c_first1-1")
+
+			expect(h.fake.issue(12).labels).toContain("stage:intake")
+			expect(h.fake.issue(12).labels).not.toContain("stage:ready")
+		})
+
+		test("rerun_without_card_after_the_last_answer_posts_nothing_twice", async () => {
+			seedParked(h.fake, 12, 1)
+			await answerCard("c_first1-1", "Go.", "go")
+			h.fake.issue(12).labels = ["request", "autopilot", "stage:needs-you"]
+			h.fake.files.set("answer.md", "Go.")
+
+			await answer(["12", "--body", "answer.md", "--decision", "go"], h.context)
+
+			const issue = h.fake.issue(12)
+			expect(issue.comments.filter((comment) => comment.body.includes("Go."))).toHaveLength(1)
+			expect(issue.body.match(/: go/g)).toHaveLength(1)
+			expect(issue.labels).toContain("stage:ready")
+		})
+
+		test("a card from before card ids is answered by its synthetic id", async () => {
+			h.fake.addIssue({ number: 12, labels: ["request", "autopilot", "stage:needs-you"] })
+			h.fake.addComment(12, claimBody("c_first1"))
+			const legacy = h.fake.addComment(
+				12,
+				composeComment("decision", { claim: "c_first1" }, "## Old card"),
+			)
+
+			await answerCard(`legacy-${legacy.databaseId}`)
+
 			expect(h.fake.issue(12).labels).toContain("stage:ready")
 		})
 

@@ -18,7 +18,15 @@ export function requireStage(command: string, issue: IssueState, stage: string):
 	}
 }
 
-export function requireProposal(command: string, issue: IssueState): void {
+export function requireProposal(command: string, issue: IssueState, allowClosed = false): void {
+	if (allowClosed && !issue.open && hasStage(issue, "stage:intake")) {
+		if (!issue.labels.includes("proposed")) {
+			throw refusal(command, issue.number, "the request is not a proposal", "the proposed label")
+		}
+
+		return
+	}
+
 	requireStage(command, issue, "stage:intake")
 
 	if (!issue.labels.includes("proposed")) {
