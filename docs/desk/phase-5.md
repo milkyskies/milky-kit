@@ -6,13 +6,13 @@ The desk is a small server on ceres, deployed with Dokploy and reachable only ov
 
 The desk adds no state of its own. Every screen is a view of labels and markers that phase 2 already defined, and every button is a comment or a `desk` command. The coordinators keep running as phase 2 built them, plus the frontman dispatch in section 6. They never talk to the server, and the server never talks to Orca.
 
-**Status.** Not built; every design question is answered except the names, and most answers are relayed proposals Milky has not confirmed (listed at the end) · **Owns.** the desk server's endpoints, its read model and live updates, the mapping from each screen to GitHub reads and writes, the deployment on ceres, and the phase 5 build split
+**Status.** Not built; every design question is answered except the names, and most answers are kansai-2 proposals Milky confirmed on 2026-10-17 (listed at the end) · **Owns.** the desk server's endpoints, its read model and live updates, the mapping from each screen to GitHub reads and writes, the deployment on ceres, and the phase 5 build split
 
 Each call below comes from one of four places:
 
 - **Plan**: settled with Milky in [the desk plan](plan.md).
 - **Milky**: stated by Milky (ceres, Dokploy, Tailscale only, the server holds the credential, its own repository, and the wish to talk to agents through Claude mobile or Orca).
-- **Relayed**: answered by the kansai-2 agent when this design's cards were put to it. Each one is the agent's proposal, listed in [the last section](#relayed-proposals-not-yet-confirmed-by-milky), and Milky can overturn any of them.
+- **Relayed**: answered by the kansai-2 agent when this design's cards were put to it, and confirmed by Milky on 2026-10-17. Each one is listed in [the last section](#relayed-proposals-confirmed-by-milky).
 - **Small call**: decided by this design, listed in section 11 as `Auto-decided: X over Y because Z`.
 
 ## 1. The pieces
@@ -412,12 +412,12 @@ Each line can be overturned.
 - Auto-decided: "waiting for a coordinator" appears after 10 minutes without a frontman claim, over reading coordinator state, because the server cannot see Orca or a coordinator's lock file, and 10 minutes matches phase 2's limit for an unclaimed worker.
 - Auto-decided: the web app uses `mobile: none` and `auth: none`, over a native shell or Firebase, because a home-screen web app over Tailscale reaches the phone and Tailscale identity replaces a login.
 
-## Relayed proposals, not yet confirmed by Milky
+## Relayed proposals, confirmed by Milky
 
-The kansai-2 agent answered this design's cards. Each answer below is the agent's own proposal, or the agent's mechanism for a behaviour the plan settled. Milky has not confirmed any of them.
+The kansai-2 agent answered this design's cards. Each answer below is the agent's own proposal, or the agent's mechanism for a behaviour the plan settled. Milky confirmed all of them on 2026-10-17 ("all fine").
 
 - **The GitHub App** as the credential, over a fine-grained token.
-- **Polling, no webhooks.** This overrides "receives GitHub webhooks" in the brief that started this design, which named webhooks as Milky's decision. Milky should confirm the swap.
+- **Polling, no webhooks.** This overrides "receives GitHub webhooks" in the brief that started this design, which named webhooks as Milky's decision. Milky confirmed the swap.
 - **Card ids and `desk answer --card`**, the mechanism for the plan's one-card-at-a-time answering.
 - **The worker writes the say-back line** beside each option; the plan settled only that the line exists.
 - **The frontman as an Orca worker** dispatched by the coordinator, and "waiting for a coordinator" when none runs.
