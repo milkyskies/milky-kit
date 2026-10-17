@@ -20,7 +20,7 @@ A worker takes one issue to a pull request and records every outcome on the issu
 
 Before running `desk park`, read `~/.claude/kit/modules/desk/reference/parking.md`.
 
-A frontman worker follows the same sequence with three differences. It claims with `desk claim <n> --machine <machine> --task <task id> --dispatch <dispatch id> --role frontman`. It asks through `desk park` cards, and Milky's answer returns the request to `stage:intake` for a fresh frontman. It ends with `desk ready <n> --dispatch <dispatch id> --points <k>` instead of `desk done`.
+A frontman worker follows the same sequence with three differences. It claims with `desk claim <n> --machine <machine> --task <task id> --dispatch <dispatch id> --role frontman`. It asks through `desk park` cards, one per park, and Milky's answer returns the request to `stage:intake` for a fresh frontman. It ends with `desk ready <n> --dispatch <dispatch id> --points <k>` instead of `desk done`. Before claiming as a frontman, read `~/.claude/kit/modules/desk/reference/frontman.md`.
 
 ## The ask setting
 

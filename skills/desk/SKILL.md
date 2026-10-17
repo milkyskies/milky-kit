@@ -33,13 +33,13 @@ This session is Sonnet at medium effort. The human never talks to the coordinato
 | Code | Action |
 |---|---|
 | `dispatch` | Read `reference/routing.md`, choose model and effort, then start a worker. Only while live workers are under the machine's limit in `### Machines` (default: this machine, 3). |
-| `intake` | A filed request is waiting to be written up. Start a frontman worker (Opus, high effort) with `desk claim <n> --role frontman`, using the same worktree arguments as `dispatch`. The frontman's brief is the frontman task's, not this table's. |
+| `intake` | A filed request is waiting to be written up, or an answer to a frontman's card has come back. Start a frontman worker (Opus, high effort) with the frontman's brief below. Only while live workers are under the machine's limit, the same as `dispatch`. |
 | `intake-stuck` | Change nothing. The frontman failed or stopped twice. The digest reports it. |
 | `answered-not-requeued` | Change nothing. Every card is answered but the request never moved. The digest reports it, and a human reruns `desk answer` for the last card. |
 | `escalate` | Dispatch one tier up: Haiku to Sonnet. A Sonnet request at 2 attempts is parked by the coordinator itself with a card listing what was tried. |
 | `orphan-claim` | `desk release <n> --claim <id> --reason no-worker`. It becomes `dispatch` or `escalate` on the next pass. |
 | `unclaimed-worker` | The worker never claimed. Read the tail with `orca orchestration worker-read --dispatch <D>`, then `orca orchestration worker-stop --dispatch <D>`. The next pass dispatches again. |
-| `unrecorded-result` | Send to the worker's terminal: "Record your result on #n with desk done, desk park or desk fail, then send worker_done again." If the terminal is gone, `desk release <n> --reason stopped`. |
+| `unrecorded-result` | Send to the worker's terminal: "Record your result on #n with desk done, desk park or desk fail, then send worker_done again." A frontman records with desk ready, desk park or desk fail, so name those for a claim with `role=frontman`. If the terminal is gone, `desk release <n> --reason stopped`. |
 | `parked-worker` | `orca orchestration worker-release --dispatch <D>`. The worktree stays for the next attempt. |
 | `looks-good` | `desk merge <n>`. On a conflict or a failing check, dispatch a merge worker (Sonnet, low effort) into the request's worktree. |
 | `auto-land` | `desk merge <n>`. The request carries `land:auto` (or the project defaults to it) and no human has answered. The program merges when the merge, the check command and any required review pass. When one fails it posts one `desk:autoland` comment naming the check and leaves the request at `stage:check`, which stops this code until the next result. The coordinator never adds or removes `land:auto`. |
@@ -82,6 +82,28 @@ The brief carries paths and identifiers, never file contents. It names:
 - for a reopened request, the id of the human's reason comment
 
 A worker's first two steps are `desk preflight --role worker --ping` and `desk claim`. The brief does not repeat the rule. It points at it.
+
+### The frontman's brief
+
+The `intake` mismatch starts a frontman. It is routed already: Opus at high effort, the frontman row of `reference/routing.md`. Paste the mismatch's `workerStart` arguments in unchanged, as for `dispatch`.
+
+```bash
+orca orchestration worker-start \
+  --spec "<frontman brief>" --task-title "#<n> <issue title>" \
+  --agent claude --model opus --effort high \
+  <workerStart arguments> --json
+```
+
+The brief carries paths and identifiers, never the Issue's words. It names:
+
+- the issue number and the repository
+- the machine name the frontman passes to `desk claim`
+- the full path of `desk`: `~/.claude/kit/modules/desk/bin/desk`
+- the rule `.claude/rules/desk.md` and the reference `~/.claude/kit/modules/desk/reference/frontman.md`, which hold the whole job
+- the ask setting, from the issue's `ask:*` label or the project default
+- the research line from `reference/tokens.md`
+
+A frontman opens no pull request, so the brief has no review flag and no acceptance commands. One frontman run asks at most one card, and the next `intake` mismatch after Milky's answer starts a fresh one.
 
 ## When to read each reference file
 
