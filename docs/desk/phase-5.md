@@ -246,13 +246,27 @@ Pressing Deploy in Dokploy stays the fallback, for when the desk itself is broke
 
 ### Publishing the desk package
 
-The same Actions lock means milky-kit cannot publish the `desk` package from CI. T2 adds a `mise run desk:publish` task that bumps the version and runs `pnpm publish` to GitHub Packages from a local machine, with a token that has `write:packages`.
+The same Actions lock means milky-kit cannot publish the `desk` package from CI. `mise run desk:publish [patch|minor|major]` runs the tests, the typecheck and `mise run desk:pack-check`, bumps the version of `modules/desk/cli`, and runs `pnpm publish` to `npm.pkg.github.com` from the local machine. It reads the token from `NODE_AUTH_TOKEN` and refuses to start without it. When the publish fails it restores `package.json`; after a success, commit the new version.
+
+The package is `@milkyskies/desk`. It ships TypeScript source, because the desk server runs on Bun, and its `desk` bin is `src/main.ts` with a Bun shebang. The exports are the pure modules the read model needs, and the desk repository imports them by these names:
+
+| Export | Holds |
+|---|---|
+| `@milkyskies/desk/markers` | the marker grammar: `parseMarker`, `formatMarker`, `composeComment`, `AGENT_MARKER` |
+| `@milkyskies/desk/derive` | `parseComments`, the owning claim, attempts, open cards, `parkingClaim`, `returnStage`, the last human comment |
+| `@milkyskies/desk/cards` | the card validator and `sayBackLines` |
+| `@milkyskies/desk/body` | the body sections: `sectionLines` |
+| `@milkyskies/desk/issue` | `parseIssue`, `stageOf` and the issue state types |
+| `@milkyskies/desk/result` | `parseResult` for a `desk:result` comment: summary, pictures, decisions used, how to see it |
+| `@milkyskies/desk/section` | the `## desk` section parser, for each repository's default ask |
+
+`mise run desk:pack-check` proves a build: it packs the tarball, installs it into a scratch project, imports a parser from each of these paths it relies on, and runs the installed bin.
 
 ### What Milky provides
 
 1. The new repository (its name waits on the plan's naming question, plan section 11).
 2. The GitHub App: created, a private key generated, and installed on every repository in `DESK_REPOS` and on the desk repository.
-3. A token with `read:packages` for the image build, and one with `write:packages` on the machine that publishes the `desk` package. UNVERIFIED: whether GitHub Packages' npm registry accepts a fine-grained token, or needs a classic one.
+3. A **classic** personal access token with `read:packages` for the image build, and one with `write:packages` (it also reads) on the machine that publishes the `desk` package. GitHub's docs say "GitHub Packages only supports authentication using a personal access token (classic)", so a fine-grained token does not apply. The docs are silent on GitHub App installation tokens, so the image build does not rely on one.
 4. On the tailnet: MagicDNS and HTTPS certificates switched on, and a reusable auth key tagged `tag:desk` for the sidecar.
 5. In Dokploy: access to the private desk repository, the compose app with the values in section 8, and an API key for the self-deploy.
 6. On each coordinator machine, `DESK_APP_URL=https://desk.<tailnet>.ts.net` in `~/.config/desk/.env`.
