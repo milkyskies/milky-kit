@@ -25,6 +25,8 @@ export const MISMATCH_CODES = [
 	"remote-claim-unseen",
 ] as const
 
+export const STARTS_WORKER: readonly string[] = ["dispatch", "intake", "escalate"]
+
 export type MismatchCode = (typeof MISMATCH_CODES)[number]
 
 export type Mismatch = {

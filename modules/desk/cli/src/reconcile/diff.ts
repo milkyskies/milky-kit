@@ -1,5 +1,5 @@
 import { attemptCount, openCards, owningClaim } from "../github/derive.ts"
-import { type IssueState, stageOf } from "../github/issue.ts"
+import { type IssueState, isUnclaimedIntake, stageOf } from "../github/issue.ts"
 import { autolandHeld } from "../merge/autoland.ts"
 import { machineOfHost } from "../orca/hosts.ts"
 import { issueNumberOfTitle } from "../orca/tasks.ts"
@@ -7,12 +7,11 @@ import { isBusy, isGone, isLive, isSettled, type Worker } from "../orca/workers.
 import { worktreesOfIssue } from "../orca/worktrees.ts"
 import { landingOf, workerMachines } from "../project/section.ts"
 import { landedPullRequest } from "./landed.ts"
-import type { Mismatch, ReconcileInput } from "./types.ts"
+import { type Mismatch, type ReconcileInput, STARTS_WORKER } from "./types.ts"
 
 const MINUTE = 60_000
 export const CLAIM_GRACE_MS = 10 * MINUTE
 
-const STARTS_WORKER = ["dispatch", "intake", "escalate"]
 const LOOKS_GOOD = /^looks good/i
 const FIRST_WORD_NO = /^no(?![\p{L}\p{N}'])/iu
 const PRIORITY = /^priority:P(\d)$/
@@ -275,10 +274,7 @@ function classifyIntake(
 	issue: IssueState,
 	workers: Worker[],
 ): Mismatch | undefined {
-	const eligible =
-		issue.labels.includes("request") &&
-		!issue.labels.includes("proposed") &&
-		openCards(issue.comments).length === 0
+	const eligible = isUnclaimedIntake(issue) && openCards(issue.comments).length === 0
 	if (!eligible) return undefined
 
 	if (workers.some((worker) => !isGone(worker))) return unclaimedWorker(input, issue, workers)

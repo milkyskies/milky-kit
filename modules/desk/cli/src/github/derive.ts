@@ -24,6 +24,8 @@ export type Claim = {
 
 export type OpenCard = { id: string; claim: string | undefined; comment: ParsedComment }
 
+export const FRONTMAN_ROLE = "frontman"
+
 const NON_ATTEMPT_REASONS = ["answered", "reopened", "lost-race", "ready"]
 
 export function parseComments(comments: readonly Comment[]): ParsedComment[] {

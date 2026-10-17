@@ -3,13 +3,11 @@ import { parseArgs } from "node:util"
 import { parseNumber, parseOrUsage, requireFlag } from "../args.ts"
 import { type Command, emit, isoSeconds } from "../context.ts"
 import { mismatch, refusal, usageError } from "../errors.ts"
-import { activeClaims, owningClaim } from "../github/derive.ts"
+import { activeClaims, FRONTMAN_ROLE, owningClaim } from "../github/derive.ts"
 import { hasStage, type IssueState, readIssue, stageText } from "../github/issue.ts"
 import { composeComment } from "../github/markers.ts"
 import { moveStage, postComment } from "../github/writes.ts"
 import { describeState, requireStage } from "../guards.ts"
-
-const FRONTMAN = "frontman"
 
 function requireFrontmanEligible(issue: IssueState): void {
 	if (!issue.labels.includes("request")) {
@@ -72,17 +70,17 @@ export const run: Command = async (args, context) => {
 	const dispatch = requireFlag("claim", values.dispatch, "--dispatch")
 
 	const role = values.role
-	if (role !== undefined && role !== FRONTMAN) {
-		throw usageError("claim", `--role must be ${FRONTMAN}, got ${role}`)
+	if (role !== undefined && role !== FRONTMAN_ROLE) {
+		throw usageError("claim", `--role must be ${FRONTMAN_ROLE}, got ${role}`)
 	}
 
 	const { gh, repo } = context
 	const before = await readIssue(gh, repo, number)
 
-	const from = role === FRONTMAN ? "stage:intake" : "stage:ready"
+	const from = role === FRONTMAN_ROLE ? "stage:intake" : "stage:ready"
 	requireStage("claim", before, from)
 
-	if (role === FRONTMAN) requireFrontmanEligible(before)
+	if (role === FRONTMAN_ROLE) requireFrontmanEligible(before)
 	else requireBuilderEligible(before)
 
 	if (activeClaims(before.comments).length > 0) {

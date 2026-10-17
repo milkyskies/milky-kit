@@ -5,8 +5,8 @@ import { type Command, emit, readInputFile } from "../context.ts"
 import { mismatch, usageError } from "../errors.ts"
 import { repoSlug } from "../github/gh.ts"
 import { hasStage, readIssue } from "../github/issue.ts"
+import { ASK_SETTINGS } from "../project/section.ts"
 
-const ASKS = ["ask:everything", "ask:choices", "ask:own-feel"]
 const TITLE_LENGTH = 60
 const ISSUE_URL = /\/issues\/(\d+)\s*$/
 
@@ -16,8 +16,8 @@ export const run: Command = async (args, context) => {
 	)
 	const wordsPath = requireFlag("intake", values.words, "--words")
 	const ask = requireFlag("intake", values.ask, "--ask")
-	if (!ASKS.includes(ask)) {
-		throw usageError("intake", `--ask must be one of ${ASKS.join(", ")}, got ${ask}`)
+	if (!ASK_SETTINGS.includes(ask)) {
+		throw usageError("intake", `--ask must be one of ${ASK_SETTINGS.join(", ")}, got ${ask}`)
 	}
 
 	const words = (await readInputFile("intake", context, wordsPath)).trim()

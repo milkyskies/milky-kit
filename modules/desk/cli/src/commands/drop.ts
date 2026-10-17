@@ -3,9 +3,8 @@ import { parseArgs } from "node:util"
 import { parseNumber, parseOrUsage } from "../args.ts"
 import { type Command, emit } from "../context.ts"
 import { mismatch } from "../errors.ts"
-import { repoSlug } from "../github/gh.ts"
 import { hasStage, readIssue } from "../github/issue.ts"
-import { editLabels } from "../github/writes.ts"
+import { closeNotPlanned, editLabels } from "../github/writes.ts"
 import { describeState, requireProposal } from "../guards.ts"
 
 export const run: Command = async (args, context) => {
@@ -23,7 +22,7 @@ export const run: Command = async (args, context) => {
 		add: ["stage:done"],
 		remove: ["stage:intake", "proposed"],
 	})
-	await gh(["issue", "close", String(number), "--repo", repoSlug(repo), "--reason", "not planned"])
+	await closeNotPlanned(gh, repo, number)
 
 	const after = await readIssue(gh, repo, number)
 	if (after.open || !hasStage(after, "stage:done") || after.labels.includes("proposed")) {

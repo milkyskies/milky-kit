@@ -7,9 +7,10 @@ import { sectionLines } from "../github/body.ts"
 import { appendProgramLine } from "../github/body-edit.ts"
 import {
 	activeClaims,
-	answeredCardIds,
+	FRONTMAN_ROLE,
 	newestPark,
 	type OpenCard,
+	openCards,
 	type ParsedComment,
 } from "../github/derive.ts"
 import { type IssueState, readIssue } from "../github/issue.ts"
@@ -48,7 +49,7 @@ export const run: Command = async (args, context) => {
 
 	const target = chooseCard(before, values.card)
 	const posted = target === undefined ? undefined : answerTo(before.comments, target.id)
-	if (posted !== undefined && posted.text !== answer.trim()) {
+	if (posted !== undefined && posted !== answer.trim()) {
 		throw refusal(
 			"answer",
 			number,
@@ -70,14 +71,14 @@ export const run: Command = async (args, context) => {
 	if (!decisionRecorded) await appendProgramLine(gh, repo, number, "answer", "Decisions", entry)
 
 	const stillOpen = openCardIds(before, target)
-	if (stillOpen.length > 0) {
+	if (target !== undefined && stillOpen.length > 0) {
 		finishPartial(context, number, target, stillOpen, entry)
 
 		return
 	}
 
 	const claims = activeClaims(before.comments)
-	const next = claims[0]?.role === "frontman" ? "stage:intake" : "stage:ready"
+	const next = claims[0]?.role === FRONTMAN_ROLE ? "stage:intake" : "stage:ready"
 
 	await releaseClaims(gh, repo, number, claims, "answered")
 
@@ -98,33 +99,29 @@ export const run: Command = async (args, context) => {
 function finishPartial(
 	context: Context,
 	number: number,
-	target: OpenCard | undefined,
+	target: OpenCard,
 	stillOpen: string[],
 	entry: string,
 ): void {
 	const count = `${stillOpen.length} card${stillOpen.length === 1 ? "" : "s"} still open`
-	emit(context, `#${number} card ${target?.id ?? ""} answered, ${count}: ${stillOpen.join(", ")}`, {
+	emit(context, `#${number} card ${target.id} answered, ${count}: ${stillOpen.join(", ")}`, {
 		issue: number,
 		stage: "stage:needs-you",
-		card: target?.id,
+		card: target.id,
 		open: stillOpen,
 		decision: entry,
 	})
 }
 
 function openCardIds(issue: IssueState, target: OpenCard | undefined): string[] {
-	const answered = answeredCardIds(issue.comments)
-
-	return newestPark(issue.comments)
-		.filter((card) => !answered.has(card.id) && card.id !== target?.id)
+	return openCards(issue.comments)
+		.filter((card) => card.id !== target?.id)
 		.map((card) => card.id)
 }
 
 function chooseCard(issue: IssueState, requested: string | undefined): OpenCard | undefined {
-	const park = newestPark(issue.comments)
-	const answered = answeredCardIds(issue.comments)
-
 	if (requested !== undefined) {
+		const park = newestPark(issue.comments)
 		const card = park.find((candidate) => candidate.id === requested)
 		if (card) return card
 
@@ -136,7 +133,7 @@ function chooseCard(issue: IssueState, requested: string | undefined): OpenCard 
 		)
 	}
 
-	const open = park.filter((card) => !answered.has(card.id))
+	const open = openCards(issue.comments)
 	if (open.length <= 1) return open[0]
 
 	throw refusal(
@@ -148,16 +145,13 @@ function chooseCard(issue: IssueState, requested: string | undefined): OpenCard 
 	)
 }
 
-function answerTo(
-	comments: readonly ParsedComment[],
-	cardId: string,
-): { text: string } | undefined {
+function answerTo(comments: readonly ParsedComment[], cardId: string): string | undefined {
 	const posted = comments.find(
 		(comment) => comment.marker?.kind === "answer" && comment.marker.attrs.card === cardId,
 	)
 	if (posted === undefined) return undefined
 
-	return { text: posted.body.split("\n").slice(1).join("\n").trim() }
+	return posted.body.split("\n").slice(1).join("\n").trim()
 }
 
 function answerComment(target: OpenCard | undefined, answer: string): string {

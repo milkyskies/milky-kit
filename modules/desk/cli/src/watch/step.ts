@@ -1,5 +1,5 @@
 import { owningClaim } from "../github/derive.ts"
-import { type IssueState, stageOf } from "../github/issue.ts"
+import { type IssueState, isUnclaimedIntake, stageOf } from "../github/issue.ts"
 import type { Reachability } from "../orca/hosts.ts"
 import type { Message } from "../orca/inbox.ts"
 import { isLive, type Worker } from "../orca/workers.ts"
@@ -72,11 +72,7 @@ function awaitsWorker(issue: IssueState): boolean {
 
 	if (stage.label === "stage:ready") return true
 
-	return (
-		stage.label === "stage:intake" &&
-		issue.labels.includes("request") &&
-		!issue.labels.includes("proposed")
-	)
+	return stage.label === "stage:intake" && isUnclaimedIntake(issue)
 }
 
 function baselineOf(issues: readonly IssueState[]): GithubBaseline {

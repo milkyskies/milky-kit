@@ -49,6 +49,10 @@ export async function moveStage(
 	await editLabels(gh, repo, issue, { add: [to], remove: [from], assignSelf })
 }
 
+export async function closeNotPlanned(gh: Gh, repo: Repo, issue: number): Promise<void> {
+	await gh(["issue", "close", String(issue), "--repo", repoSlug(repo), "--reason", "not planned"])
+}
+
 export async function editBody(gh: Gh, repo: Repo, issue: number, body: string): Promise<void> {
 	await gh(["issue", "edit", String(issue), "--repo", repoSlug(repo), "--body-file", "-"], body)
 }

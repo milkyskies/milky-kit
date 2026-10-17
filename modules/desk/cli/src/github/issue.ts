@@ -63,6 +63,10 @@ export function stageText(issue: IssueState): string {
 		: `several stage labels (${stage.labels.join(", ")})`
 }
 
+export function isUnclaimedIntake(issue: IssueState): boolean {
+	return issue.labels.includes("request") && !issue.labels.includes("proposed")
+}
+
 export function hasStage(issue: IssueState, label: string): boolean {
 	const stage = stageOf(issue)
 
