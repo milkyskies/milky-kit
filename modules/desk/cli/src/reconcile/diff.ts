@@ -1,4 +1,10 @@
-import { attemptCount, newestPark, openCards, owningClaim } from "../github/derive.ts"
+import {
+	attemptCount,
+	FRONTMAN_ROLE,
+	newestPark,
+	openCards,
+	owningClaim,
+} from "../github/derive.ts"
 import { type IssueState, isUnclaimedIntake, stageOf } from "../github/issue.ts"
 import { autolandHeld } from "../merge/autoland.ts"
 import { machineOfHost } from "../orca/hosts.ts"
@@ -192,6 +198,12 @@ function classifyNeedsYou(
 	return undefined
 }
 
+function endingCommands(role: string | undefined): string {
+	return role === FRONTMAN_ROLE
+		? "desk ready, desk park or desk fail"
+		: "desk done, desk park or desk fail"
+}
+
 function classifyWorking(
 	input: ReconcileInput,
 	issue: IssueState,
@@ -216,7 +228,7 @@ function classifyWorking(
 		return {
 			issue: issue.number,
 			code: "unrecorded-result",
-			detail: `worker ${claim.dispatch} stopped without recording its result: tell it to run desk done, desk park or desk fail`,
+			detail: `worker ${claim.dispatch} stopped without recording its result: tell it to run ${endingCommands(claim.role)}`,
 			claim: claim.id,
 			worker: claim.dispatch,
 			terminalGone: false,

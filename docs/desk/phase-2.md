@@ -169,9 +169,9 @@ A comment the digest has pinged gets a trailing `<!-- desk:pinged at=<iso> -->` 
 - `accept` removes `proposed` and leaves `stage:intake`, so the frontman picks the request up.
 - `drop` closes the issue as not planned, then swaps `stage:intake` and `proposed` for `stage:done`. A rerun after the close finishes the labels.
 
-**`desk ready <n> --dispatch <d> --points <1|2|3|5|8|13>`**
+**`desk ready <n> --dispatch <d> --points <1|2|3|5|8|13> --type <feature|change|fix|chore|docs|refactor> --body <file>`**
 - The frontman's end. Precondition: `stage:working`; the owning claim is `<d>`'s and has `role=frontman`.
-- Releases the claim with reason `ready` (not an attempt), then adds `autopilot`, `points:<k>` and `stage:ready`, and removes `stage:working` and any earlier `points:*`. A rerun after the release but before the label edit finishes the label edit. The `autopilot` label is Milky's consent, given when Milky answered the frontman's "Is this what you meant?" or pressed ✓ start.
+- First writes `--body` as the new issue body, refusing (exit 1, nothing changed) when it changes `## Your words` (or `## Problem` when the issue has no such section) or drops a `## Decisions` or `## Small calls` line, and checking the edit afterwards like `desk answer` does. Then releases the claim with reason `ready` (not an attempt), then adds `autopilot`, `points:<k>`, `type:<type>` and `stage:ready`, and removes `stage:working`, any earlier `points:*` and any other `type:*`. A rerun after the release but before the label edit finishes the label edit. The `autopilot` label is Milky's consent, given when Milky answered the frontman's "Is this what you meant?" or pressed ✓ start.
 
 **`desk note <n> --dispatch <d> "Auto-decided: X over Y because Z"`**
 - Precondition: the owning claim is `<d>`'s. The line must start with `Auto-decided:` and contain ` over ` and ` because `.
@@ -310,7 +310,7 @@ The coordinator is a Sonnet session at medium effort (plan), started with `/milk
 | `intake-stuck` | as `intake`, with 2 or more releases or failures since the newest human comment | no worker for `#n` that is not gone | Change nothing. The digest reports it once. Opus has no tier above it, so a person looks. |
 | `answered-not-requeued` | `stage:needs-you`, every card of the newest park has a `desk:answer` | any | Change nothing. The digest reports it once; a person reruns `desk answer` for the last card, which finishes the requeue. |
 | `unclaimed-worker` | `stage:ready` or an `intake` request | a live worker titled `#n`, started more than 10 minutes ago | The worker never claimed. Read the tail of its terminal, `worker-stop` it, and let the next pass dispatch again. |
-| `unrecorded-result` | `stage:working`, claim names D | D sent `worker_done`, or sits idle at its prompt | Send to D's terminal: "Record your result on #n with desk done, desk park or desk fail, then send worker_done again." If the terminal is gone, `desk release --reason stopped`. |
+| `unrecorded-result` | `stage:working`, claim names D | D sent `worker_done`, or sits idle at its prompt | Send to D's terminal: "Record your result on #n with desk done, desk park or desk fail (desk ready, desk park or desk fail for a frontman), then send worker_done again." If the terminal is gone, `desk release --reason stopped`. |
 | `parked-worker` | `stage:needs-you`, claim names D | D is live | `worker-release --dispatch D`. The worktree stays for the next attempt. |
 | `looks-good` | `stage:check`, newest human comment starts `looks good` | any | `desk merge`. On a conflict or failing check, dispatch a merge worker (Sonnet, low effort) into the request's worktree. |
 | `rejected` | `stage:check`, newest human comment's first word is `no` | any | `desk reopen`. |

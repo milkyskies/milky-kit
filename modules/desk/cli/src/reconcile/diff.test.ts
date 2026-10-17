@@ -266,6 +266,37 @@ describe("desk reconcile", () => {
 		expect(mismatch).toMatchObject({ code: "unrecorded-result", terminalGone: false })
 	})
 
+	test("unrecorded_result_tells_a_frontman_to_end_with_desk_ready", () => {
+		const workers = [worker({ activity: "done", workerState: "succeeded" })]
+		const frontman = composeComment(
+			"claim",
+			{
+				id: "c_1",
+				machine: "Minerva",
+				task: "task_x",
+				dispatch: "ctx_y",
+				at: minutesAgo(30),
+				role: "frontman",
+			},
+			"Claimed.",
+		)
+		const issues = [issue(12, ["request", "stage:working"], [frontman])]
+
+		const [mismatch] = reconcile(input({ issues, workers }))
+
+		expect(mismatch?.detail).toContain("desk ready, desk park or desk fail")
+		expect(mismatch?.detail).not.toContain("desk done")
+	})
+
+	test("unrecorded-result: a builder is still told desk done, desk park or desk fail", () => {
+		const workers = [worker({ activity: "done", workerState: "succeeded" })]
+		const issues = [issue(12, WORKING, [claim("c_1", "ctx_y")])]
+
+		const [mismatch] = reconcile(input({ issues, workers }))
+
+		expect(mismatch?.detail).toContain("desk done, desk park or desk fail")
+	})
+
 	test("unrecorded-result: a finished worker whose terminal is gone is released as stopped", () => {
 		const workers = [
 			worker({ verdict: "exited", terminalState: "released", workerState: "succeeded" }),

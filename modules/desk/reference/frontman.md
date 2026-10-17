@@ -97,10 +97,9 @@ After Milky's yes, or for the accepted proposal with nothing to ask:
    - The house sections from `modules/issues/rules/issues.md`, in its order and as they apply: `## Problem` (below `## Your words` when that section exists), `## What this issue does`, `## Area`, `## Out of scope`, `## Reference points`, `## Acceptance criteria`, `## Tests`, `## Dependencies`. `## Area` is never left out, because the coordinator routes the build worker from it.
    - `## Decisions` and `## Small calls`, every existing line kept byte for byte. `desk answer` and `desk note` refuse to edit a body that lost an earlier line, and the desk shows both sections.
    - Only what Milky confirmed. A point missing from the confirmed write-up does not enter the body. For the accepted proposal, the body holds only what the proposal and the project already say.
-3. `gh issue edit <n> --body-file <file>`, then `gh issue view <n> --json body` and check that `## Your words` and every `## Decisions` and `## Small calls` line are still there.
-4. When the request has no `type:*` label, add one with `gh issue edit <n> --add-label type:<type>`, choosing by the table in `issues.md`. No `desk` command adds a type label.
-5. Estimate the points by the table in `issues.md` and log the reason: `desk note <n> --dispatch <dispatch id> "Auto-decided: points:3 over points:5 because <one line>"`.
-6. `desk ready <n> --dispatch <dispatch id> --points <k>`. It releases the claim, adds `autopilot` and the points label, and moves the request to `stage:ready`.
+3. Choose the type by the table in `issues.md`: feature, change, fix, chore, docs or refactor.
+4. Estimate the points by the table in `issues.md` and log the reason: `desk note <n> --dispatch <dispatch id> "Auto-decided: points:3 over points:5 because <one line>"`.
+5. `desk ready <n> --dispatch <dispatch id> --points <k> --type <type> --body <file>`. One checked step writes the body, releases the claim, adds `autopilot`, the points label and the one `type:*` label, and moves the request to `stage:ready`. It refuses, and changes nothing, when the body rewrites `## Your words` (or the `## Problem` that stands in its place) or drops any `## Decisions` or `## Small calls` line, and when `--type` or `--body` is missing. A request that already has another `type:*` label ends with only the one you pass. After a failure partway through, run the same command again.
 
 ## Recognising an accepted proposal
 
@@ -117,6 +116,6 @@ A count above zero is an accepted proposal. Its `## Problem` was written by the 
 
 - Write code, push a branch or open a pull request.
 - Edit `## Your words`, or the `## Problem` that stands in its place.
-- Add `autopilot` or change a stage by hand. `desk ready`, `desk park` and `desk fail` move the stage.
+- Add `autopilot`, edit the body with `gh`, or change a stage by hand. `desk ready`, `desk park` and `desk fail` do it.
 - Put two cards in one park.
 - Post a hand-written comment without the trailing `<!-- desk:agent -->` (`desk.md`).

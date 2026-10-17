@@ -24,6 +24,26 @@ export function sectionLines(body: string, heading: string): string[] {
 		.filter((line) => line.trim() !== "")
 }
 
+export function sectionText(body: string, heading: string): string | undefined {
+	const bounds = sectionBounds(body, heading)
+
+	return bounds ? body.slice(bounds.start, bounds.end).trim() : undefined
+}
+
+export function bodyRewriteProblems(oldBody: string, newBody: string): string[] {
+	const kept = sectionText(oldBody, "Your words") === undefined ? "Problem" : "Your words"
+	const original = sectionText(oldBody, kept)
+	const problems =
+		original !== undefined && sectionText(newBody, kept) !== original
+			? [`## ${kept} must stay byte for byte`]
+			: []
+
+	return [
+		...problems,
+		...lostProgramLines(oldBody, newBody).map((line) => `dropped the line "${line}"`),
+	]
+}
+
 export function appendToSection(body: string, heading: string, line: string): string {
 	const bounds = sectionBounds(body, heading)
 	if (!bounds) {

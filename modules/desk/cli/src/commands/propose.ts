@@ -5,10 +5,10 @@ import { type Command, emit, readInputFile } from "../context.ts"
 import { mismatch, usageError } from "../errors.ts"
 import { repoSlug } from "../github/gh.ts"
 import { readIssue } from "../github/issue.ts"
+import { ISSUE_TYPES } from "../github/labels.ts"
 import { composeComment } from "../github/markers.ts"
 import { postComment } from "../github/writes.ts"
 
-const TYPES = ["feature", "change", "fix", "chore", "docs", "refactor"]
 const ISSUE_URL = /\/issues\/(\d+)\s*$/
 
 export const run: Command = async (args, context) => {
@@ -28,8 +28,8 @@ export const run: Command = async (args, context) => {
 	const type = requireFlag("propose", values.type, "--type")
 	const bodyPath = requireFlag("propose", values.body, "--body")
 
-	if (!TYPES.includes(type)) {
-		throw usageError("propose", `--type must be one of ${TYPES.join(", ")}, got ${type}`)
+	if (!ISSUE_TYPES.includes(type)) {
+		throw usageError("propose", `--type must be one of ${ISSUE_TYPES.join(", ")}, got ${type}`)
 	}
 
 	const body = await readInputFile("propose", context, bodyPath)
