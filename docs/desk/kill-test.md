@@ -4,7 +4,7 @@ The kill test proves that killing the desk coordinator mid-run and starting a fr
 
 The coordinator was killed with all three requests in flight and the fresh one finished the work without any handoff. Ten assertions were checked: eight held and two failed. Both failures have one cause, which is that `desk land` cannot remove a worktree that holds untracked files. Two checks need Milky's phone and stay pending.
 
-**Status.** run three times end to end; the third run passed every assertion and both variants, and the scratch repository waits for deletion · **Owns.** the observed state of each kill test step
+**Status.** run three times end to end; the third run passed every assertion and both variants, pings reach Milky's phone, the picture check waits for Milky, and the scratch repository waits for deletion · **Owns.** the observed state of each kill test step
 
 ## How the run was set up
 
@@ -178,9 +178,12 @@ The variant "a machine dies" was skipped, because zeus is not part of this test.
 
 None. No issue was filed.
 
+### Phone
+
+Pings reach Milky's phone. A live ping posted to the self-hosted ntfy on ceres (`http://ceres:8091`) arrived as a notification on the locked phone. The run itself posted to a local receiver, so this check covers the delivery path, not the run's own three pings.
+
 ### Pending Milky
 
-- Each ping arrived once on the phone.
 - The inline picture renders in the GitHub mobile app for a private repository.
 
 ### Cleanup
