@@ -430,7 +430,7 @@ Two kinds only (plan): needs a decision, and done, check it. Preflight failures 
 `desk ping "<message>"` posts to ntfy (relayed). It reads three environment variables from `~/.config/desk/.env`, which the program loads itself, because the ping target belongs to the person, not to one project:
 
 ```
-# ntfy server, self-hosted on zeus or https://ntfy.sh
+# ntfy server: a self-hosted one such as http://ceres:8091, or https://ntfy.sh
 DESK_NTFY_URL=
 # The topic name. Never a guessable word.
 DESK_NTFY_TOPIC=
@@ -459,7 +459,7 @@ The pinged marker sits on GitHub, so a fresh coordinator never re-pings what the
 
 Install the ntfy app on the phone, then choose one of the two lines below.
 
-- **Self-hosted on zeus**: on zeus, run `docker run -d --name ntfy --restart unless-stopped -p 8090:80 binwiederhier/ntfy serve`. On every machine that runs the coordinator, write `DESK_NTFY_URL=http://zeus:8090` and a random topic from `openssl rand -hex 12` into `~/.config/desk/.env`. In the phone app, add that server and subscribe to that topic. The phone must reach zeus, which it does over Tailscale.
+- **Self-hosted on ceres** (Milky's choice): ntfy runs in Dokploy under the Home project on port 8091, with `NTFY_BASE_URL=http://ceres:8091`, `NTFY_UPSTREAM_BASE_URL=https://ntfy.sh` and its message cache on a volume. The upstream setting exists because Apple lets only ntfy.sh wake the iPhone app; ceres sends ntfy.sh a message id with no text, and the phone fetches the message from ceres. Port 8090 on ceres belongs to Beszel. On every machine that runs the coordinator, write `DESK_NTFY_URL=http://ceres:8091` and a random topic from `openssl rand -hex 12` into `~/.config/desk/.env`. In the phone app, add that server and subscribe to that topic. The port is open on the home network and Tailscale only, so the phone reaches ceres over Tailscale away from home.
 - **ntfy.sh with a token**: reserve a topic and create an access token at https://ntfy.sh/account. Write `DESK_NTFY_URL=https://ntfy.sh`, the topic and the token into `~/.config/desk/.env`. In the phone app, log in and subscribe to the topic.
 
 The coordinator's preflight fails with this section's link until one of the two is done.
@@ -658,7 +658,6 @@ T4 starts at once, alongside T1. T2 and T3 start when T1 merges and run side by 
 
 ## Open
 
-- **Milky's ntfy choice**: self-hosted on zeus, or ntfy.sh with a token (section 7). Milky picks during setup; the program supports both.
 - **Whether the inline picture renders in the GitHub mobile app** for a private repository. Milky checks during T1; the fallback is a plain link (section 2).
 - **The final names** of the desk, the command and the markers ([the desk plan](plan.md), section 11). A rename is one search-and-replace.
 
