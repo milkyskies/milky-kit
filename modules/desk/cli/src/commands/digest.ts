@@ -61,12 +61,8 @@ export async function runWith(deps: DigestDeps, args: string[], context: Context
 		autoMerged: collected.autoMerged,
 	}
 
-	const nothingToSay =
-		digest.items.length === 0 &&
-		digest.badLabels.length === 0 &&
-		digest.needsLook.length === 0 &&
-		digest.autoMerged.length === 0
-	if (nothingToSay) {
+	const lists = [digest.items, digest.badLabels, digest.needsLook, digest.autoMerged]
+	if (lists.every((list) => list.length === 0)) {
 		context.out(context.json ? JSON.stringify({ sent: false, message: null }) : "nothing to ping")
 
 		return

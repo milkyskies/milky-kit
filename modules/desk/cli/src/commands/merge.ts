@@ -32,7 +32,7 @@ class Blocked extends Error {
 	}
 }
 
-type Approval = { prNumber: number; by: "human" | "auto" }
+type Approval = { prNumber: number; resultIndex: number; by: "human" | "auto" }
 
 export type MergeDeps = OrcaDeps & {
 	shell: Shell
@@ -115,9 +115,10 @@ function requireApproval(issue: IssueState, number: number, section: DeskSection
 	const humanIndex = issue.comments.findLastIndex((comment) => !comment.agent)
 	const human = issue.comments[humanIndex]
 	const answered = human !== undefined && humanIndex > resultIndex
-	if (answered && LOOKS_GOOD.test(human.body.trim())) return { prNumber, by: "human" }
+	if (answered && LOOKS_GOOD.test(human.body.trim())) return { prNumber, resultIndex, by: "human" }
 
-	if (!answered && landingOf(issue.labels, section) === "land:auto") return { prNumber, by: "auto" }
+	if (!answered && landingOf(issue.labels, section) === "land:auto")
+		return { prNumber, resultIndex, by: "auto" }
 
 	throw refusal(
 		"merge",
@@ -129,21 +130,19 @@ function requireApproval(issue: IssueState, number: number, section: DeskSection
 
 function requireCleanReview(
 	issue: IssueState,
-	prNumber: number,
+	approval: Approval,
 	changedFiles: readonly string[],
 	reviewPaths: readonly string[],
 ): void {
-	const touched = changedFiles.find((file) =>
-		reviewPaths.some((glob) => new Bun.Glob(glob).match(file)),
-	)
+	const globs = reviewPaths.map((glob) => new Bun.Glob(glob))
+	const touched = changedFiles.find((file) => globs.some((glob) => glob.match(file)))
 	if (touched === undefined) return
 
-	const resultIndex = issue.comments.findLastIndex((comment) => comment.marker?.kind === "result")
 	const review = issue.comments
-		.slice(resultIndex + 1)
+		.slice(approval.resultIndex + 1)
 		.findLast(
 			(comment) =>
-				comment.marker?.kind === "review" && comment.marker.attrs.pr === String(prNumber),
+				comment.marker?.kind === "review" && comment.marker.attrs.pr === String(approval.prNumber),
 		)
 
 	if (review?.marker?.attrs.verdict === "clean") return
@@ -224,6 +223,11 @@ async function verifyInWorktree(
 		)
 	}
 
+	if (approval.by === "auto") {
+		const diff = await git(deps, number, ["diff", "--name-only", "origin/main", "HEAD"], worktree)
+		requireCleanReview(issue, approval, diff.split("\n"), section.reviewPaths)
+	}
+
 	const checked = await deps.shell(["sh", "-c", check], worktree)
 	if (checked.code !== 0) {
 		throw new Blocked(
@@ -231,11 +235,6 @@ async function verifyInWorktree(
 			`the check \`${check}\` failed: ${firstFailingLine(checked)}`,
 			"a passing check",
 		)
-	}
-
-	if (approval.by === "auto") {
-		const diff = await git(deps, number, ["diff", "--name-only", "origin/main", "HEAD"], worktree)
-		requireCleanReview(issue, approval.prNumber, diff.split("\n"), section.reviewPaths)
 	}
 
 	await git(deps, number, ["push", "origin", `HEAD:${headRef}`], worktree)

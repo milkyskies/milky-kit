@@ -123,8 +123,9 @@ export function digestMessage(repo: Repo, digest: Digest): string {
 	]
 	const query = labels.length > 0 ? `is:open+label:${labels.join(",")}` : "is:open"
 	const base = `https://github.com/${repoSlug(repo)}/issues`
+	const showQueryLink = labels.length > 0 || digest.autoMerged.length === 0
 	const links = [
-		...(labels.length > 0 || digest.autoMerged.length === 0 ? [`${base}?q=${query}`] : []),
+		...(showQueryLink ? [`${base}?q=${query}`] : []),
 		...digest.autoMerged.map((merged) => `${base}/${merged.issue}`),
 	]
 
