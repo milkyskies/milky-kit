@@ -1,8 +1,9 @@
 import { parseArgs } from "node:util"
 
 import { parseNumber, parseOrUsage, requireFlag } from "../args.ts"
-import { type Command, emit } from "../context.ts"
+import { type Command, emit, readInputFile } from "../context.ts"
 import { refusal, usageError } from "../errors.ts"
+import { rewriteBody } from "../github/body-edit.ts"
 import {
 	activeClaims,
 	claimReleasedForReady,
@@ -10,6 +11,7 @@ import {
 	owningClaim,
 } from "../github/derive.ts"
 import { readIssue } from "../github/issue.ts"
+import { ISSUE_TYPES } from "../github/labels.ts"
 import { editLabels, releaseClaims } from "../github/writes.ts"
 import { requireOwnedClaim, requireStage, verifyClaimReleased, verifyStage } from "../guards.ts"
 
@@ -20,7 +22,12 @@ export const run: Command = async (args, context) => {
 		parseArgs({
 			args,
 			allowPositionals: true,
-			options: { dispatch: { type: "string" }, points: { type: "string" } },
+			options: {
+				dispatch: { type: "string" },
+				points: { type: "string" },
+				type: { type: "string" },
+				body: { type: "string" },
+			},
 		}),
 	)
 	const number = parseNumber("ready", positionals[0], "the issue number")
@@ -29,6 +36,12 @@ export const run: Command = async (args, context) => {
 	if (!POINTS.includes(points)) {
 		throw usageError("ready", `--points must be one of ${POINTS.join(", ")}, got ${values.points}`)
 	}
+
+	const type = requireFlag("ready", values.type, "--type")
+	if (!ISSUE_TYPES.includes(type)) {
+		throw usageError("ready", `--type must be one of ${ISSUE_TYPES.join(", ")}, got ${type}`)
+	}
+	const bodyPath = requireFlag("ready", values.body, "--body")
 
 	const { gh, repo } = context
 	const before = await readIssue(gh, repo, number)
@@ -50,14 +63,22 @@ export const run: Command = async (args, context) => {
 				"a builder ends with desk done, desk park or desk fail",
 			)
 		}
+	}
 
+	await rewriteBody(gh, repo, number, "ready", await readInputFile("ready", context, bodyPath))
+
+	if (resumed === undefined) {
 		await releaseClaims(gh, repo, number, activeClaims(before.comments), "ready")
 	}
 
-	const stalePoints = before.labels.filter((label) => label.startsWith("points:"))
+	const stale = before.labels.filter(
+		(label) =>
+			(label.startsWith("points:") && label !== `points:${points}`) ||
+			(label.startsWith("type:") && label !== `type:${type}`),
+	)
 	await editLabels(gh, repo, number, {
-		add: ["autopilot", `points:${points}`, "stage:ready"],
-		remove: ["stage:working", ...stalePoints],
+		add: ["autopilot", `points:${points}`, `type:${type}`, "stage:ready"],
+		remove: ["stage:working", ...stale],
 	})
 
 	const after = await readIssue(gh, repo, number)
