@@ -2,9 +2,35 @@
 src = "mise-tasks/dev/api"
 dest = ".mise/tasks/dev/api"
 
+# Axes apply in this order: runtime, api_style, auth, db. A later overlay overwrites an earlier one, which is how `db = "none"` replaces the Post example that `api_style` ships. `wrangler.jsonc` is the exception: every overlay's copy merges by key, so the runtime, db and firebase pieces all survive.
+[variants.runtime]
+options = ["workers", "bun"]
+default = "workers"
+# `bun` needs `db = "none"` and `auth = "none"`: the db variants bind through wrangler and the firebase variant uses Workers KV.
+
 [variants.db]
-options = ["d1", "neon", "supabase"]
+options = ["d1", "neon", "supabase", "none"]
 default = "d1"
+# `none` needs `api_style = "rpc"`.
+
+# Project paths (relative to the project root, after placeholder substitution) the `none` overlay deletes after copying. The base scaffold ships a Post and User example that assumes repositories.
+[variants.db.none]
+remove = [
+	"apps/{{app_name}}/src/application/errors.ts",
+	"apps/{{app_name}}/src/application/use-case/create-post.ts",
+	"apps/{{app_name}}/src/application/use-case/delete-post.ts",
+	"apps/{{app_name}}/src/application/use-case/get-post.ts",
+	"apps/{{app_name}}/src/application/use-case/list-posts.ts",
+	"apps/{{app_name}}/src/application/use-case/update-post.ts",
+	"apps/{{app_name}}/src/domain/models/post.ts",
+	"apps/{{app_name}}/src/domain/models/user.ts",
+	"apps/{{app_name}}/src/domain/repositories",
+	"apps/{{app_name}}/src/health.test.ts",
+	"apps/{{app_name}}/src/infrastructure/db",
+	"apps/{{app_name}}/src/presentation/dto",
+	"apps/{{app_name}}/src/presentation/middleware/repositories.ts",
+	"apps/{{app_name}}/src/presentation/routes/post-routes.ts",
+]
 
 [variants.api_style]
 options = ["rpc", "openapi"]

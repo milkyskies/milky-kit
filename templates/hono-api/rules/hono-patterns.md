@@ -29,6 +29,19 @@ apps/api/src/
 - `application/` must not import from `infrastructure/` or `hono`.
 - Only `presentation/` and `infrastructure/` know about Drizzle / D1 / Hono.
 
+## Without a database (`db: none`)
+
+The layer split is unchanged; the repository pieces are absent.
+
+- No `domain/repositories/`, no `infrastructure/db/`, no `presentation/middleware/repositories.ts`, no `presentation/dto/` unless a route needs wire types.
+- Use cases take whatever they need as parameters: a clock, an HTTP client, a function. `getStatus(startedAt, now)` takes both dates, so the test needs no fake.
+
+## Bun runtime
+
+- `src/main.ts` calls `Bun.serve` and passes `readBindings(process.env)` as the second argument of `app.fetch`, so `context.env` holds the same `Bindings` shape that Workers fills from `wrangler.jsonc`. Add every new variable to `Bindings` and to `readBindings`.
+- Tests import from `vitest` and run under `bun test`, which maps that import to its own runner.
+- `AppType` and `createApiClient` come from the same files in both runtimes, so a web app imports `@<project>/api/client` unchanged.
+
 ## Domain models
 
 - Live in `apps/api/src/domain/models/`. Use `Data.Class` + `Option` per `models.md`.

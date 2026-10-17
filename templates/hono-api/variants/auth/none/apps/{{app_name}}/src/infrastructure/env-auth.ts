@@ -1,3 +1,2 @@
-// No auth bindings when auth=none. Empty marker type so the base
-// `Bindings = DbBindings & AuthBindings` composition still type-checks.
-export type AuthBindings = Record<string, never>
+// No auth bindings when auth=none. `unknown` is the identity of `&`, so the base `Bindings = CoreBindings & DbBindings & AuthBindings` composition stays assignable from a plain object (the Bun runtime builds one from the process environment).
+export type AuthBindings = unknown

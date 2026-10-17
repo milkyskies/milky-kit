@@ -7,19 +7,13 @@
 		"./client": "./src/client.ts"
 	},
 	"scripts": {
-		"dev": "wrangler dev",
-		"deploy": "wrangler deploy --minify",
-		"cf-typegen": "wrangler types --env-interface CloudflareBindings",
-		"db:generate": "drizzle-kit generate",
 		"lint": "biome check .",
 		"lint:fix": "biome check --write .",
 		"typecheck": "tsc --noEmit",
-		"test": "vitest run",
 		"check": "pnpm lint && pnpm typecheck && pnpm test"
 	},
 	"dependencies": {
 		"date-fns": "^4.4.0",
-		"drizzle-orm": "^0.45.4",
 		"effect": "^4.0.4",
 		"hono": "^4.13.13",
 		"nanoid": "^6.0.2"
@@ -28,10 +22,7 @@
 		"@{{project_name}}/tsconfig": "workspace:*",
 		"@biomejs/biome": "^2.5.15",
 		"@milkyskies/biome-config": "^0.1.2",
-		"@cloudflare/workers-types": "^5.20261014.1",
-		"drizzle-kit": "^0.31.11",
 		"typescript": "^7.0.2",
-		"vitest": "^5.0.4",
-		"wrangler": "^4.150.0"
+		"vitest": "^5.0.4"
 	}
 }
