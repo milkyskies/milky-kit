@@ -33,6 +33,9 @@ This session is Sonnet at medium effort. The human never talks to the coordinato
 | Code | Action |
 |---|---|
 | `dispatch` | Read `reference/routing.md`, choose model and effort, then start a worker. Only while live workers are under the machine's limit in `### Machines` (default: this machine, 3). |
+| `intake` | A filed request is waiting to be written up. Start a frontman worker (Opus, high effort) with `desk claim <n> --role frontman`, using the same worktree arguments as `dispatch`. The frontman's brief is the frontman task's, not this table's. |
+| `intake-stuck` | Change nothing. The frontman failed or stopped twice. The digest reports it. |
+| `answered-not-requeued` | Change nothing. Every card is answered but the request never moved. The digest reports it, and a human reruns `desk answer` for the last card. |
 | `escalate` | Dispatch one tier up: Haiku to Sonnet. A Sonnet request at 2 attempts is parked by the coordinator itself with a card listing what was tried. |
 | `orphan-claim` | `desk release <n> --claim <id> --reason no-worker`. It becomes `dispatch` or `escalate` on the next pass. |
 | `unclaimed-worker` | The worker never claimed. Read the tail with `orca orchestration worker-read --dispatch <D>`, then `orca orchestration worker-stop --dispatch <D>`. The next pass dispatches again. |
@@ -47,7 +50,7 @@ This session is Sonnet at medium effort. The human never talks to the coordinato
 | `stray-worker` | `worker-stop`, then `worker-release`. |
 | `bad-labels` | Change nothing. The digest reports it. The program does not guess which stage is right. |
 
-`stage:intake`, `stage:backlog`, `proposed` and `stage:done` issues are ignored. A `stage:needs-you` issue with no worker needs nothing but the digest. A human, through `/decisions` or a label edit, moves a parked request back to `stage:ready`. The coordinator never does.
+`stage:backlog`, `stage:done` and `proposed` issues are ignored. A filed `stage:intake` request is handled by `intake`. A `stage:needs-you` issue with no worker needs nothing but the digest. A human, through `/decisions` or a label edit, moves a parked request back to `stage:ready`. The coordinator never does.
 
 ## Starting a worker
 

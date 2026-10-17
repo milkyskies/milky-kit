@@ -14,6 +14,7 @@ export type FakeIssue = {
 	blockedBy: { number: number; state: string }[]
 	subIssues: { number: number; state: string }[]
 	pullRequests: number[]
+	closeReason?: string | undefined
 }
 
 export type FakePullRequest = {
@@ -118,6 +119,7 @@ export class FakeGithub {
 
 		if (group === "repo") return `${FAKE_REPO}\n`
 		if (group === "issue" && second === "edit") return this.editIssue(args, input)
+		if (group === "issue" && second === "close") return this.closeIssue(args)
 		if (group === "issue" && second === "create") return this.createIssue(args, input)
 		if (group === "pr" && second === "view") return this.viewPullRequest(Number(third))
 		if (group === "api") return this.api(args, input)
@@ -289,6 +291,14 @@ export class FakeGithub {
 			issue.body = input ?? ""
 			recordBodyEdit(issue)
 		}
+
+		return ""
+	}
+
+	private closeIssue(args: readonly string[]): string {
+		const issue = this.mustIssue(Number(args[2]))
+		issue.state = "CLOSED"
+		issue.closeReason = this.flag(args, "--reason")
 
 		return ""
 	}

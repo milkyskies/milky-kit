@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 
 import { makeHarness } from "../github/testing/fake-gh.ts"
-import { failureOf, seedWorking } from "../github/testing/seed.ts"
+import { failureOf, seedFrontmanWorking, seedWorking } from "../github/testing/seed.ts"
 import { run } from "./release.ts"
 
 describe("desk release", () => {
@@ -34,5 +34,15 @@ describe("desk release", () => {
 
 		expect((await failureOf(run(["12", "--reason", "stopped"], context))).code).toBe(1)
 		expect((await failureOf(run(["12", "--reason", "answered"], context))).code).toBe(2)
+	})
+
+	test("released_frontman_returns_to_intake_not_ready", async () => {
+		const { fake, context } = makeHarness()
+		seedFrontmanWorking(fake, 12)
+
+		await run(["12", "--reason", "no-worker"], context)
+
+		expect(fake.issue(12).labels).toContain("stage:intake")
+		expect(fake.issue(12).labels).not.toContain("stage:ready")
 	})
 })

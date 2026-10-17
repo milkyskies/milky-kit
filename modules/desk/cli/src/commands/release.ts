@@ -3,7 +3,7 @@ import { parseArgs } from "node:util"
 import { parseNumber, parseOrUsage, requireFlag } from "../args.ts"
 import { type Command, emit } from "../context.ts"
 import { mismatch, refusal, usageError } from "../errors.ts"
-import { activeClaims, owningClaim } from "../github/derive.ts"
+import { activeClaims, owningClaim, returnStage } from "../github/derive.ts"
 import { hasStage, readIssue } from "../github/issue.ts"
 import { moveStage, releaseClaims } from "../github/writes.ts"
 import { describeState, requireStage, verifyStage } from "../guards.ts"
@@ -50,7 +50,8 @@ export const run: Command = async (args, context) => {
 		(claim) => claim.id !== target.id && !laterClaims.some((later) => later.id === claim.id),
 	)
 	const returnsToReady = hasStage(before, "stage:working") && remaining.length === 0
-	if (returnsToReady) await moveStage(gh, repo, number, "stage:working", "stage:ready")
+	const next = returnStage(target)
+	if (returnsToReady) await moveStage(gh, repo, number, "stage:working", next)
 
 	const after = await readIssue(gh, repo, number)
 	if (
@@ -66,11 +67,11 @@ export const run: Command = async (args, context) => {
 			`claim ${target.id} released`,
 		)
 	}
-	if (returnsToReady) verifyStage("release", before, after, "stage:ready")
+	if (returnsToReady) verifyStage("release", before, after, next)
 
 	emit(context, `#${number} released ${target.id}: ${reason}`, {
 		issue: number,
-		stage: returnsToReady ? "stage:ready" : describeState(after),
+		stage: returnsToReady ? next : describeState(after),
 		claim: target.id,
 		reason,
 	})

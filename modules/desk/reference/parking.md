@@ -2,7 +2,7 @@
 
 Read this before running `desk park`. The rule `desk.md` holds the sequence. This file holds the card format.
 
-A card is one decision. Two decisions on one issue are two card files. Write each card as a file with this shape, markers included, and pass it to `desk park`. The program validates the shape before it posts anything and names the missing part.
+A card is one decision. Two decisions on one issue are two card files. `desk park` gives each card an id, `card=<claim id>-<k>` on its marker, and Milky answers the cards one at a time; the request goes back to work only after the last one is answered. Write each card as a file with this shape, markers included, and pass it to `desk park`. The program validates the shape before it posts anything and names the missing part.
 
 ```markdown
 <!-- desk:decision -->
@@ -17,8 +17,8 @@ A card is one decision. Two decisions on one issue are two card files. Write eac
 **Question:** <the one decision, in one or two sentences>
 
 **Options:**
-1. 提案 <option written out in full> - <consequence>
-2. 提案 <option written out in full> - <consequence>
+1. 提案 <option written out in full> - <consequence> → <say-back line>
+2. 提案 <option written out in full> - <consequence> → <say-back line>
 
 **Recommendation:** <the recommended option, written out in full>
 
@@ -41,6 +41,8 @@ The **Kind** line is mandatory, and it decides the recommendation.
   ```
 
   A pick shown up front anchors the human, and a design call is theirs to make unanchored. You still write a pick on every design card.
+
+Every option ends with `→ <say-back line>`: the answer said back in one line, such as `三時 = LHL. 〜時 follows 三`. The desk shows that line after Milky picks the option and records it under `## Decisions`, so write it as the decision itself, in the words Milky would use. `desk park` rejects an option without one, unless the card says its options cannot be enumerated.
 
 Options are numbered, each one is marked 提案 so no proposal reads as a settled call, and each is written out in full. Nobody refers to an option by its number or a letter. If you genuinely cannot enumerate options, say so in one line instead of padding the list.
 

@@ -7,6 +7,9 @@ import type { DeskSection } from "../project/section.ts"
 
 export const MISMATCH_CODES = [
 	"dispatch",
+	"intake",
+	"intake-stuck",
+	"answered-not-requeued",
 	"escalate",
 	"orphan-claim",
 	"unclaimed-worker",
@@ -23,6 +26,8 @@ export const MISMATCH_CODES = [
 	"human-claimed",
 	"remote-claim-unseen",
 ] as const
+
+export const STARTS_WORKER: readonly string[] = ["dispatch", "intake", "escalate"]
 
 export type MismatchCode = (typeof MISMATCH_CODES)[number]
 

@@ -98,7 +98,7 @@ function plural(count: number, one: string, many: string): string {
 	return `${count} ${count === 1 ? one : many}`
 }
 
-export function digestMessage(repo: Repo, digest: Digest): string {
+export function digestMessage(repo: Repo, digest: Digest, appUrl?: string): string {
 	const decisions = digest.items.filter((item) => item.kind === "decision").length
 	const results = digest.items.filter((item) => item.kind === "result").length
 	const parts: string[] = []
@@ -124,8 +124,9 @@ export function digestMessage(repo: Repo, digest: Digest): string {
 	const query = labels.length > 0 ? `is:open+label:${labels.join(",")}` : "is:open"
 	const base = `https://github.com/${repoSlug(repo)}/issues`
 	const showQueryLink = labels.length > 0 || digest.autoMerged.length === 0
+	const homeLink = appUrl ? appUrl.replace(/\/+$/, "") : `${base}?q=${query}`
 	const links = [
-		...(showQueryLink ? [`${base}?q=${query}`] : []),
+		...(showQueryLink ? [homeLink] : []),
 		...digest.autoMerged.map((merged) => `${base}/${merged.issue}`),
 	]
 

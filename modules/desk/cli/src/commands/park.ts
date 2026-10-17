@@ -58,8 +58,8 @@ export const run: Command = async (args, context) => {
 			: await readInputFile("park", context, proposedBodyPath)
 
 	const postedIds: number[] = []
-	for (const card of cards) {
-		postedIds.push(await postComment(gh, repo, number, canonicalCard(card, claim.id)))
+	for (const [index, card] of cards.entries()) {
+		postedIds.push(await postComment(gh, repo, number, canonicalCard(card, claim.id, index + 1)))
 	}
 
 	if (proposedBody !== undefined) {

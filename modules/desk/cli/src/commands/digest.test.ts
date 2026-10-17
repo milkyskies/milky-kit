@@ -11,7 +11,7 @@ import { runWith } from "./digest.ts"
 
 type Posted = { url: string; headers: Record<string, string>; body: string }
 
-function setup(status = 200) {
+function setup(status = 200, appUrl?: string) {
 	const harness = makeListingHarness()
 	const posted: Posted[] = []
 	const ledger = memoryLedger()
@@ -21,7 +21,11 @@ function setup(status = 200) {
 		loadSection: async () => SECTION,
 		ledger,
 		ping: {
-			loadEnv: async () => ({ DESK_NTFY_URL: "http://zeus:8090/", DESK_NTFY_TOPIC: "abc123" }),
+			loadEnv: async () => ({
+				DESK_NTFY_URL: "http://zeus:8090/",
+				DESK_NTFY_TOPIC: "abc123",
+				DESK_APP_URL: appUrl,
+			}),
 			post: async (url: string, headers: Record<string, string>, body: string) => {
 				posted.push({ url, headers, body })
 
@@ -48,6 +52,34 @@ function seedParked(harness: ReturnType<typeof setup>) {
 }
 
 describe("desk digest", () => {
+	test("links to the desk instead of a GitHub search when DESK_APP_URL is set", async () => {
+		const harness = setup(200, "https://desk.tail1234.ts.net/")
+		seedParked(harness)
+
+		await runWith(harness.deps, ["--send"], harness.context)
+
+		expect(harness.posted[0]?.body).toBe(
+			"kit: 1 decision waiting, 1 done to check\nhttps://desk.tail1234.ts.net",
+		)
+	})
+
+	test("an agent merge keeps its own issue link beside the desk link", async () => {
+		const harness = setup(200, "https://desk.tail1234.ts.net")
+		seedParked(harness)
+		harness.fake.addIssue({ number: 14, labels: ["request", "stage:done"], state: "CLOSED" })
+		harness.fake.addComment(
+			14,
+			composeComment("merge", { claim: "c_9", by: "auto" }, "Merged by the desk."),
+		)
+
+		await runWith(harness.deps, ["--send"], harness.context)
+
+		expect(harness.posted[0]?.body.split("\n").slice(1)).toEqual([
+			"https://desk.tail1234.ts.net",
+			"https://github.com/milkyskies/kit/issues/14",
+		])
+	})
+
 	test("--send pings once for every unpinged card and result, then marks each comment", async () => {
 		const harness = setup()
 		const { card, result } = seedParked(harness)

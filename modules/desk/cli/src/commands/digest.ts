@@ -24,7 +24,12 @@ const BAD_LABELS_FILE = "badlabels-pinged.json"
 
 export type DigestDeps = OrcaDeps & { ping: PingDeps; ledger: Ledger }
 
-const REPORT_ONLY = ["human-claimed", "remote-claim-unseen"]
+const REPORT_ONLY = [
+	"human-claimed",
+	"remote-claim-unseen",
+	"intake-stuck",
+	"answered-not-requeued",
+]
 
 export function realDigestDeps(context: Context): DigestDeps {
 	return {
@@ -68,7 +73,8 @@ export async function runWith(deps: DigestDeps, args: string[], context: Context
 		return
 	}
 
-	const message = digestMessage(repo, digest)
+	const appUrl = (await deps.ping.loadEnv()).DESK_APP_URL || undefined
+	const message = digestMessage(repo, digest, appUrl)
 
 	if (!values.send) {
 		context.out(context.json ? JSON.stringify({ sent: false, message }) : message)

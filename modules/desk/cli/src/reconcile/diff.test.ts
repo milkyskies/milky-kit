@@ -547,9 +547,8 @@ describe("desk reconcile", () => {
 		).toEqual([[12, "human-claimed"]])
 	})
 
-	test("intake, backlog and done are ignored", () => {
+	test("backlog and done are ignored", () => {
 		const issues = [
-			issue(1, ["request", "stage:intake"]),
 			issue(2, ["request", "stage:backlog"]),
 			issue(3, ["request", "stage:done"], [], { open: false }),
 		]
@@ -563,6 +562,109 @@ describe("desk reconcile", () => {
 
 		expect(HOSTS.some((host) => host.id === "env-zeus")).toBe(true)
 		expect(codes({ issues: [issue(5, READY)], workers: [remote], section })).toEqual([])
+	})
+})
+
+describe("desk reconcile: intake", () => {
+	const INTAKE = ["request", "stage:intake", "priority:P2"]
+
+	test("intake: a filed request with no worker and no open card gets a frontman", () => {
+		const [mismatch] = reconcile(input({ issues: [issue(12, INTAKE)] }))
+
+		expect(mismatch).toMatchObject({ issue: 12, code: "intake", machine: "Minerva" })
+		expect(mismatch?.workerStart).toEqual([
+			"--worktree",
+			"new-child",
+			"--name",
+			"12",
+			"--base-branch",
+			"main",
+		])
+	})
+
+	test("intake: needs no autopilot label", () => {
+		expect(codes({ issues: [issue(12, INTAKE)] })).toEqual([[12, "intake"]])
+	})
+
+	test("intake: a proposal Milky has not accepted is left alone", () => {
+		expect(codes({ issues: [issue(12, [...INTAKE, "proposed"])] })).toEqual([])
+	})
+
+	test("intake: an issue with no request label is left alone", () => {
+		expect(codes({ issues: [issue(12, ["stage:intake"])] })).toEqual([])
+	})
+
+	test("intake: a closed issue is left alone", () => {
+		expect(codes({ issues: [issue(12, INTAKE, [], { open: false })] })).toEqual([])
+	})
+
+	test("intake: a live frontman worker means no second dispatch", () => {
+		const tasks = [task("task_y", "#12 Counter accents", 3)]
+
+		expect(codes({ issues: [issue(12, INTAKE)], workers: [worker()], tasks })).toEqual([])
+	})
+
+	test("intake: a card still open holds the frontman back", () => {
+		const open = composeComment("decision", { claim: "c_1", card: "c_1-1" }, "## Decision needed")
+
+		expect(codes({ issues: [issue(12, INTAKE, [claim("c_1", "ctx_y"), open])] })).toEqual([])
+	})
+
+	test("intake: dispatches again once the last card is answered", () => {
+		const card = composeComment("decision", { claim: "c_1", card: "c_1-1" }, "## Decision needed")
+		const answer = "<!-- desk:answer card=c_1-1 -->\nLHL."
+		const released = release("c_1", "answered")
+
+		expect(
+			codes({ issues: [issue(12, INTAKE, [claim("c_1", "ctx_y"), card, answer, released])] }),
+		).toEqual([[12, "intake"]])
+	})
+
+	test("intake: shares the machine slots with ready requests, lowest priority number first", () => {
+		const section = { ...SECTION, machines: [{ name: "Minerva", workers: 1, repo: undefined }] }
+		const urgent = ["request", "stage:intake", "priority:P1"]
+
+		const found = reconcile(input({ issues: [issue(1, READY), issue(2, urgent)], section }))
+
+		expect(found.map((mismatch) => [mismatch.issue, mismatch.code])).toEqual([[2, "intake"]])
+	})
+
+	test("intake_after_two_failed_attempts_is_stuck_not_dispatched", () => {
+		const bodies = [
+			claim("c_1", "ctx_a"),
+			composeFailure("c_1"),
+			claim("c_2", "ctx_b"),
+			composeFailure("c_2"),
+		]
+
+		expect(codes({ issues: [issue(12, INTAKE, bodies)] })).toEqual([[12, "intake-stuck"]])
+	})
+
+	test("intake: one failed attempt still dispatches", () => {
+		const bodies = [claim("c_1", "ctx_a"), composeFailure("c_1")]
+
+		expect(codes({ issues: [issue(12, INTAKE, bodies)] })).toEqual([[12, "intake"]])
+	})
+
+	test("answered_not_requeued: every card answered but the request still waits on needs-you", () => {
+		const card = composeComment("decision", { claim: "c_1", card: "c_1-1" }, "## Decision needed")
+		const answer = "<!-- desk:answer card=c_1-1 -->\nLHL."
+
+		expect(
+			codes({ issues: [issue(12, NEEDS_YOU, [claim("c_1", "ctx_y"), card, answer])] }),
+		).toEqual([[12, "answered-not-requeued"]])
+	})
+
+	test("a card answer is not a conversation, a chat comment still is", () => {
+		const card = composeComment("decision", { claim: "c_1", card: "c_1-1" }, "## Decision needed")
+		const second = composeComment("decision", { claim: "c_1", card: "c_1-2" }, "## Decision needed")
+		const answer = "<!-- desk:answer card=c_1-1 -->\nLHL."
+		const bodies = [claim("c_1", "ctx_y"), card, second, answer]
+
+		expect(codes({ issues: [issue(12, NEEDS_YOU, bodies)] })).toEqual([])
+		expect(codes({ issues: [issue(12, NEEDS_YOU, [...bodies, "Why LHL?"])] })).toEqual([
+			[12, "conversation"],
+		])
 	})
 })
 
