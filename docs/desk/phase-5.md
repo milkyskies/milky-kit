@@ -303,7 +303,22 @@ Plan section 7: 💬 opens a fresh Claude session that reads the request's Issue
 The phone's 💬 aims at a full local session on the Mac, reached from the Claude app (relayed): the Mac is already on whenever coordinators run. Two steps get there:
 
 1. **Built first, as the fallback that works today.** On the phone, 💬 links to `https://claude.ai/code?repositories=<owner>/<repo>&prompt=<text>`, which opens a Claude Code on the web session in the Claude app; the prompt names the issue and the branch, because the link has no branch parameter. A cloud session has none of the Mac's tools and no `desk` program, so it writes back only as an issue comment, if it can (UNVERIFIED). On the Mac, 💬 links to `claude-cli://open?repo=…&q=…`, which opens a local terminal with the prompt.
-2. **Tested next.** Whether a command run on the Mac can start a Remote Control session in the request's worktree and print its `claude.ai/code/<id>` link (UNVERIFIED; nothing documented lets a link create one). If it can, a small helper on the coordinator's Mac starts that session when 💬 is tapped, and the phone's 💬 opens it in the Claude app. The helper needs its own design once the test passes.
+2. **Tested (T10), and the command exists.** `claude remote-control` (Claude Code 2.1.302) starts a Remote Control session in the directory it runs in and prints the link the Claude app opens. The desk would call, from the request's worktree on the Mac:
+
+   ```
+   claude remote-control --name <request title> --spawn=session --permission-mode <mode>
+   ```
+
+   Run in `desk-t10` it printed `Connected · milky-kit · milkyskies/desk-t10` and then `Continue coding in the Claude mobile app or https://claude.ai/code/session_<id>`. The link is the last line of stdout, so the helper reads stdout until it matches `https://claude.ai/code/session_\S+`. `--spawn=session` is the single-session mode: the process exits when that session ends, and killing the process stops the session. The test session was stopped that way and `pgrep` found nothing afterwards. Other flags that matter: `--continue` reattaches to the session last recorded for the directory or its worktrees (error if none within about 4 hours), `--session-id <id>` reattaches to one session, and the default `--spawn=same-dir` runs a persistent server that holds many sessions.
+
+   Findings from the run:
+   - The directory must already be trusted. In an untrusted scratch directory it exits with `Error: Workspace not trusted. Please run claude in <dir> first`. A new request worktree therefore needs one `claude` run, or a trust entry, before the helper can call it.
+   - It needs a logged-in Claude account with a subscription.
+   - It printed a warning that the remote session "will work on a generated branch instead" of `milkyskies/desk-t10`, because the repository has no `origin/HEAD` evidence. `git remote set-head origin -a` is the fix named in the warning (UNVERIFIED that it restores the branch).
+   - Whether the link opens in the phone's Claude app is UNVERIFIED. The link has the same `claude.ai/code/session_<id>` shape the app documents, but nobody looked at a phone during this test.
+   - Whether the session reads the Issue first is untested. The helper would start it and then send the 💬 prompt as the session's first message, which the test did not try (UNVERIFIED).
+
+   The helper on the coordinator's Mac therefore has a command to wrap. It needs its own design once the phone check passes. Until then step 1 stays the path that works.
 
 ## 8. Environment variables
 
