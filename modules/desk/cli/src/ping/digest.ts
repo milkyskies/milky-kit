@@ -142,7 +142,7 @@ export function markedBody(body: string, now: Date): string {
 export async function markPinged(
 	gh: Gh,
 	repo: Repo,
-	comment: ParsedComment,
+	comment: Pick<ParsedComment, "databaseId" | "body">,
 	now: Date,
 ): Promise<void> {
 	await gh(

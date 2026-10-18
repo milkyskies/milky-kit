@@ -51,6 +51,7 @@ export function issue(
 ): IssueState {
 	return {
 		number,
+		title: `Request ${number}`,
 		open: true,
 		body: "## Problem\n\nSomething is missing.\n",
 		bodyEdits: 0,

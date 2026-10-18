@@ -6,6 +6,7 @@ const ISSUE_QUERY = `query($owner: String!, $name: String!, $number: Int!, $befo
   repository(owner: $owner, name: $name) {
     issue(number: $number) {
       number
+      title
       state
       body
       labels(first: 50) { nodes { name } }
@@ -33,6 +34,7 @@ export type LinkedPullRequest = {
 
 export type IssueState = {
 	number: number
+	title: string
 	open: boolean
 	body: string
 	bodyEdits: number
@@ -97,6 +99,7 @@ export function parseIssue(raw: string): IssueState {
 
 	return {
 		number: readNumber(issue, "number"),
+		title: readString(issue, "title"),
 		open: readString(issue, "state") === "OPEN",
 		body: readString(issue, "body"),
 		bodyEdits: readNumber(readField(issue, "userContentEdits"), "totalCount"),

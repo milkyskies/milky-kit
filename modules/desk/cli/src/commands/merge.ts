@@ -8,6 +8,7 @@ import { DeskError, EXIT, refusal } from "../errors.ts"
 import { repoSlug } from "../github/gh.ts"
 import { type IssueState, readIssue } from "../github/issue.ts"
 import { composeComment } from "../github/markers.ts"
+import { parseResult } from "../github/result.ts"
 import { postComment } from "../github/writes.ts"
 import { requireStage } from "../guards.ts"
 import { parseJson, readField, readString } from "../json.ts"
@@ -15,6 +16,9 @@ import { autolandHeld } from "../merge/autoland.ts"
 import { type CiStatus, ciStatus } from "../merge/ci.ts"
 import { firstFailingLine, type Shell, spawnShell } from "../merge/shell.ts"
 import { type OrcaDeps, realOrcaDeps } from "../orca/deps.ts"
+import { markPinged } from "../ping/digest.ts"
+import { mergedMessage } from "../ping/merged.ts"
+import { type PingDeps, realPingDeps, sendPing } from "../ping/ntfy.ts"
 import { type DeskSection, landingOf } from "../project/section.ts"
 import { parseDuration } from "../watch/loop.ts"
 import { landIssue } from "./land.ts"
@@ -37,6 +41,7 @@ type Approval = { prNumber: number; resultIndex: number; by: "human" | "auto" }
 
 export type MergeDeps = OrcaDeps & {
 	shell: Shell
+	ping: PingDeps
 	hasWorkflows: (directory: string) => Promise<boolean>
 	sleep: (milliseconds: number) => Promise<void>
 	nowMs: () => number
@@ -51,6 +56,7 @@ export function realMergeDeps(): MergeDeps {
 	return {
 		...realOrcaDeps(),
 		shell: spawnShell,
+		ping: realPingDeps(),
 		sleep: (milliseconds) => Bun.sleep(milliseconds),
 		nowMs: () => Date.now(),
 		hasWorkflows: async (directory) => {
@@ -393,6 +399,35 @@ async function holdForHuman(
 	})
 }
 
+// The merge has already happened, so a failed ping must not fail the command; the unmarked merge comment still reaches the digest.
+async function pingMerged(
+	deps: MergeDeps,
+	context: Context,
+	merged: {
+		comment: { databaseId: number; body: string }
+		issue: number
+		title: string
+		summary: string
+		pullRequest: number
+	},
+): Promise<void> {
+	const { comment, ...ping } = merged
+
+	try {
+		await sendPing(deps.ping, mergedMessage({ repo: context.repo, ...ping }))
+	} catch (error) {
+		const detail = error instanceof Error ? error.message : String(error)
+		emit(context, `#${merged.issue} merged, but its ping failed: ${detail}`, {
+			issue: merged.issue,
+			pingFailed: detail,
+		})
+
+		return
+	}
+
+	await markPinged(context.gh, context.repo, comment, context.now())
+}
+
 export async function runWith(deps: MergeDeps, args: string[], context: Context): Promise<void> {
 	const { values, positionals } = parseOrUsage("merge", () =>
 		parseArgs({
@@ -442,21 +477,28 @@ export async function runWith(deps: MergeDeps, args: string[], context: Context)
 
 	const { ci, check } = landing
 	const described = describeCi(ci)
-	await postComment(
-		gh,
-		repo,
-		number,
-		composeComment(
-			"merge",
-			{
-				pr: String(prNumber),
-				ci: described.marker,
-				check: "passed",
-				...(approval.by === "auto" ? { by: "auto" } : {}),
-			},
-			`Merged pull request #${prNumber} with a merge commit.\n\n**CI:** ${described.text}\n**Local check:** passed (\`${check}\`)`,
-		),
+	const mergeBody = composeComment(
+		"merge",
+		{
+			pr: String(prNumber),
+			ci: described.marker,
+			check: "passed",
+			...(approval.by === "auto" ? { by: "auto" } : {}),
+		},
+		`Merged pull request #${prNumber} with a merge commit.\n\n**CI:** ${described.text}\n**Local check:** passed (\`${check}\`)`,
 	)
+	const mergeCommentId = await postComment(gh, repo, number, mergeBody)
+
+	if (approval.by === "auto") {
+		const result = before.comments[approval.resultIndex]
+		await pingMerged(deps, context, {
+			comment: { databaseId: mergeCommentId, body: mergeBody },
+			issue: number,
+			title: before.title,
+			summary: (result && parseResult(result)?.summary) ?? "",
+			pullRequest: prNumber,
+		})
+	}
 
 	await landIssue(deps, context, number)
 
