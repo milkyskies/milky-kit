@@ -17,17 +17,18 @@ Run `.github/scripts/setup-labels.sh` once per repository to create every label 
 | Points | `points:1`, `points:2`, `points:3`, `points:5`, `points:8`, `points:13` | one per request |
 | Type | `type:feature`, `type:change`, `type:fix`, `type:chore`, `type:docs`, `type:refactor` | exactly one per issue |
 | Consent | `autopilot` | opt-in per issue |
+| Undecided | `undecided` | an idea not decided yet; pairs with `stage:backlog` |
 | Landing | `land:check`, `land:auto` | at most one per request; project default in `CLAUDE.md` |
 
 ## Stages
 
 | Stage | Meaning |
 |---|---|
-| `stage:backlog` | Parked for later, kept off the active lists. |
+| `stage:backlog` | Parked for later, kept off the active lists. Undecided ideas live here with the `undecided` label. |
 | `stage:intake` | Filed, still being clarified before work can start. |
 | `stage:ready` | Fully decided, waiting for a worker. |
 | `stage:working` | A worker has claimed it. |
-| `stage:needs-you` | Waiting on a human decision: a decision comment, or an undecided idea filed as a question. |
+| `stage:needs-you` | Waiting on a human decision now: an agent's decision card. |
 | `stage:check` | A PR is open, waiting for the human to check and merge. |
 | `stage:done` | Finished. The issue is also closed. |
 
@@ -203,10 +204,10 @@ The floor is per issue, and never a reason to file fewer of them. An issue you c
 
 ## Filing something you have not decided
 
-Not every issue is a task. An idea, an unresolved fork, a half-thought you want out of your head — file it with `stage:needs-you` and the open question in the body.
+Not every issue is a task. An idea, an unresolved fork, a half-thought you want out of your head: file it as `stage:backlog` plus `undecided`, with the open question in the body. It stays off `stage:needs-you`, which is for things that need a human now, and `gh issue list --label undecided` finds every one when you circle back.
 
 ```bash
-gh issue create --title "..." --body "$(cat body.md)" --label request,stage:needs-you,priority:P2
+gh issue create --title "..." --body "$(cat body.md)" --label request,stage:backlog,undecided,priority:P2
 ```
 
 Skeleton:
@@ -225,9 +226,9 @@ Skeleton:
 
 **No `## Acceptance criteria`, no `## Tests`, no `## Area`.** Deciding those is the work. Writing them anyway fakes a decision you have not made, and a worker implements against the fake one and hands back the wrong thing having satisfied every box.
 
-**No `autopilot` label and no `points:*` label.** Both describe work whose shape is known. Add them when you answer the question and move the stage to `stage:ready`.
+**No `autopilot` label and no `points:*` label.** Both describe work whose shape is known.
 
-**No `[Idea]` title prefix and no `idea` label.** `stage:needs-you` already means "waiting on you" and the claim query already excludes it. A title prefix is state you would have to hand-edit off when the issue graduates, and state belongs in labels.
+**Graduating.** Once the question is answered, remove `undecided`, add `points:*`, a `type:*` label and `autopilot`, and move the stage to `stage:ready`: `gh issue edit <n> --remove-label undecided,stage:backlog --add-label stage:ready,autopilot,points:3,type:change`.
 
 ## Rules
 
