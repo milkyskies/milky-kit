@@ -3,8 +3,9 @@ name: todo
 description: >
   File an issue from one rough sentence. Drafts the house body format, asks only what
   cannot be inferred, shows it for approval, then creates it with the `autopilot` label.
-  Something the user has not decided yet gets filed on `stage:needs-you` with the open
-  question instead of a fake spec.
+  Something the user has not decided yet gets filed as `stage:backlog` plus `undecided`
+  with the open question instead of a fake spec. Running it on an `undecided` issue
+  graduates it.
   TRIGGER when: the user says "/todo", "make an issue for...", "file a task", "add a todo",
   or describes work they want tracked rather than done now.
   DO NOT TRIGGER when: the user wants the work done immediately (just do it), or is asking
@@ -24,13 +25,15 @@ The point is the **shape**, not the saved typing. An issue in the house format c
 
 ### 1. Decide which of the two things this is
 
+**An existing `undecided` issue** — `$ARGUMENTS` names one, or the user points at one. Graduate it: read the issue and the answers so far, draft the task sections from `issues.md` (steps 2 to 4), show the body, then on approval edit the body and run `gh issue edit <n> --remove-label undecided,stage:backlog --add-label stage:ready,autopilot,points:<k>,type:<t>`. If an open question is still unresolved, say so and leave it undecided.
+
 **A task** — the user knows what they want built, even roughly. Goes to step 2.
 
-**An undecided thing** — an idea, an unresolved fork, a half-thought. Goes to the "Filing something you have not decided" skeleton in `issues.md`: `## Problem` plus `## Open questions`, filed with the `stage:needs-you` label, no points, no `autopilot` label, no acceptance criteria.
+**An undecided thing** — an idea, an unresolved fork, a half-thought. Goes to the "Filing something you have not decided" skeleton in `issues.md`: `## Problem` plus `## Open questions`, filed with the `stage:backlog` and `undecided` labels, no points, no `autopilot` label, no acceptance criteria.
 
 The tell is whether you can write a binary acceptance criterion without inventing the decision behind it. If every criterion you draft depends on a fork the user has not resolved, it is undecided — file it as one, and say so in a line. Do not resolve the fork on their behalf and file a task.
 
-Filing an undecided thing costs nothing later: answering the question and moving the stage to `stage:ready` graduates it into a normal issue.
+Filing an undecided thing costs nothing later: running `/todo` on the issue after the question is answered graduates it into a normal issue.
 
 ### 2. Infer before asking
 
@@ -69,7 +72,7 @@ gh issue create --title "<title>" --body-file /tmp/todo-body.md \
 
 # An undecided thing
 gh issue create --title "<title>" --body-file /tmp/todo-body.md \
-  --label request,stage:needs-you,priority:P2
+  --label request,stage:backlog,undecided,priority:P2
 ```
 
 Every issue carries exactly one label from each group: kind, stage, priority, and type. A task also carries points. Add an `ask:*` label only when the user named one.

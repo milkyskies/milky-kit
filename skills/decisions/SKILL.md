@@ -16,9 +16,9 @@ argument-hint: "[issue number (optional, answers just that one)]"
 
 Clear the decision queue.
 
-`stage:needs-you` fills from two directions. An agent hits something it must not guess at, posts the question as an issue comment, and parks. Or you filed the issue undecided yourself — an idea, an unresolved fork — with the question in the body under `## Open questions`. Both pile up silently, because a parked issue looks like nothing is happening. This skill gathers them, shows you each question as a card, and moves what you answer back to `stage:ready`.
+`stage:needs-you` fills when an agent hits something it must not guess at, posts the question as an issue comment, and parks. Parked issues pile up silently, because a parked issue looks like nothing is happening. This skill gathers them, shows you each question as a card, and moves what you answer back to `stage:ready`. Ideas you filed undecided sit on `stage:backlog` with the `undecided` label and are not part of this queue.
 
-**The inbox is a query, not a table.** Nothing is stored here. The queue is `gh issue list --label stage:needs-you`, the message body is the agent's comment or your own `## Open questions`, and your answer is a reply. Because the transport is GitHub, you can answer from the GitHub mobile app instead, and the next worker picks the issue up identically.
+**The inbox is a query, not a table.** Nothing is stored here. The queue is `gh issue list --label stage:needs-you`, the message body is the agent's comment, and your answer is a reply. Because the transport is GitHub, you can answer from the GitHub mobile app instead, and the next worker picks the issue up identically.
 
 ## Steps
 

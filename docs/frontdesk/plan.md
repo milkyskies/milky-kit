@@ -216,7 +216,7 @@ Each project's `CLAUDE.md` has a `## frontdesk` section: hard areas, review path
 
 ### Kept from milky-kit
 
-- `skills/todo`: infer first, ask only what cannot be inferred, the house Issue body, an undecided idea filed as a question.
+- `skills/todo`: infer first, ask only what cannot be inferred, the house Issue body, an undecided idea filed as `stage:backlog` plus `undecided`.
 - The decision-comment protocol in `modules/autopilot/rules/autopilot.md`: numbered options, markers, the proposed-body block, a human flips the status.
 - One digest push per pass, carrying the question.
 - The routing table by area.
