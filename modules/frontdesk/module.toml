@@ -1,0 +1,1 @@
+# The frontdesk module ships frontdesk.md through the .claude/rules symlink, and frontdesk-section.md as the template a project copies into its CLAUDE.md. The reference/ files are read on demand and are never symlinked into .claude/rules.
