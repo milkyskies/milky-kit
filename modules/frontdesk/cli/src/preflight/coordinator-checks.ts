@@ -140,7 +140,9 @@ export async function checkWorkerMachines(
 export async function checkPingConfigured(
 	environment: PreflightEnvironment,
 ): Promise<CheckResult[]> {
-	const missing = ["FRONTDESK_NTFY_URL", "FRONTDESK_NTFY_TOPIC"].filter((key) => !environment.variables[key])
+	const missing = ["FRONTDESK_NTFY_URL", "FRONTDESK_NTFY_TOPIC"].filter(
+		(key) => !environment.variables[key],
+	)
 	if (missing.length === 0) return [pass("ping configured", "ping configured")]
 
 	return [fail("ping configured", `${missing.join(" and ")} not set`, PING_SETUP_FIX)]

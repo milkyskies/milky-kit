@@ -1,6 +1,6 @@
 import { parseNumber } from "../args.ts"
 import { type Command, type Context, emit } from "../context.ts"
-import { FrontdeskError, EXIT, refusal } from "../errors.ts"
+import { EXIT, FrontdeskError, refusal } from "../errors.ts"
 import { owningClaim } from "../github/derive.ts"
 import { repoSlug } from "../github/gh.ts"
 import { readIssue, stageOf } from "../github/issue.ts"

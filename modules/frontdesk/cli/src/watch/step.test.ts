@@ -264,7 +264,9 @@ describe("frontdesk watch", () => {
 		await h.poll()
 		h.advance(1)
 		h.issues = [
-			issue(12, labels, ["<!-- frontdesk:result claim=c pr=1 -->\nDone\n\n<!-- frontdesk:agent -->\n"]),
+			issue(12, labels, [
+				"<!-- frontdesk:result claim=c pr=1 -->\nDone\n\n<!-- frontdesk:agent -->\n",
+			]),
 		]
 
 		expect(await h.poll()).toEqual([])

@@ -1,4 +1,4 @@
-import { FrontdeskError, EXIT } from "../errors.ts"
+import { EXIT, FrontdeskError } from "../errors.ts"
 import { newWatchState, POLL_MS, step, type WatchDeps, type WatchEvent } from "./step.ts"
 
 const UNITS: Record<string, number> = { s: 1000, m: 60_000, h: 3_600_000 }

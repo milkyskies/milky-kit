@@ -47,7 +47,13 @@ export async function checkFrontdeskSection(
 	if (result.kind === "ok") return [pass("## frontdesk section", "## frontdesk section parses")]
 
 	if (result.kind === "missing") {
-		return [fail("## frontdesk section", `${PROJECT_FILE} has no ## frontdesk section`, SECTION_TEMPLATE_FIX)]
+		return [
+			fail(
+				"## frontdesk section",
+				`${PROJECT_FILE} has no ## frontdesk section`,
+				SECTION_TEMPLATE_FIX,
+			),
+		]
 	}
 
 	const lines = result.issues.map((issue) => describeIssue(PROJECT_FILE, issue))

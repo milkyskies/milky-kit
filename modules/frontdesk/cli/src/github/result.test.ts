@@ -12,7 +12,10 @@ async function resultOf(extraFlags: string[], body: string) {
 	const { fake, context } = makeHarness()
 	seedWorking(fake, 12)
 	fake.issue(12).body = body
-	fake.addComment(12, "<!-- frontdesk:proposed-request issue=51 -->\nFiled.\n<!-- frontdesk:agent -->\n")
+	fake.addComment(
+		12,
+		"<!-- frontdesk:proposed-request issue=51 -->\nFiled.\n<!-- frontdesk:agent -->\n",
+	)
 	fake.pullRequests.set(45, {
 		number: 45,
 		state: "OPEN",

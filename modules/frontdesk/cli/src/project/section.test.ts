@@ -51,7 +51,9 @@ describe("parseFrontdeskSection", () => {
 	})
 
 	test("check defaults to mise run check and no Machines means the coordinator machine with 3 workers", () => {
-		const section = parsed("## frontdesk\n\n### Coordinator\n- machine: Minerva\n- ask: ask:own-feel\n")
+		const section = parsed(
+			"## frontdesk\n\n### Coordinator\n- machine: Minerva\n- ask: ask:own-feel\n",
+		)
 
 		expect(section.coordinator.check).toBe("mise run check")
 		expect(section.coordinator.land).toBe("land:check")
@@ -115,7 +117,9 @@ describe("parseFrontdeskSection", () => {
 	})
 
 	test("a ## frontdesk heading inside a code fence is not the section", () => {
-		expect(parseFrontdeskSection("```md\n## frontdesk\n### Coordinator\n```\n").kind).toBe("missing")
+		expect(parseFrontdeskSection("```md\n## frontdesk\n### Coordinator\n```\n").kind).toBe(
+			"missing",
+		)
 	})
 
 	test("the section ends at the next ## heading, so later sections are not read", () => {
@@ -166,7 +170,9 @@ describe("readFrontdeskSection", () => {
 			expect((await readFrontdeskSection(path)).coordinator.machine).toBe("Minerva")
 
 			await writeFile(path, FRONTDESK_SECTION.replace("- ask: ask:choices\n", ""))
-			await expect(readFrontdeskSection(path)).rejects.toThrow("### Coordinator needs ask set to one of")
+			await expect(readFrontdeskSection(path)).rejects.toThrow(
+				"### Coordinator needs ask set to one of",
+			)
 
 			await writeFile(path, "# project\n")
 			await expect(readFrontdeskSection(path)).rejects.toThrow("has no ## frontdesk section")

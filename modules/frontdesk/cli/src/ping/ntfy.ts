@@ -1,5 +1,5 @@
 import { type Environment, loadUserEnvironment, ntfySettings } from "../config/env.ts"
-import { FrontdeskError, EXIT } from "../errors.ts"
+import { EXIT, FrontdeskError } from "../errors.ts"
 
 export type PingDeps = {
 	loadEnv: () => Promise<Environment>

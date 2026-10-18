@@ -3,7 +3,7 @@ import { parseArgs } from "node:util"
 
 import { parseOrUsage } from "../args.ts"
 import type { Command, Context } from "../context.ts"
-import { FrontdeskError, EXIT } from "../errors.ts"
+import { EXIT, FrontdeskError } from "../errors.ts"
 import { repoSlug } from "../github/gh.ts"
 import { type OrcaDeps, realOrcaDeps } from "../orca/deps.ts"
 import { requireRun } from "../orca/runs.ts"

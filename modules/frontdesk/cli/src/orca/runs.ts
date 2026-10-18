@@ -1,4 +1,4 @@
-import { FrontdeskError, EXIT } from "../errors.ts"
+import { EXIT, FrontdeskError } from "../errors.ts"
 import { readArray, readField, readString } from "../json.ts"
 import type { Orca } from "./runner.ts"
 

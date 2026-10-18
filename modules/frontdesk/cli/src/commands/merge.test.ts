@@ -84,7 +84,10 @@ function setup(
 		},
 		nowMs: () => clock.ms,
 		ping: {
-			loadEnv: async () => ({ FRONTDESK_NTFY_URL: "http://ceres:8091", FRONTDESK_NTFY_TOPIC: "abc123" }),
+			loadEnv: async () => ({
+				FRONTDESK_NTFY_URL: "http://ceres:8091",
+				FRONTDESK_NTFY_TOPIC: "abc123",
+			}),
 			post: async (_url: string, _headers: Record<string, string>, body: string) => {
 				pings.push(body)
 
@@ -434,7 +437,9 @@ describe("frontdesk merge", () => {
 			expect(shell.called("git push")).toHaveLength(0)
 			expect(fake.issue(12).labels).toContain("stage:check")
 			expect(autoComments(fake)).toHaveLength(1)
-			expect(autoComments(fake)[0]?.body).toStartWith("<!-- frontdesk:autoland pr=45 blocked=review -->")
+			expect(autoComments(fake)[0]?.body).toStartWith(
+				"<!-- frontdesk:autoland pr=45 blocked=review -->",
+			)
 		})
 
 		test("auto_land_waits_when_the_newest_review_has_a_blocking_finding", async () => {
@@ -482,7 +487,9 @@ describe("frontdesk merge", () => {
 			await runWith(deps, ["12"], context)
 
 			expect(fake.callsMatching(["pr", "merge"])).toHaveLength(0)
-			expect(autoComments(fake)[0]?.body).toStartWith("<!-- frontdesk:autoland pr=45 blocked=merge -->")
+			expect(autoComments(fake)[0]?.body).toStartWith(
+				"<!-- frontdesk:autoland pr=45 blocked=merge -->",
+			)
 			expect(autoComments(fake)[0]?.body).toContain("src/a.ts")
 		})
 
@@ -586,7 +593,9 @@ describe("frontdesk merge", () => {
 
 			expect(fake.issue(12).labels).toContain("stage:check")
 			expect(autoComments(fake)).toHaveLength(1)
-			expect(autoComments(fake)[0]?.body).toStartWith("<!-- frontdesk:autoland pr=45 blocked=error -->")
+			expect(autoComments(fake)[0]?.body).toStartWith(
+				"<!-- frontdesk:autoland pr=45 blocked=error -->",
+			)
 		})
 
 		test("a draft pull request leaves the request at check and runs no check", async () => {
@@ -597,7 +606,9 @@ describe("frontdesk merge", () => {
 			await runWith(deps, ["12"], context)
 
 			expect(shell.called("sh -c")).toHaveLength(0)
-			expect(autoComments(fake)[0]?.body).toStartWith("<!-- frontdesk:autoland pr=45 blocked=merge -->")
+			expect(autoComments(fake)[0]?.body).toStartWith(
+				"<!-- frontdesk:autoland pr=45 blocked=merge -->",
+			)
 		})
 
 		test("a result naming a pull request that does not close this issue is not merged", async () => {
@@ -610,7 +621,9 @@ describe("frontdesk merge", () => {
 
 			expect(shell.called("git fetch")).toHaveLength(0)
 			expect(fake.callsMatching(["pr", "merge"])).toHaveLength(0)
-			expect(autoComments(fake)[0]?.body).toStartWith("<!-- frontdesk:autoland pr=99 blocked=merge -->")
+			expect(autoComments(fake)[0]?.body).toStartWith(
+				"<!-- frontdesk:autoland pr=99 blocked=merge -->",
+			)
 		})
 
 		test("a human looks good merges a pull request that GitHub does not list as closing the issue", async () => {

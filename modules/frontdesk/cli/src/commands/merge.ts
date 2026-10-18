@@ -4,7 +4,7 @@ import { parseArgs } from "node:util"
 
 import { parseNumber, parseOrUsage } from "../args.ts"
 import { type Command, type Context, emit } from "../context.ts"
-import { FrontdeskError, EXIT, refusal } from "../errors.ts"
+import { EXIT, FrontdeskError, refusal } from "../errors.ts"
 import { repoSlug } from "../github/gh.ts"
 import { type IssueState, readIssue } from "../github/issue.ts"
 import { composeComment } from "../github/markers.ts"

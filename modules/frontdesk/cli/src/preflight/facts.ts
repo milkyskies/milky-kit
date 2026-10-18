@@ -85,7 +85,9 @@ export function createFacts(environment: PreflightEnvironment): Facts {
 
 	const section = memoize(async (): Promise<SectionResult> => {
 		try {
-			return parseFrontdeskSection(await readFile(join(environment.projectRoot, PROJECT_FILE), "utf8"))
+			return parseFrontdeskSection(
+				await readFile(join(environment.projectRoot, PROJECT_FILE), "utf8"),
+			)
 		} catch {
 			return { kind: "missing" }
 		}

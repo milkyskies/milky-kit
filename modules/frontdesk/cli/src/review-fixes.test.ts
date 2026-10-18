@@ -437,7 +437,10 @@ describe("re-review D: frontdesk answer is idempotent on retry", () => {
 	test("a retry after a concurrent-edit failure posts neither the answer nor the decision twice", async () => {
 		const { fake, context } = makeHarness()
 		seedWorking(fake, 12).labels = ["request", "autopilot", "stage:needs-you"]
-		fake.addComment(12, "<!-- frontdesk:decision claim=c_first1 -->\nQuestion?\n<!-- frontdesk:agent -->")
+		fake.addComment(
+			12,
+			"<!-- frontdesk:decision claim=c_first1 -->\nQuestion?\n<!-- frontdesk:agent -->",
+		)
 		fake.files.set("answer.md", "Go with five.")
 		fake.afterRead(2, (issue) => {
 			issue.body += "\n## Small calls\n\n- 2026-10-16: theirs\n"
@@ -464,7 +467,10 @@ describe("re-review D: frontdesk answer is idempotent on retry", () => {
 		const { fake, context } = makeHarness()
 		seedWorking(fake, 12).labels = ["request", "autopilot", "stage:needs-you"]
 		fake.addComment(12, "Go.")
-		fake.addComment(12, "<!-- frontdesk:decision claim=c_first1 -->\nAgain?\n<!-- frontdesk:agent -->")
+		fake.addComment(
+			12,
+			"<!-- frontdesk:decision claim=c_first1 -->\nAgain?\n<!-- frontdesk:agent -->",
+		)
 		fake.files.set("answer.md", "Go.")
 
 		await answer(["12", "--body", "answer.md", "--decision", "go"], context)

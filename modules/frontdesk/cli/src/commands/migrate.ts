@@ -4,7 +4,7 @@ import { parseArgs } from "node:util"
 
 import { parseOrUsage } from "../args.ts"
 import type { Command, Context } from "../context.ts"
-import { FrontdeskError, EXIT, mismatch } from "../errors.ts"
+import { EXIT, FrontdeskError, mismatch } from "../errors.ts"
 import { type Gh, type Repo, repoSlug } from "../github/gh.ts"
 import { readIssue } from "../github/issue.ts"
 import { parseJson, readNumber, ShapeError } from "../json.ts"

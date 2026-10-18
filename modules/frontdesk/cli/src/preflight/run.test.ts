@@ -59,7 +59,10 @@ describe("preflight checks", () => {
 
 	test("kit missing fails with the clone fix", async () => {
 		const made = await world()
-		await chmod(join(made.home, ".claude", "kit", "modules", "frontdesk", "bin", "frontdesk"), 0o644)
+		await chmod(
+			join(made.home, ".claude", "kit", "modules", "frontdesk", "bin", "frontdesk"),
+			0o644,
+		)
 
 		const result = only(await runChecks(made.environment("worker")), "kit present")
 
@@ -303,7 +306,9 @@ describe("coordinator lock check", () => {
 
 	test("a stale lock whose pid is dead is taken over", async () => {
 		const made = await world()
-		await mkdir(join(made.home, ".local", "state", "frontdesk", "milkyskies__kit"), { recursive: true })
+		await mkdir(join(made.home, ".local", "state", "frontdesk", "milkyskies__kit"), {
+			recursive: true,
+		})
 		await writeFile(
 			lockPath(made),
 			JSON.stringify({
@@ -324,7 +329,9 @@ describe("coordinator lock check", () => {
 
 	test("a live lock refuses and names the holding session", async () => {
 		const made = await world()
-		await mkdir(join(made.home, ".local", "state", "frontdesk", "milkyskies__kit"), { recursive: true })
+		await mkdir(join(made.home, ".local", "state", "frontdesk", "milkyskies__kit"), {
+			recursive: true,
+		})
 		await writeFile(
 			lockPath(made),
 			JSON.stringify({ pid: 999, orcaSessionId: "sess-first", startedAt: "2026-10-15T00:00:00Z" }),

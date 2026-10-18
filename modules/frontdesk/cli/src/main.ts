@@ -3,7 +3,7 @@ import { existsSync } from "node:fs"
 import { join } from "node:path"
 
 import type { BaseContext, Command, RepoFreeCommand } from "./context.ts"
-import { FrontdeskError, EXIT } from "./errors.ts"
+import { EXIT, FrontdeskError } from "./errors.ts"
 import { type Gh, GhError, resolveRepo, spawnGh } from "./github/gh.ts"
 
 const COMMAND_NAME = /^[a-z]+$/
@@ -51,7 +51,8 @@ async function loadCommand(name: string | undefined, directory: string): Promise
 	}
 
 	const path = join(directory, `${name}.ts`)
-	if (!existsSync(path)) throw new FrontdeskError(EXIT.usage, `frontdesk: unknown command "${name}"`)
+	if (!existsSync(path))
+		throw new FrontdeskError(EXIT.usage, `frontdesk: unknown command "${name}"`)
 
 	const loaded: unknown = await import(path)
 	const repoFree = exportedFunction(loaded, "runWithoutRepo")

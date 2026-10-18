@@ -40,7 +40,10 @@ describe("frontdesk done", () => {
 		const { fake, context } = setup()
 		fake.issue(12).body =
 			"## Problem\n\nP.\n\n## Decisions\n\n- 2026-10-15: use magic links\n\n## Small calls\n\n- a\n- b\n"
-		fake.addComment(12, "<!-- frontdesk:proposed-request issue=51 -->\nFiled.\n<!-- frontdesk:agent -->\n")
+		fake.addComment(
+			12,
+			"<!-- frontdesk:proposed-request issue=51 -->\nFiled.\n<!-- frontdesk:agent -->\n",
+		)
 
 		await run(["12", ...FLAGS, "--see", "`mise run dev`, then open /login"], context)
 

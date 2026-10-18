@@ -106,7 +106,10 @@ export async function makeWorld(options: { section?: string } = {}): Promise<Wor
 	)
 	await mkdir(join(projectRoot, ".github", "scripts"), { recursive: true })
 	await writeFile(join(projectRoot, ".github", "scripts", "setup-labels.sh"), LABEL_SCRIPT)
-	await writeFile(join(projectRoot, "CLAUDE.md"), `# project\n\n${options.section ?? FRONTDESK_SECTION}`)
+	await writeFile(
+		join(projectRoot, "CLAUDE.md"),
+		`# project\n\n${options.section ?? FRONTDESK_SECTION}`,
+	)
 
 	const script = new Map<string, RunResult>([
 		["bun --version", ok("1.3.0\n")],
