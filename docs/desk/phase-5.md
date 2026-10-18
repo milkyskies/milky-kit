@@ -242,7 +242,7 @@ One multi-stage Dockerfile. The build stage runs `pnpm install` (which clones th
 
 GitHub Actions is locked on the account by a billing issue, and Milky's projects avoid paid CI, so no deploy runs in an Action (relayed facts). The server deploys itself instead (relayed proposal): every `DESK_DEPLOY_POLL_SECONDS` (default 180) it asks for its own repository's `main` with a conditional `GET /repos/{owner}/{repo}/commits/main`. When the commit differs from the one it was built from (`DESK_BUILD_SHA`, baked into the image), it calls Dokploy's deploy API on ceres with `DOKPLOY_API_KEY`, once per commit. Dokploy then builds from the Dockerfile and replaces the container.
 
-Pressing Deploy in Dokploy stays the fallback, for when the desk itself is broken. UNVERIFIED: the deploy endpoint for a compose app. Dokploy documents `POST /api/application.deploy` for applications, and the compose equivalent must be confirmed before T9 relies on it.
+Pressing Deploy in Dokploy stays the fallback, for when the desk itself is broken. The deploy call for a compose app is `POST /api/compose.deploy` with an `x-api-key` header and the JSON body `{"composeId": "..."}` (confirmed from Dokploy's docs during T9).
 
 ### Installing the desk program
 
