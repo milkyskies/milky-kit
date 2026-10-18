@@ -27,6 +27,7 @@ async function setup(now = new Date("2026-10-16T14:00:00Z")) {
 		cwd: made.projectRoot,
 		processVariables: { FRONTDESK_NTFY_URL: "http://zeus:8090", FRONTDESK_NTFY_TOPIC: "abc123" },
 		startPid: START_PID,
+		platform: "linux",
 		isAlive: (pid) => made.liveProcesses.has(pid),
 		sendPing: () => async (message) => {
 			pings.push(message)

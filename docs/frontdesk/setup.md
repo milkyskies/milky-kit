@@ -15,6 +15,11 @@ Frontdesk is three parts. GitHub Issues hold every request, card and result. A c
    ln -s ~/Code/Projects/milky-kit ~/.claude/kit
    ```
    The rules and skills call the program at `~/.claude/kit/modules/frontdesk/bin/frontdesk`, so the link path must be exact.
+
+   On Windows, turn on Developer Mode (Settings → System → For developers) first: without it Windows refuses symlinks, and `mise run rules:link` cannot link a project's rules. Make the kit link a junction from PowerShell, since Git Bash's `ln -s` copies instead:
+   ```
+   New-Item -ItemType Junction -Path "$env:USERPROFILE\.claude\kit" -Target "$env:USERPROFILE\Code\Projects\milky-kit"
+   ```
 3. Install the plugin: `claude plugin install milky-kit@milkyskies`. If the marketplace is unknown, run `claude plugin marketplace add milkyskies/milky-kit` first.
 4. Create `~/.config/frontdesk/.env` with mode 600:
    ```

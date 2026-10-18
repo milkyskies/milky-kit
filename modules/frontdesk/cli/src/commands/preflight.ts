@@ -30,6 +30,7 @@ export type PreflightDependencies = {
 	cwd: string
 	processVariables: Record<string, string | undefined>
 	startPid: number
+	platform: NodeJS.Platform
 	isAlive: (pid: number) => boolean
 	sendPing: (slug: string | undefined) => PingSender
 }
@@ -41,6 +42,7 @@ function realDependencies(): PreflightDependencies {
 		cwd: process.cwd(),
 		processVariables: process.env,
 		startPid: process.pid,
+		platform: process.platform,
 		isAlive: processIsAlive,
 		sendPing: frontdeskPingSender,
 	}
@@ -93,6 +95,7 @@ export async function runPreflight(
 		projectRoot: await projectRootOf(dependencies),
 		variables: { ...(await userVariables(dependencies.home)), ...dependencies.processVariables },
 		startPid: dependencies.startPid,
+		platform: dependencies.platform,
 		isAlive: dependencies.isAlive,
 		now: context.now,
 	}
