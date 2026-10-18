@@ -38,7 +38,7 @@ Read the code for whatever area the sentence names. Look at how similar things a
 
 Draft the sections from `issues.md` off that reading. Most of what a questionnaire would ask is answerable by looking. Three of them can only be written well right now, while the code is in front of you:
 
-- **`## Area`** — the path globs this will touch. The desk coordinator routes before the work exists, so it cannot inspect a diff. Match the granularity of the project's `### Hard areas` and `### Review paths` in the `## desk` section of `CLAUDE.md`.
+- **`## Area`** — the path globs this will touch. The frontdesk coordinator routes before the work exists, so it cannot inspect a diff. Match the granularity of the project's `### Hard areas` and `### Review paths` in the `## frontdesk` section of `CLAUDE.md`.
 - **`## Out of scope`** — the neighbouring code an executor would plausibly wander into. You just saw what sits next to the change; name it here.
 - **`## Reference points`** — the analogous implementations you read to draft this, each with one line on what to take. You already opened these files. Writing the paths down costs nothing and does more for idiomatic output than a paragraph of description.
 

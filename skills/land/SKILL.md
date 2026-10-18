@@ -38,12 +38,12 @@ The mode determines which steps below run.
 ## Step 2: Close the issue (all modes)
 
 ```bash
-~/.claude/kit/modules/desk/bin/desk land <num>
+~/.claude/kit/modules/frontdesk/bin/frontdesk land <num>
 ```
 
-`desk land` checks that the linked PR is merged, moves the stage to `stage:done`, closes the issue with `Merged.` if it is still open, and releases the Orca worker and removes the worktree that the newest claim names. It is idempotent, so a second run changes nothing and exits 0. If the merged PR's body included `closes #<num>` GitHub already closed the issue, and `desk land` still moves the stage.
+`frontdesk land` checks that the linked PR is merged, moves the stage to `stage:done`, closes the issue with `Merged.` if it is still open, and releases the Orca worker and removes the worktree that the newest claim names. It is idempotent, so a second run changes nothing and exits 0. If the merged PR's body included `closes #<num>` GitHub already closed the issue, and `frontdesk land` still moves the stage.
 
-An exit 3 means an Orca cleanup step failed after the GitHub state was already correct. Report the stderr line and run `desk land <num>` again once Orca is reachable.
+An exit 3 means an Orca cleanup step failed after the GitHub state was already correct. Report the stderr line and run `frontdesk land <num>` again once Orca is reachable.
 
 ## Step 3: Mode-specific cleanup
 

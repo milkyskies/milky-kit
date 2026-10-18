@@ -14,7 +14,7 @@ run = "pnpm biome check --write"
 description = "Run all checks before push"
 depends = ["lint"]
 
-[tasks."desk:pack-check"]
-description = "Pack the desk program, install the tarball in a scratch project, import its parsers and run its bin"
-run = "modules/desk/cli/scripts/pack-check.sh"
+[tasks."frontdesk:pack-check"]
+description = "Pack the frontdesk program, install the tarball in a scratch project, import its parsers and run its bin"
+run = "modules/frontdesk/cli/scripts/pack-check.sh"
 

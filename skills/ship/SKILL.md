@@ -83,7 +83,7 @@ It runs **after** simplify so it reviews the code that will actually be merged r
 
 Commit any fixes.
 
-**The desk coordinator picks the flag for a desk worker** and names it in the worker's brief, from the project's review paths (`skills/desk/reference/review.md`). Do not add a default back to cover that case.
+**The frontdesk coordinator picks the flag for a frontdesk worker** and names it in the worker's brief, from the project's review paths (`skills/frontdesk/reference/review.md`). Do not add a default back to cover that case.
 
 ## Step 4: Quality gates
 
@@ -123,13 +123,13 @@ gh pr create --draft --base feature/#<epic-num>.<summary> \
 
 Get the issue title from `gh issue view <num> --json title --jq .title`. Do **not** hand-write the body here — `/write-pr` owns it, and guarantees the `closes #<num>` first line.
 
-Once the PR exists, move the issue to the check stage, unless a desk worker owns it. Look at the claim first:
+Once the PR exists, move the issue to the check stage, unless a frontdesk worker owns it. Look at the claim first:
 
 ```bash
-~/.claude/kit/modules/desk/bin/desk status <num>
+~/.claude/kit/modules/frontdesk/bin/frontdesk status <num>
 ```
 
-If `desk status` shows a claim, leave the stage alone. The worker ends its attempt with `desk done`, which checks the PR and moves the stage itself. If it shows no claim, move the stage by hand:
+If `frontdesk status` shows a claim, leave the stage alone. The worker ends its attempt with `frontdesk done`, which checks the PR and moves the stage itself. If it shows no claim, move the stage by hand:
 
 ```bash
 gh issue edit <num> --add-label stage:check --remove-label stage:working
