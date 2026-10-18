@@ -16,9 +16,9 @@ A card is one decision. Two decisions on one issue are two card files. `frontdes
 
 **Question:** <the one decision, in one or two sentences>
 
-**Options:**
-1. 提案 <option written out in full> - <consequence> → <say-back line>
-2. 提案 <option written out in full> - <consequence> → <say-back line>
+**Proposals:**
+1. <option written out in full> - <consequence> → <say-back line>
+2. <option written out in full> - <consequence> → <say-back line>
 
 **Recommendation:** <the recommended option, written out in full>
 
@@ -44,7 +44,7 @@ The **Kind** line is mandatory, and it decides the recommendation.
 
 Every option ends with `→ <say-back line>`: the answer said back in one line, such as `三時 = LHL. 〜時 follows 三`. The frontdesk shows that line after Milky picks the option and records it under `## Decisions`, so write it as the decision itself, in the words Milky would use. `frontdesk park` rejects an option without one, unless the card says its options cannot be enumerated.
 
-Options are numbered, each one is marked 提案 so no proposal reads as a settled call, and each is written out in full. Nobody refers to an option by its number or a letter. If you genuinely cannot enumerate options, say so in one line instead of padding the list.
+Options are numbered, a single `**Proposals:**` heading introduces them so no proposal reads as a settled call, and each is written out in full. Nobody refers to an option by its number or a letter. If you genuinely cannot enumerate options, say so in one line instead of padding the list.
 
 ## Propose the issue you needed
 

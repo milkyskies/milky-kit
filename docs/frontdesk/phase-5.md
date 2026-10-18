@@ -85,7 +85,7 @@ The stage, the pull request and the attempt count sit in one line under the titl
 
 ### A question card
 
-The card renders the comment's parts: background, `**Already checked:**`, `**Question:**`, the numbered 提案 options, "other…", and "💬 talk about this first". A code-detail card shows its `**Recommendation:**` line. A design card shows its `<details><summary>What would I pick?</summary>` block collapsed, the same way GitHub does, so the pick stays hidden until tapped.
+The card renders the comment's parts: background, `**Already checked:**`, `**Question:**`, the numbered proposals, "other…", and "💬 talk about this first". A code-detail card shows its `**Recommendation:**` line. A design card shows its `<details><summary>What would I pick?</summary>` block collapsed, the same way GitHub does, so the pick stays hidden until tapped.
 
 Tapping an option, or typing into "other…", calls `POST /api/requests/:owner/:repo/:n/answers`. The server writes the answer file and runs:
 

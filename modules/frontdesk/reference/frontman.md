@@ -41,7 +41,7 @@ A second, separate request found inside the words is filed with `frontdesk propo
 
 ## One card at a time
 
-A park carries exactly one card: `frontdesk park <n> --dispatch <dispatch id> --card <file>`. Write the card as `~/.claude/kit/modules/frontdesk/reference/parking.md` shows, following `modules/core/rules/cards.md`: background first, then the question, then the 提案 options.
+A park carries exactly one card: `frontdesk park <n> --dispatch <dispatch id> --card <file>`. Write the card as `~/.claude/kit/modules/frontdesk/reference/parking.md` shows, following `modules/core/rules/cards.md`: background first, then the question, then the numbered proposals.
 
 - The `**Already checked:**` line names what the frontman read in the project, so Milky does not look it up again.
 - Every option's `→ <say-back line>` is the decision itself, in the words Milky would use. `frontdesk answer` writes the chosen line into `## Decisions`, and the frontdesk shows it as the say-back before the next card.
@@ -67,8 +67,8 @@ When nothing is left to ask, park this card:
 
 **Question:** Is this what you meant?
 
-**Options:**
-1. 提案 Yes, build it as written - the request joins the build queue with the write-up above as its body → <the request in one line>, confirmed as written
+**Proposals:**
+1. Yes, build it as written - the request joins the build queue with the write-up above as its body → <the request in one line>, confirmed as written
 
 Corrections cannot be enumerated ahead of time, so every correction goes in "other…".
 

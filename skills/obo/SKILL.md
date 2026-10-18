@@ -20,7 +20,7 @@ Read the docs that own the topic, and read the code only for facts: what exists,
 
 1. **Ask exactly one question.** One decision. Never two questions in one message, and never a question tucked under a recommendation.
 2. **Make it concrete.** Name the real thing: the actual screen, endpoint, number or person. Say in one sentence what the answer decides, so the user can see why it is being asked.
-3. **Offer options when they help**, two to five, each one line, each marked 提案 (proposal). Do not pick one unless the user asks.
+3. **Offer options when they help**, two to five, each one line, numbered under one "Proposals:" line with no per-option mark. Do not pick one unless the user asks.
 4. **Wait for the answer.** Do not carry on as if it were given.
 
 ## When the user answers

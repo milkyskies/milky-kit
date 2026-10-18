@@ -53,7 +53,7 @@ decides the pattern for every 〜時 (一時, 二時, 四時 …).
 
 三時 (さんじ): which do you say?
 
-提案  ○ LHL   ○ HHL   ○ HLL   ○ other…
+Proposals:  ○ LHL   ○ HHL   ○ HLL   ○ other…
 💬 talk about this first
 ```
 
@@ -167,7 +167,7 @@ Never auto-decided, whatever the setting: merges, deletes, force pushes, reposit
 
 ### Cards
 
-- Background first, then the question, then proposals marked 提案. Never two decisions on one card.
+- Background first, then the question, then proposals under one "Proposals" heading. Never two decisions on one card.
 - Every card records what the agent already checked, so you do not repeat its search (idea from LoopKit).
 - An unanswered card resurfaces after a set time instead of vanishing (idea from Linear's stale sessions).
 - Never refer to an earlier option by a label like "B". Say the whole thing.

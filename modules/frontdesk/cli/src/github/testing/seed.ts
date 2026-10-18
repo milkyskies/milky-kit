@@ -83,8 +83,8 @@ The background sentence. Which retry count should the client use?
 **Already checked:** grep for retry in src found one constant.
 
 **Options:**
-1. 提案 three retries - matches the server. → Retries = 3, the same as the server.
-2. 提案 five retries - matches the old client. → Retries = 5, the same as the old client.
+1. three retries - matches the server. → Retries = 3, the same as the server.
+2. five retries - matches the old client. → Retries = 5, the same as the old client.
 
 ${closing}${extra}`
 }
