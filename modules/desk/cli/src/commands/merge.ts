@@ -16,8 +16,7 @@ import { autolandHeld } from "../merge/autoland.ts"
 import { type CiStatus, ciStatus } from "../merge/ci.ts"
 import { firstFailingLine, type Shell, spawnShell } from "../merge/shell.ts"
 import { type OrcaDeps, realOrcaDeps } from "../orca/deps.ts"
-import { markPinged } from "../ping/digest.ts"
-import { mergedMessage } from "../ping/merged.ts"
+import { markMergePinged, mergedMessage } from "../ping/merged.ts"
 import { type PingDeps, realPingDeps, sendPing } from "../ping/ntfy.ts"
 import { type DeskSection, landingOf } from "../project/section.ts"
 import { parseDuration } from "../watch/loop.ts"
@@ -399,7 +398,7 @@ async function holdForHuman(
 	})
 }
 
-// The merge has already happened, so a failed ping must not fail the command; the unmarked merge comment still reaches the digest.
+// The merge has already happened, so a failed ping must not fail the command; the digest still reports every automatic merge.
 async function pingMerged(
 	deps: MergeDeps,
 	context: Context,
@@ -425,7 +424,7 @@ async function pingMerged(
 		return
 	}
 
-	await markPinged(context.gh, context.repo, comment, context.now())
+	await markMergePinged(context.gh, context.repo, comment, context.now())
 }
 
 export async function runWith(deps: MergeDeps, args: string[], context: Context): Promise<void> {

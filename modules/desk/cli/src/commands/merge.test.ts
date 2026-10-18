@@ -1,12 +1,14 @@
 import { describe, expect, test } from "bun:test"
 
+import { readIssue } from "../github/issue.ts"
 import { composeComment } from "../github/markers.ts"
 import { claimBody, failureOf } from "../github/testing/seed.ts"
 import { FakeShell, failed, ok } from "../merge/testing.ts"
 import { FakeOrca } from "../orca/testing/fake-orca.ts"
+import { collectDigest, pingedAt } from "../ping/digest.ts"
+import { mergePingedAt } from "../ping/merged.ts"
 import { SECTION, worker } from "../reconcile/testing/fixtures.ts"
 import { makeListingHarness } from "../reconcile/testing/github.ts"
-import { pingedAt } from "../ping/digest.ts"
 import { runWith } from "./merge.ts"
 
 function setup(
@@ -345,11 +347,27 @@ describe("desk merge", () => {
 			const mergeComment = fake
 				.issue(12)
 				.comments.find((comment) => comment.body.startsWith("<!-- desk:merge"))
-			expect(mergeComment && pingedAt(mergeComment.body)).toBeDefined()
+			expect(mergeComment && mergePingedAt(mergeComment.body)).toBeDefined()
 
 			await failureOf(runWith(deps, ["12"], context))
 
 			expect(pings).toHaveLength(1)
+		})
+
+		test("auto_merge_still_appears_in_digest", async () => {
+			const { fake, context, deps } = setup(auto)
+
+			await runWith(deps, ["12"], context)
+
+			const issue = await readIssue(context.gh, context.repo, 12)
+			const digest = collectDigest([issue], new Date())
+
+			expect(digest.autoMerged.map((merged) => merged.issue)).toEqual([12])
+
+			const mergeComment = fake
+				.issue(12)
+				.comments.find((comment) => comment.body.startsWith("<!-- desk:merge"))
+			expect(mergeComment && pingedAt(mergeComment.body)).toBeUndefined()
 		})
 
 		test("a human merge sends no merge ping", async () => {
@@ -380,7 +398,7 @@ describe("desk merge", () => {
 			const mergeComment = fake
 				.issue(12)
 				.comments.find((comment) => comment.body.startsWith("<!-- desk:merge"))
-			expect(mergeComment && pingedAt(mergeComment.body)).toBeUndefined()
+			expect(mergeComment && mergePingedAt(mergeComment.body)).toBeUndefined()
 		})
 
 		test("auto_land_waits_for_milky_when_check_command_fails", async () => {

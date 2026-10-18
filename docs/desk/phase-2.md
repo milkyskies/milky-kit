@@ -491,7 +491,7 @@ The badge now shows the unread count.
 https://github.com/milkyskies/kansai-2/pull/45
 ```
 
-The ping goes out after the `desk:merge` comment is posted and before `desk land` runs, so a failing cleanup never costs the ping. Only after ntfy accepts it does `desk merge` append the `desk:pinged` marker to the merge comment. That marker is what keeps the merge from pinging twice, and it also takes the merge out of the digest's "merged by an agent" count, so Milky hears about one merge once. A failed send leaves the merge comment unmarked: the merge stays landed, `desk merge` prints the failure and exits 0, and the next digest counts the merge instead. A human-approved merge sends no merge ping, because Milky just typed `looks good`. A blocked automatic landing keeps its `desk:autoland` comment and sends nothing.
+The ping goes out after the `desk:merge` comment is posted and before `desk land` runs, so a failing cleanup never costs the ping. Only after ntfy accepts it does `desk merge` append a `<!-- desk:merge-pinged at=<iso> -->` line to the merge comment, which keeps the merge from pinging twice. The digest keys on `desk:pinged`, not on that line, so it still counts and links every automatic merge. A failed send leaves the merge comment unmarked: the merge stays landed, `desk merge` prints the failure and exits 0, and the digest still counts the merge. The ping is not retried. A human-approved merge sends no merge ping, because Milky just typed `looks good`. A blocked automatic landing keeps its `desk:autoland` comment and sends nothing.
 
 ### Milky's one-time setup
 
@@ -726,5 +726,4 @@ Each line can be overturned.
 - Auto-decided: `desk merge` polls the pushed commit's checks to completion with a 20-minute timeout when workflows exist and are not billing-blocked, over merging on `pending`, because right after the push no run has finished and a failing pull request would merge every time.
 - Auto-decided: idle detection reads `projection.stage.activity` from `worker-list`, over `orca worktree ps`, because both come from the same agent status and `worker-list` also covers remote workers.
 - Auto-decided: `desk digest` keeps a local `badlabels-pinged.json` so a `bad-labels` issue pings once per label set, over a marker on GitHub, because the issue has no comment to mark, and a lost file only repeats a ping.
-- Auto-decided: the per-merge ping reuses the `desk:pinged` marker on the merge comment, over a second marker, because the digest then counts a merge Milky was already pinged about zero times, and a merge whose ping failed still reaches the digest.
 - Auto-decided: the ntfy sender and the merge helpers live in `src/ping/` and `src/merge/`, over `src/watch/`, because neither belongs to the watchdog.
