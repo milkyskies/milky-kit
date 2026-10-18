@@ -38,7 +38,7 @@ Nothing on ceres is reachable from the internet (relayed).
 - **The server reads GitHub and parses it with the `desk` program's own parsers.** `modules/desk/cli/src/github/` holds the marker grammar, the derived values (owning claim, attempts, last human comment), the body sections and the card validator as pure functions with no I/O (`markers.ts`, `derive.ts`, `body.ts`, `cards.ts`, `parseIssue` in `issue.ts`). The server imports them, so a card means the same thing on the desk as in `desk reconcile`.
 - **The server changes state only through `desk` commands, or through a plain comment that a coordinator already knows how to read.** A comment the server posts carries no `<!-- desk:agent -->` marker, because it is Milky's words, and phase 2 treats every unmarked comment as the human's.
 - **The server never runs a coordinator command.** `desk claim`, `desk release`, `desk reopen`, `desk merge` and `desk land` stay with the coordinator. "Looks good" is a comment; the coordinator's `looks-good` mismatch then runs `desk merge`.
-- **The server gets the `desk` program as a package** (relayed): milky-kit publishes `modules/desk/cli` to GitHub Packages as a private package with a `desk` bin and its parsers exported, and the desk repository adds it with `pnpm add`. The desk pins a version, so a kit change cannot alter how the desk reads a card without a deploy.
+- **The server installs the `desk` program from git** (relayed): the desk repository runs `pnpm add "github:milkyskies/milky-kit#<commit>&path:modules/desk/cli"` against the public milky-kit repository, and the package carries a `desk` bin and its parsers as exports. The desk pins a milky-kit commit, so a kit change cannot alter how the desk reads a card without a deploy. Nothing is published, because GitHub Packages refused the first publish with `403 Forbidden ... Account has reached its billing limit`.
 
 ## 2. What each screen reads and writes
 
@@ -236,7 +236,7 @@ volumes:
 
 ### The image
 
-One multi-stage Dockerfile. The build stage runs `pnpm install` (which fetches the private `desk` package from GitHub Packages with a build-time token) and `vite build` for `apps/web`. The runtime stage is `oven/bun` with `gh` installed (the `desk` program shells out to it), the built web files, `apps/api`, and the `desk` package. The server passes its current installation token to every `desk` call as `GH_TOKEN`, which `gh` reads in place of a login.
+One multi-stage Dockerfile. The build stage runs `pnpm install` (which clones the public milky-kit repository at the pinned commit for the `desk` program, so the build needs `git` and no token) and `vite build` for `apps/web`. The runtime stage is `oven/bun` with `gh` installed (the `desk` program shells out to it), the built web files, `apps/api`, and the `desk` package. The server passes its current installation token to every `desk` call as `GH_TOKEN`, which `gh` reads in place of a login.
 
 ### Deploying a new version
 
@@ -244,9 +244,11 @@ GitHub Actions is locked on the account by a billing issue, and Milky's projects
 
 Pressing Deploy in Dokploy stays the fallback, for when the desk itself is broken. UNVERIFIED: the deploy endpoint for a compose app. Dokploy documents `POST /api/application.deploy` for applications, and the compose equivalent must be confirmed before T9 relies on it.
 
-### Publishing the desk package
+### Installing the desk program
 
-The same Actions lock means milky-kit cannot publish the `desk` package from CI. `mise run desk:publish [patch|minor|major]` runs the tests, the typecheck and `mise run desk:pack-check`, bumps the version of `modules/desk/cli`, and runs `pnpm publish` to `npm.pkg.github.com` from the local machine. It reads the token from `NODE_AUTH_TOKEN` and refuses to start without it. When the publish fails it restores `package.json`; after a success, commit the new version.
+The desk repository's `package.json` holds the dependency `"@milkyskies/desk": "github:milkyskies/milky-kit#<commit>&path:modules/desk/cli"`. Bumping the pin is a one-line change to that commit in the desk repository, and `pnpm install` rewrites the lockfile entry to match. Milky provides no package token: the milky-kit repository is public, so the install and the image build clone it without credentials.
+
+The syntax was run in a scratch project with pnpm 11.18 against a real milky-kit commit. The install put `src` in `node_modules/@milkyskies/desk` without the test files, a parser imported from `@milkyskies/desk/markers` and `@milkyskies/desk/result` under Bun, and the `desk` bin ran. UNVERIFIED: that the Docker build stage's base image has `git`, which pnpm needs to clone.
 
 The package is `@milkyskies/desk`. It ships TypeScript source, because the desk server runs on Bun, and its `desk` bin is `src/main.ts` with a Bun shebang. The exports are the pure modules the read model needs, and the desk repository imports them by these names:
 
@@ -260,16 +262,15 @@ The package is `@milkyskies/desk`. It ships TypeScript source, because the desk 
 | `@milkyskies/desk/result` | `parseResult` for a `desk:result` comment: summary, pictures, decisions used, how to see it |
 | `@milkyskies/desk/section` | the `## desk` section parser, for each repository's default ask |
 
-`mise run desk:pack-check` proves a build: it packs the tarball, installs it into a scratch project, imports a parser from each of these paths it relies on, and runs the installed bin.
+`mise run desk:pack-check` proves the package contents: it packs the tarball, installs it into a scratch project, imports a parser from each of these paths it relies on, and runs the installed bin. A git install packs the same files, so the check covers the `files`, `exports` and `bin` fields the pin depends on.
 
 ### What Milky provides
 
 1. The new repository (its name waits on the plan's naming question, plan section 11).
 2. The GitHub App: created, a private key generated, and installed on every repository in `DESK_REPOS` and on the desk repository.
-3. A **classic** personal access token with `read:packages` for the image build, and one with `write:packages` (it also reads) on the machine that publishes the `desk` package. GitHub's docs say "GitHub Packages only supports authentication using a personal access token (classic)", so a fine-grained token does not apply. The docs are silent on GitHub App installation tokens, so the image build does not rely on one.
-4. On the tailnet: MagicDNS and HTTPS certificates switched on, and a reusable auth key tagged `tag:desk` for the sidecar.
-5. In Dokploy: access to the private desk repository, the compose app with the values in section 8, and an API key for the self-deploy.
-6. On each coordinator machine, `DESK_APP_URL=https://desk.<tailnet>.ts.net` in `~/.config/desk/.env`.
+3. On the tailnet: MagicDNS and HTTPS certificates switched on, and a reusable auth key tagged `tag:desk` for the sidecar.
+4. In Dokploy: access to the private desk repository, the compose app with the values in section 8, and an API key for the self-deploy.
+5. On each coordinator machine, `DESK_APP_URL=https://desk.<tailnet>.ts.net` in `~/.config/desk/.env`.
 
 ## 6. New request
 
@@ -391,7 +392,7 @@ Phase 5 needs these in `modules/desk/cli`, because the server must not duplicate
 | `desk ready <n> --points <k>` | the frontman hands a written-up request to the build queue |
 | the `intake` reconcile mismatch, in `diff.ts` and the skill's mismatch table | the coordinator dispatches the frontman |
 | `desk digest` links to `DESK_APP_URL` when set | pings open the desk |
-| a package build of `modules/desk/cli` and `mise run desk:publish` | the desk repository depends on a pinned version |
+| the package manifest of `modules/desk/cli` (`exports`, `files`, `bin`) and `mise run desk:pack-check` | the desk repository installs a pinned commit from git |
 
 `desk status --json` already prints the stage, owning claim, attempts, last human comment and pull request; the server uses its own read model instead, so a home screen costs one query per repository, not one process per issue.
 
@@ -402,7 +403,7 @@ Models and efforts come from [routing.md](../../skills/desk/reference/routing.md
 | Task | Repository | Owns | Model | Effort | Routing row | Blocked by |
 |---|---|---|---|---|---|---|
 | T1 desk program changes | milky-kit | section 9 except the package: `intake`, `accept`, `drop`, card ids, `answer --card`, the say-back arrow, `claim --role frontman`, `ready`, the `intake` mismatch, the digest link, and their tests | Sonnet | medium | hard area: the marker grammar and stage moves are the state every coordinator trusts | none |
-| T2 publish the desk program | milky-kit | the package build, exported parsers, the `desk` bin, `mise run desk:publish`, the first private release to GitHub Packages | Sonnet | low | easy, no check command for a release | T1 |
+| T2 package the desk program | milky-kit | the exported parsers, the `desk` bin, `mise run desk:pack-check`, the install from git at a pinned commit | Sonnet | low | easy, no check command for a package | T1 |
 | T3 the server template and the repository | milky-kit, then desk | hono-api `db: none` variant and Bun runtime, then `/milky-kit:new` for the desk repository with react-spa, the Dockerfile, `docker-compose.yml`, `.env.example` and the `## desk` section | Sonnet | medium | no pattern to copy for a database-less variant | none |
 | T4 read model | desk | `apps/api/src/github/**`: App token minting, GraphQL per repository, parsing through the `desk` package, cache, full resync, the picture proxy, `GET /api/home` and `GET /api/requests/...`, with tests against recorded GraphQL responses | Sonnet | medium | hard area | T2, T3 |
 | T5 polling and live updates | desk | `apps/api/src/poll/**` and `/api/events`: conditional polls with ETags, the window start, targeted re-reads, back-off, SSE with heartbeat, the identity check | Sonnet | medium | hard area: async and background work | T4 |
@@ -457,5 +458,5 @@ The kansai-2 agent answered this design's cards. Each answer below is the agent'
 - **Overturning a small call** as `no, because …` on `stage:check` and a plain comment elsewhere.
 - **QUEUED and Later (n)** on home.
 - **hono-api with `db: none` on Bun** as the server stack.
-- **A private GitHub Packages release** of the `desk` program.
+- **Installing the `desk` program from the public milky-kit repository at a pinned commit**, over a GitHub Packages release. Milky decided this on 2026-10-18 after the first publish failed with the 403 billing error.
 - **Self-deploy by polling `main`.** The facts behind it (GitHub Actions locked by billing, and Milky's avoidance of paid CI) were relayed too.

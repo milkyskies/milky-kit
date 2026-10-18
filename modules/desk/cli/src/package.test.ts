@@ -6,7 +6,7 @@ import manifest from "../package.json"
 
 const root = join(import.meta.dir, "..")
 
-describe("the published package", () => {
+describe("the installable package", () => {
 	test("every exported parser path exists and imports", async () => {
 		for (const [name, target] of Object.entries(manifest.exports)) {
 			expect(existsSync(join(root, target)), `${name} -> ${target}`).toBe(true)
@@ -21,8 +21,9 @@ describe("the published package", () => {
 		expect(await Bun.file(path).text()).toStartWith("#!/usr/bin/env bun\n")
 	})
 
-	test("the package is scoped and points at GitHub Packages", () => {
+	test("the package is scoped and names the repository a git install clones", () => {
 		expect(manifest.name).toStartWith("@milkyskies/")
-		expect(manifest.publishConfig.registry).toBe("https://npm.pkg.github.com")
+		expect(manifest.repository.url).toBe("git+https://github.com/milkyskies/milky-kit.git")
+		expect(manifest.repository.directory).toBe("modules/desk/cli")
 	})
 })

@@ -18,6 +18,3 @@ depends = ["lint"]
 description = "Pack the desk program, install the tarball in a scratch project, import its parsers and run its bin"
 run = "modules/desk/cli/scripts/pack-check.sh"
 
-[tasks."desk:publish"]
-description = "Bump the desk program version (patch, minor or major) and publish it to GitHub Packages; needs NODE_AUTH_TOKEN with write:packages"
-run = "modules/desk/cli/scripts/publish.sh"
