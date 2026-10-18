@@ -1,5 +1,5 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises"
-import { dirname } from "node:path"
+import { dirname, join } from "node:path"
 
 import { isRecord, parseJson } from "../json.ts"
 import type { CheckResult } from "./types.ts"
@@ -66,11 +66,14 @@ export async function recordPing(path: string, key: string, now: Date): Promise<
 
 export type PingSender = (message: string) => Promise<void>
 
+export function frontdeskMainPath(): string {
+	return join(import.meta.dir, "..", "main.ts")
+}
+
 export function frontdeskPingSender(slug: string | undefined): PingSender {
 	return async (message) => {
-		const main = new URL("../main.ts", import.meta.url).pathname
 		const child = Bun.spawn(
-			[process.execPath, main, "ping", message, ...(slug ? ["--repo", slug] : [])],
+			[process.execPath, frontdeskMainPath(), "ping", message, ...(slug ? ["--repo", slug] : [])],
 			{
 				stdout: "pipe",
 				stderr: "pipe",
