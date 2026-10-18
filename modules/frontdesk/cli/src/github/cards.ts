@@ -2,7 +2,7 @@ import { AGENT_MARKER, formatMarker, parseMarker } from "./markers.ts"
 
 const KIND_LINE = /^\*\*Kind:\*\*\s*(code-detail|design)\s*$/m
 const CHECKED_LINE = /^\*\*Already checked:\*\*\s*\S/m
-const OPTIONS_HEADING = /^\*\*Options:\*\*/
+const OPTIONS_HEADING = /^\*\*Proposals:\*\*/
 const SECTION_END = /^(\*\*|_Stopped|<details>)/
 const OPTION_START = /^\s*\d+\.\s+\S/
 const SAY_BACK = /→[ \t]*(\S.*)$/m
