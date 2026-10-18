@@ -18,11 +18,18 @@ const ANCESTOR_LIMIT = 40
 export const PING_SETUP_FIX =
 	"set FRONTDESK_NTFY_URL and FRONTDESK_NTFY_TOPIC in ~/.config/frontdesk/.env, as docs/frontdesk/phase-2.md section 7 describes"
 
+// One query for the whole table: PowerShell takes most of a second to start, too slow to pay per ancestor.
+export const WINDOWS_PROCESS_TABLE =
+	'Get-CimInstance Win32_Process | ForEach-Object { "$($_.ProcessId) $($_.ParentProcessId) $($_.Name)" }'
+
 export async function findAncestorPid(
 	run: Runner,
 	startPid: number,
 	executable: string,
+	platform: NodeJS.Platform,
 ): Promise<number | undefined> {
+	if (platform === "win32") return findWindowsAncestorPid(run, startPid, executable)
+
 	let pid = startPid
 
 	for (let step = 0; step < ANCESTOR_LIMIT && pid > 1; step += 1) {
@@ -38,6 +45,50 @@ export async function findAncestorPid(
 	}
 
 	return undefined
+}
+
+// Windows has no ps that knows native pids: Git Bash's ps numbers processes its own way, and bun's process.pid
+// is the Windows one. The executable name carries ".exe", and Windows compares names case-insensitively.
+async function findWindowsAncestorPid(
+	run: Runner,
+	startPid: number,
+	executable: string,
+): Promise<number | undefined> {
+	const result = await run("powershell", [
+		"-NoProfile",
+		"-NonInteractive",
+		"-Command",
+		WINDOWS_PROCESS_TABLE,
+	])
+	if (result.status !== 0) return undefined
+
+	const table = new Map<number, { parent: number; name: string }>()
+	for (const line of result.stdout.split(/\r?\n/)) {
+		const match = /^\s*(\d+)\s+(\d+)\s+(.+?)\s*$/.exec(line)
+		if (match) table.set(Number(match[1]), { parent: Number(match[2]), name: match[3] ?? "" })
+	}
+
+	let pid = startPid
+	for (let step = 0; step < ANCESTOR_LIMIT && pid > 0; step += 1) {
+		const entry = table.get(pid)
+		if (entry === undefined) return undefined
+
+		const name = entry.name.toLowerCase().replace(/\.exe$/, "")
+		if (pid !== startPid && name === executable) return pid
+
+		pid = entry.parent
+	}
+
+	return undefined
+}
+
+// Claude Code exports its own pid to every shell it starts. Walking parents is the fallback, and on Windows it
+// can dead-end: Git Bash's exec replaces a process with a new one whose Windows parent has already exited.
+function claudePidFromVariables(environment: PreflightEnvironment): number | undefined {
+	const pid = Number(environment.variables.CLAUDE_PID)
+	if (!Number.isInteger(pid) || pid <= 0 || !environment.isAlive(pid)) return undefined
+
+	return pid
 }
 
 export async function checkPinnedMachine(
@@ -74,7 +125,9 @@ export async function checkCoordinatorLock(
 ): Promise<CheckResult[]> {
 	if (environment.repo === undefined) return []
 
-	const claudePid = await findAncestorPid(environment.run, environment.startPid, "claude")
+	const claudePid =
+		claudePidFromVariables(environment) ??
+		(await findAncestorPid(environment.run, environment.startPid, "claude", environment.platform))
 	if (claudePid === undefined) {
 		return [
 			fail(

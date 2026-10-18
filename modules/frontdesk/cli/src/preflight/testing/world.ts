@@ -162,6 +162,7 @@ export async function makeWorld(options: { section?: string } = {}): Promise<Wor
 			projectRoot,
 			variables: { FRONTDESK_NTFY_URL: "http://zeus:8090", FRONTDESK_NTFY_TOPIC: "abc123" },
 			startPid: START_PID,
+			platform: "linux",
 			isAlive: (pid) => liveProcesses.has(pid),
 			now: () => new Date("2026-10-16T14:00:00Z"),
 		}),

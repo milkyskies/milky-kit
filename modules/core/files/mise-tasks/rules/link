@@ -7,6 +7,10 @@ cd "$REPO_ROOT"
 
 KIT="$HOME/.claude/kit"
 
+# On Windows, mise runs this under Git Bash, whose ln -s quietly copies the file unless told to make a real
+# symlink. A copy goes stale when the kit moves on; nativestrict fails loudly instead (turn on Developer Mode).
+export MSYS=winsymlinks:nativestrict
+
 if [ ! -d "$KIT" ]; then
 	echo "No kit at $KIT. Symlink it first:  ln -s /path/to/milky-kit ~/.claude/kit" >&2
 	exit 1
