@@ -3,14 +3,17 @@ import { chmod, mkdir, rm, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 
 import { FAKE_REPO } from "../github/testing/fake-gh.ts"
+import { WINDOWS_PROCESS_TABLE } from "./coordinator-checks.ts"
 import { formatResult, runChecks } from "./run.ts"
 import {
+	CLAUDE_PID,
 	FRONTDESK_SECTION,
 	failed,
 	hostListJson,
 	makeWorld,
 	ok,
 	orcaStatusJson,
+	START_PID,
 	type World,
 } from "./testing/world.ts"
 import type { CheckResult } from "./types.ts"
@@ -369,6 +372,57 @@ describe("coordinator lock check", () => {
 		made.script.set("ps -o ppid=,comm= -p 3000", ok("1 launchd\n"))
 
 		const result = only(await runChecks(made.environment("coordinator")), "coordinator lock")
+
+		expect(result.ok).toBe(false)
+		expect(result.fix).toBe("run the coordinator from a claude session")
+	})
+
+	test("a live CLAUDE_PID takes the lock without walking parents", async () => {
+		const made = await world()
+		made.liveProcesses.add(7000)
+		const environment = made.environment("coordinator")
+
+		const result = only(
+			await runChecks({
+				...environment,
+				variables: { ...environment.variables, CLAUDE_PID: "7000" },
+			}),
+			"coordinator lock",
+		)
+
+		expect(result.detail).toBe("lock taken by pid 7000")
+		expect(made.calls.some((call) => call.startsWith("ps "))).toBe(false)
+	})
+
+	test("on Windows the claude.exe above the shell takes the lock", async () => {
+		const made = await world()
+		made.script.set(
+			`powershell -NoProfile -NonInteractive -Command ${WINDOWS_PROCESS_TABLE}`,
+			ok(
+				`${START_PID} 4500 bun.exe\r\n4500 ${CLAUDE_PID} bash.exe\r\n${CLAUDE_PID} 3000 Claude.exe\r\n`,
+			),
+		)
+
+		const result = only(
+			await runChecks({ ...made.environment("coordinator"), platform: "win32" }),
+			"coordinator lock",
+		)
+
+		expect(result.ok).toBe(true)
+		expect(result.detail).toBe(`lock taken by pid ${CLAUDE_PID}`)
+	})
+
+	test("on Windows no claude.exe above the shell fails the check", async () => {
+		const made = await world()
+		made.script.set(
+			`powershell -NoProfile -NonInteractive -Command ${WINDOWS_PROCESS_TABLE}`,
+			ok(`${START_PID} 4500 bun.exe\r\n4500 3000 pwsh.exe\r\n3000 1 explorer.exe\r\n`),
+		)
+
+		const result = only(
+			await runChecks({ ...made.environment("coordinator"), platform: "win32" }),
+			"coordinator lock",
+		)
 
 		expect(result.ok).toBe(false)
 		expect(result.fix).toBe("run the coordinator from a claude session")

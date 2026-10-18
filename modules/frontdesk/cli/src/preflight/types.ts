@@ -27,6 +27,7 @@ export type PreflightEnvironment = {
 	projectRoot: string
 	variables: Record<string, string | undefined>
 	startPid: number
+	platform: NodeJS.Platform
 	isAlive: (pid: number) => boolean
 	now: () => Date
 }
