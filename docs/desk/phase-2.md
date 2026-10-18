@@ -212,7 +212,7 @@ A comment the digest has pinged gets a trailing `<!-- desk:pinged at=<iso> -->` 
   6. Read the pushed commit's checks. No workflow configured: print `no CI configured`. Actions disabled or blocked by billing: print `CI blocked`. Either fact goes into the merge comment, and neither waits, because the local check in step 3 already ran (relayed). With workflows configured and not blocked, poll the pushed commit's check runs every 20 seconds until they finish. A failure exits 1, and so does `--ci-timeout` (default 20 minutes) running out on a run that started. When no check run exists for the commit after 2 minutes (path-filtered workflows), merge reports `no CI ran for this change` with `ci=none` and relies on the local check.
   7. Re-read the issue. Exit 1 unless it is still `stage:check` and the approval still holds (a `looks good` newer than the result, or an automatic landing with no human comment newer than the result), because the local check takes minutes and a `no, because …` may have arrived meanwhile.
   8. `gh pr merge <pr> --merge --match-head-commit <sha>`, where `<sha>` is the commit that passed the check, so a push after the check cannot merge unchecked. Merge commits only; the kit never squashes or rebases.
-  9. Post `<!-- desk:merge pr=<pr> ci=<passed|none|blocked> check=<passed> -->`, then run `desk land <n>`.
+  9. Post `<!-- desk:merge pr=<pr> ci=<passed|none|blocked> check=<passed> -->` (with `by=auto` for an automatic landing), send the merge ping described in section 7 for an automatic landing, then run `desk land <n>`.
   10. Remove the temporary worktree.
 
 **`desk land <n>`**
@@ -447,7 +447,7 @@ The watchdog polls GitHub once a minute, which is far under the rate limit:
 
 ## 7. Pings
 
-Two kinds only (plan): needs a decision, and done, check it. Preflight failures and a silent machine also ping, because each one stops work until Milky acts.
+Two kinds only (plan): needs a decision, and done, check it. Preflight failures and a silent machine also ping, because each one stops work until Milky acts. One more ping goes out for every request the desk merges itself (`land:auto`), described under "One ping per automatic merge".
 
 ### Transport
 
@@ -462,11 +462,11 @@ DESK_NTFY_TOPIC=
 DESK_NTFY_TOKEN=
 ```
 
-One more key is optional, read by `desk digest`: `DESK_APP_URL`, the desk's address. When it is set, the digest's link is that address instead of the GitHub search below; a link to one auto-merged request stays a GitHub link.
+One more key is optional, read by `desk digest`: `DESK_APP_URL`, the desk's address. When it is set, the digest's link is that address instead of the GitHub search below; a link to one auto-merged request stays a GitHub link, for the merges whose own ping failed.
 
 `modules/desk/cli/.env.example` lists the same keys. PushNotification is not a second path: it reaches the phone only when Remote Control is connected, and it skips itself when it judges the user is at the terminal (relayed: one reliable path beats two half-reliable ones).
 
-The message carries the project, the counts and the kinds, plus a link. Never an issue title or body, because the details sit behind GitHub's login (relayed):
+The digest message carries the project, the counts and the kinds, plus a link. Never an issue title or body, because the details sit behind GitHub's login (relayed); the merge ping below is the one exception, by Milky's later decision:
 
 ```
 kansai-2: 2 decisions waiting, 1 done to check
@@ -480,6 +480,18 @@ https://github.com/milkyskies/kansai-2/issues?q=is:open+label:stage:needs-you,st
 The pinged marker sits on GitHub, so a fresh coordinator never re-pings what the old one sent.
 
 **Resurfacing**: a card still on `stage:needs-you` 48 hours after its pinged marker counts again in the next digest, and its marker's time is updated. This is the resurfacing mechanism [the cards rule](../../modules/core/rules/cards.md) defers to a later phase, built here because the digest already holds everything it needs.
+
+### One ping per automatic merge
+
+When `desk merge` lands a `land:auto` request, Milky's phone gets one ping for that merge, as well as whatever the digest sends. The ping is the one place a title travels over ntfy, because Milky decided he wants to read what landed without opening GitHub. It carries the project, the request number and title, the one-line summary from the result comment, and the pull request link:
+
+```
+kansai-2: merged #12 Show the count on the badge
+The badge now shows the unread count.
+https://github.com/milkyskies/kansai-2/pull/45
+```
+
+The ping goes out after the `desk:merge` comment is posted and before `desk land` runs, so a failing cleanup never costs the ping. Only after ntfy accepts it does `desk merge` append a `<!-- desk:merge-pinged at=<iso> -->` line to the merge comment, which keeps the merge from pinging twice. The digest keys on `desk:pinged`, not on that line, so it still counts and links every automatic merge. A failed send leaves the merge comment unmarked: the merge stays landed, `desk merge` prints the failure and exits 0, and the digest still counts the merge. The ping is not retried. A human-approved merge sends no merge ping, because Milky just typed `looks good`. A blocked automatic landing keeps its `desk:autoland` comment and sends nothing.
 
 ### Milky's one-time setup
 

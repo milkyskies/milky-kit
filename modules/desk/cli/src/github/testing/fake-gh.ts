@@ -5,6 +5,7 @@ export type FakeComment = { id: string; databaseId: number; body: string; create
 
 export type FakeIssue = {
 	number: number
+	title: string
 	state: "OPEN" | "CLOSED"
 	labels: string[]
 	assignees: string[]
@@ -59,6 +60,7 @@ export class FakeGithub {
 
 	addIssue(overrides: Partial<FakeIssue> & { number: number }): FakeIssue {
 		const issue: FakeIssue = {
+			title: `Request ${overrides.number}`,
 			state: "OPEN",
 			labels: ["request", "autopilot", "stage:ready"],
 			assignees: [],
@@ -159,6 +161,7 @@ export class FakeGithub {
 				repository: {
 					issue: {
 						number: issue.number,
+						title: issue.title,
 						state: issue.state,
 						body: issue.body,
 						userContentEdits: { totalCount: issue.bodyEdits },

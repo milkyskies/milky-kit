@@ -9,6 +9,7 @@ const LIST_QUERY = `query($owner: String!, $name: String!, $states: [IssueState!
       pageInfo { hasNextPage endCursor }
       nodes {
         number
+        title
         state
         body
         labels(first: 50) { nodes { name } }
@@ -38,6 +39,7 @@ function openNumbers(value: unknown, key: string): number[] {
 function parseNode(node: unknown): IssueState {
 	return {
 		number: readNumber(node, "number"),
+		title: readString(node, "title"),
 		open: readString(node, "state") === "OPEN",
 		body: readString(node, "body"),
 		bodyEdits: readNumber(readField(node, "userContentEdits"), "totalCount"),

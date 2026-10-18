@@ -1,9 +1,12 @@
 import { describe, expect, test } from "bun:test"
 
+import { readIssue } from "../github/issue.ts"
 import { composeComment } from "../github/markers.ts"
 import { claimBody, failureOf } from "../github/testing/seed.ts"
 import { FakeShell, failed, ok } from "../merge/testing.ts"
 import { FakeOrca } from "../orca/testing/fake-orca.ts"
+import { collectDigest, pingedAt } from "../ping/digest.ts"
+import { mergePingedAt } from "../ping/merged.ts"
 import { SECTION, worker } from "../reconcile/testing/fixtures.ts"
 import { makeListingHarness } from "../reconcile/testing/github.ts"
 import { runWith } from "./merge.ts"
@@ -22,6 +25,8 @@ function setup(
 	const fakeOrca = new FakeOrca()
 	const shell = new FakeShell()
 	const clock: { ms: number; onSleep: (() => void) | undefined } = { ms: 0, onSleep: undefined }
+	const pings: string[] = []
+	const ntfy = { status: 200 }
 	const { fake } = harness
 
 	fake.pullRequests.set(
@@ -42,11 +47,19 @@ function setup(
 	)
 	fake.addIssue({
 		number: 12,
+		title: "Show the count on the badge",
 		labels: ["request", "autopilot", "stage:check", ...(options.labels ?? [])],
 		pullRequests: [45],
 	})
 	fake.addComment(12, claimBody("c_1", "ctx_y"))
-	fake.addComment(12, composeComment("result", { claim: "c_1", pr: "45" }, "## Done, check it"))
+	fake.addComment(
+		12,
+		composeComment(
+			"result",
+			{ claim: "c_1", pr: "45" },
+			"## Done, check it\n\nThe badge now shows the unread count.\n\n**Worker says:** fine",
+		),
+	)
 	if ("humanComment" in options) {
 		if (options.humanComment !== undefined) fake.addComment(12, options.humanComment)
 	} else fake.addComment(12, "Looks good, merge it")
@@ -70,9 +83,17 @@ function setup(
 			clock.onSleep?.()
 		},
 		nowMs: () => clock.ms,
+		ping: {
+			loadEnv: async () => ({ DESK_NTFY_URL: "http://ceres:8091", DESK_NTFY_TOPIC: "abc123" }),
+			post: async (_url: string, _headers: Record<string, string>, body: string) => {
+				pings.push(body)
+
+				return ntfy.status
+			},
+		},
 	}
 
-	return { ...harness, fakeOrca, shell, deps, clock }
+	return { ...harness, fakeOrca, shell, deps, clock, pings, ntfy }
 }
 
 describe("desk merge", () => {
@@ -312,6 +333,72 @@ describe("desk merge", () => {
 			expect(mergeComment?.body).toStartWith(
 				"<!-- desk:merge pr=45 ci=none check=passed by=auto -->",
 			)
+		})
+
+		test("auto_merge_pings_once", async () => {
+			const { fake, context, pings, deps } = setup(auto)
+
+			await runWith(deps, ["12"], context)
+
+			expect(pings).toEqual([
+				"kit: merged #12 Show the count on the badge\nThe badge now shows the unread count.\nhttps://github.com/milkyskies/kit/pull/45",
+			])
+
+			const mergeComment = fake
+				.issue(12)
+				.comments.find((comment) => comment.body.startsWith("<!-- desk:merge"))
+			expect(mergeComment && mergePingedAt(mergeComment.body)).toBeDefined()
+
+			await failureOf(runWith(deps, ["12"], context))
+
+			expect(pings).toHaveLength(1)
+		})
+
+		test("auto_merge_still_appears_in_digest", async () => {
+			const { fake, context, deps } = setup(auto)
+
+			await runWith(deps, ["12"], context)
+
+			const issue = await readIssue(context.gh, context.repo, 12)
+			const digest = collectDigest([issue], new Date())
+
+			expect(digest.autoMerged.map((merged) => merged.issue)).toEqual([12])
+
+			const mergeComment = fake
+				.issue(12)
+				.comments.find((comment) => comment.body.startsWith("<!-- desk:merge"))
+			expect(mergeComment && pingedAt(mergeComment.body)).toBeUndefined()
+		})
+
+		test("a human merge sends no merge ping", async () => {
+			const { context, pings, deps } = setup()
+
+			await runWith(deps, ["12"], context)
+
+			expect(pings).toHaveLength(0)
+		})
+
+		test("a blocked auto landing sends no merge ping", async () => {
+			const { context, pings, shell, deps } = setup({ ...auto, check: "bun test" })
+			shell.on("sh -c bun test", failed("1 fail\n"))
+
+			await runWith(deps, ["12"], context)
+
+			expect(pings).toHaveLength(0)
+		})
+
+		test("an unreachable ntfy leaves the merge landed and the comment unmarked for the digest", async () => {
+			const { fake, context, ntfy, deps } = setup(auto)
+			ntfy.status = 503
+
+			await runWith(deps, ["12"], context)
+
+			expect(fake.issue(12).state).toBe("CLOSED")
+
+			const mergeComment = fake
+				.issue(12)
+				.comments.find((comment) => comment.body.startsWith("<!-- desk:merge"))
+			expect(mergeComment && mergePingedAt(mergeComment.body)).toBeUndefined()
 		})
 
 		test("auto_land_waits_for_milky_when_check_command_fails", async () => {
