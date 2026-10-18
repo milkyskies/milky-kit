@@ -15,7 +15,7 @@ import {
 	returnStage,
 } from "../github/derive.ts"
 import { type IssueState, readIssue } from "../github/issue.ts"
-import { AGENT_MARKER, formatMarker } from "../github/markers.ts"
+import { AGENT_MARKER, formatMarker, linesAfterMarker } from "../github/markers.ts"
 import { moveStage, postComment, releaseClaims } from "../github/writes.ts"
 import { requireStage, verifyClaimReleased, verifyStage } from "../guards.ts"
 
@@ -153,7 +153,7 @@ function answerTo(comments: readonly ParsedComment[], cardId: string): string | 
 	)
 	if (posted === undefined) return undefined
 
-	return posted.body.split("\n").slice(1).join("\n").trim()
+	return linesAfterMarker(posted.body).join("\n").trim()
 }
 
 function answerComment(target: OpenCard | undefined, answer: string): string {

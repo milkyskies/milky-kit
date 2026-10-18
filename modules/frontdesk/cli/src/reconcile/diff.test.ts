@@ -32,6 +32,20 @@ describe("frontdesk reconcile", () => {
 		expect(mismatch).toMatchObject({ issue: 12, code: "dispatch", machine: "Minerva", attempts: 0 })
 	})
 
+	test("issue_assigned_to_someone_else_is_not_dispatched", () => {
+		const elsewhere = issue(12, READY, [], { assignees: ["friend"] })
+		const mine = issue(13, READY, [], { assignees: ["milkyskies"] })
+		const unassigned = issue(14, READY)
+		const intake = issue(15, ["request", "stage:intake", "priority:P2"], [], {
+			assignees: ["friend"],
+		})
+
+		expect(codes({ issues: [elsewhere, mine, unassigned, intake] })).toEqual([
+			[13, "dispatch"],
+			[14, "dispatch"],
+		])
+	})
+
 	test("dispatch: starts the worker in a new worktree when the request has none", () => {
 		const [mismatch] = reconcile(input({ issues: [issue(16, READY)] }))
 

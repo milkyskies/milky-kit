@@ -50,5 +50,6 @@ export type ReconcileInput = {
 	worktrees: WorktreeRow[]
 	hosts: Host[]
 	section: FrontdeskSection
+	login: string
 	now: Date
 }

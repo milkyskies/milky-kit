@@ -51,7 +51,7 @@ describe("frontdesk done", () => {
 		expect(issue.labels).toContain("stage:check")
 
 		const result = issue.comments.at(-1)?.body ?? ""
-		expect(result).toStartWith("<!-- frontdesk:result claim=c_first1 pr=45 -->\n## Done, check it")
+		expect(result).toStartWith("<!-- frontdesk:result claim=c_first1 pr=45 -->\n**Agent:**\n## Done, check it")
 		expect(result).toContain("Login now sends a magic link.")
 		expect(result).toContain(`![picture](${PR_URL})`)
 		expect(result).toContain("**See it yourself:** `mise run dev`, then open /login")

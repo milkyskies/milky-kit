@@ -68,6 +68,13 @@ describe("parseResult reads what frontdesk done wrote", () => {
 		})
 	})
 
+	test("a result starts with the visible Agent line and the summary is still the first sentence", async () => {
+		const comment = await resultOf(["--no-picture", "a backend change"], "## Problem\n\nP.\n")
+
+		expect(comment.body.split("\n")[1]).toBe("**Agent:**")
+		expect(parseResult(comment)?.summary).toBe("Login now sends a magic link.")
+	})
+
 	test("a result with no picture and no decisions", async () => {
 		const comment = await resultOf(["--no-picture", "a backend change"], "## Problem\n\nP.\n")
 

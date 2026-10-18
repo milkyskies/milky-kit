@@ -16,7 +16,7 @@ describe("frontdesk fail", () => {
 		const issue = fake.issue(12)
 		expect(issue.labels).toContain("stage:ready")
 		expect(issue.comments.at(-1)?.body).toStartWith(
-			"<!-- frontdesk:failed claim=c_first1 attempt=1 -->\nTried A",
+			"<!-- frontdesk:failed claim=c_first1 attempt=1 -->\n**Agent:**\nTried A",
 		)
 		expect(owningClaim(parseComments(issue.comments))).toBeUndefined()
 	})

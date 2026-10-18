@@ -1,4 +1,4 @@
-import { AGENT_MARKER, formatMarker, parseMarker } from "./markers.ts"
+import { AGENT_LINE, AGENT_MARKER, formatMarker, linesAfterMarker, parseMarker } from "./markers.ts"
 
 const KIND_LINE = /^\*\*Kind:\*\*\s*(code-detail|design)\s*$/m
 const CHECKED_LINE = /^\*\*Already checked:\*\*\s*\S/m
@@ -102,12 +102,10 @@ export function cardIdFor(claimId: string, position: number): string {
 }
 
 export function canonicalCard(card: string, claimId: string, position: number): string {
-	const rest = card
-		.split("\n")
-		.slice(1)
+	const rest = linesAfterMarker(card)
 		.filter((line) => line.trim() !== AGENT_MARKER)
 		.join("\n")
 		.trim()
 
-	return `${formatMarker("decision", { claim: claimId, card: cardIdFor(claimId, position) })}\n${rest}\n\n${AGENT_MARKER}\n`
+	return `${formatMarker("decision", { claim: claimId, card: cardIdFor(claimId, position) })}\n${AGENT_LINE}\n${rest}\n\n${AGENT_MARKER}\n`
 }

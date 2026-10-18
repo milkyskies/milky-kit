@@ -1,4 +1,5 @@
 import type { ParsedComment } from "./derive.ts"
+import { linesAfterMarker } from "./markers.ts"
 
 export type ParsedResult = {
 	pr: number | undefined
@@ -36,7 +37,7 @@ function decisionLines(lines: readonly string[]): string[] {
 export function parseResult(comment: ParsedComment): ParsedResult | undefined {
 	if (comment.marker?.kind !== "result") return undefined
 
-	const lines = comment.body.split("\n").slice(1)
+	const lines = linesAfterMarker(comment.body)
 	const heading = lines.findIndex((line) => line.startsWith("## "))
 	const afterHeading = lines.slice(heading + 1)
 	const summary = afterHeading.find((line) => line.trim() !== "")?.trim() ?? ""

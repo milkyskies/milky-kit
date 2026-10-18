@@ -62,6 +62,16 @@ The options cannot be enumerated because the name is free text.
 		expect(sayBackLines(card)).toEqual([])
 	})
 
+	test("a card carries the visible Agent line and still parses clean", () => {
+		const posted = canonicalCard(decisionCard("code-detail"), "c_first1", 2)
+		const again = canonicalCard(posted, "c_first1", 2)
+
+		expect(posted.split("\n")[1]).toBe("**Agent:**")
+		expect(again).toBe(posted)
+		expect(cardProblems(posted)).toEqual(cardProblems(decisionCard("code-detail")))
+		expect(sayBackLines(posted)).toEqual(sayBackLines(decisionCard("code-detail")))
+	})
+
 	test("the card id lands on the decision marker beside the claim", () => {
 		const posted = canonicalCard(decisionCard("code-detail"), "c_first1", 2)
 

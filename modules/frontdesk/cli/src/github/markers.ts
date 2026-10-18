@@ -1,4 +1,5 @@
 export const AGENT_MARKER = "<!-- frontdesk:agent -->"
+export const AGENT_LINE = "**Agent:**"
 
 export type Marker = { kind: string; attrs: Record<string, string> }
 
@@ -39,5 +40,12 @@ export function isAgentBody(body: string): boolean {
 }
 
 export function composeComment(kind: string, attrs: Record<string, string>, text: string): string {
-	return `${formatMarker(kind, attrs)}\n${text.trim()}\n\n${AGENT_MARKER}\n`
+	return `${formatMarker(kind, attrs)}\n${AGENT_LINE}\n${text.trim()}\n\n${AGENT_MARKER}\n`
+}
+
+export function linesAfterMarker(body: string): string[] {
+	return body
+		.split("\n")
+		.slice(1)
+		.filter((line) => line.trim() !== AGENT_LINE)
 }

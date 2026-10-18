@@ -291,12 +291,19 @@ function unclaimedWorker(
 	}
 }
 
+function assignedToSomeoneElse(input: ReconcileInput, issue: IssueState): boolean {
+	return issue.assignees.length > 0 && !issue.assignees.includes(input.login)
+}
+
 function classifyIntake(
 	input: ReconcileInput,
 	issue: IssueState,
 	workers: Worker[],
 ): Mismatch | undefined {
-	const eligible = isUnclaimedIntake(issue) && openCards(issue.comments).length === 0
+	const eligible =
+		isUnclaimedIntake(issue) &&
+		openCards(issue.comments).length === 0 &&
+		!assignedToSomeoneElse(input, issue)
 	if (!eligible) return undefined
 
 	if (workers.some((worker) => !isGone(worker))) return unclaimedWorker(input, issue, workers)
@@ -325,6 +332,7 @@ function classifyReady(
 	workers: Worker[],
 ): Mismatch | undefined {
 	const eligible =
+		!assignedToSomeoneElse(input, issue) &&
 		issue.labels.includes("autopilot") &&
 		issue.openBlockers.length === 0 &&
 		issue.openSubIssues.length === 0

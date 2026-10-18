@@ -98,6 +98,8 @@ export function withListing(fake: FakeGithub) {
 			return "{}"
 		}
 
+		if (group === "api" && args[1] === "user") return "milkyskies\n"
+
 		if (group === "api") {
 			const route = args.find((arg) => arg.startsWith("repos/")) ?? ""
 			const tail = route.replace(`repos/${FAKE_REPO}/`, "")

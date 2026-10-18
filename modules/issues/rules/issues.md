@@ -86,6 +86,8 @@ Add and remove calls can hit secondary rate limits when sent in quick succession
 
 An autonomous agent may only claim an issue that is **opted in explicitly**. The issue must be `stage:ready`, unblocked, and carry the `autopilot` label: `gh issue list --label stage:ready --label autopilot`. Adding the label is a deliberate human act - consent per issue.
 
+An issue assigned to anyone other than the coordinator's own GitHub login is not eligible, even with `autopilot`; unassigned issues and issues assigned to that login stay eligible.
+
 **Opt-in, never opt-out.** Forgetting the label means an agent leaves the issue alone. A `no-autopilot` label would mean forgetting it lets an agent run unattended on work nobody vetted, which is the wrong way round.
 
 **The label is the whole gate.** Consent and specification are different questions and only the first is the tracker's to enforce. Whether an issue says enough to finish is a judgement the agent makes **while reading it**, and it already has somewhere to put that answer: the decision-comment protocol in `frontdesk.md` parks an underspecified issue on `stage:needs-you`, states the question with numbered options, and proposes the issue body it needed. That is strictly more useful than being filtered out before anyone looked - you get a draft spec instead of silence.

@@ -27,7 +27,8 @@ export async function gatherInput(
 		.map((task) => issueNumberOfTitle(task.title))
 		.filter((number) => number !== undefined)
 
+	const login = (await gh(["api", "user", "--jq", ".login"])).trim()
 	const issues = await loadIssues(gh, repo, numbers)
 
-	return { issues, workers, tasks, worktrees, hosts, section, now }
+	return { issues, workers, tasks, worktrees, hosts, section, login, now }
 }

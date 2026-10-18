@@ -121,6 +121,7 @@ export function input(overrides: Partial<ReconcileInput> = {}): ReconcileInput {
 		worktrees: [],
 		hosts: HOSTS,
 		section: SECTION,
+		login: "milkyskies",
 		now: NOW,
 		...overrides,
 	}
