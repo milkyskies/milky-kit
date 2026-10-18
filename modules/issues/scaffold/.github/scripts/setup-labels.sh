@@ -40,5 +40,7 @@ create_label type:refactor "e99695" "Internals move, behaviour identical"
 
 create_label autopilot "0e8a16" "An autonomous agent may claim this issue"
 
+create_label undecided "BFD4F2" "Not decided yet; circle back later"
+
 create_label land:check "fbca04" "A human comments looks good before the pull request merges"
 create_label land:auto "0e8a16" "The frontdesk merges the pull request itself once its checks pass"
