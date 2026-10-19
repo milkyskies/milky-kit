@@ -12,7 +12,7 @@ import { parseResult } from "../github/result.ts"
 import { postComment } from "../github/writes.ts"
 import { requireStage } from "../guards.ts"
 import { parseJson, readField, readString } from "../json.ts"
-import { autolandHeld } from "../merge/autoland.ts"
+import { autolandHeld, resultHead } from "../merge/autoland.ts"
 import { type CiStatus, ciStatus } from "../merge/ci.ts"
 import { firstFailingLine, type Shell, spawnShell } from "../merge/shell.ts"
 import { type OrcaDeps, realOrcaDeps } from "../orca/deps.ts"
@@ -37,6 +37,8 @@ class Blocked extends Error {
 }
 
 type Approval = { prNumber: number; resultIndex: number; by: "human" | "auto" }
+
+type Attempt = { head: string | undefined }
 
 export type MergeDeps = OrcaDeps & {
 	shell: Shell
@@ -125,12 +127,15 @@ function requireApproval(issue: IssueState, number: number, section: FrontdeskSe
 	if (answered && LOOKS_GOOD.test(human.body.trim())) return { prNumber, resultIndex, by: "human" }
 
 	const landsAutomatically = !answered && landingOf(issue.labels, section) === "land:auto"
-	if (landsAutomatically && autolandHeld(issue.comments, resultIndex)) {
+	if (
+		landsAutomatically &&
+		autolandHeld(issue.comments, resultIndex, resultHead(issue, prNumber))
+	) {
 		throw refusal(
 			"merge",
 			number,
 			"an automatic landing was already blocked for this result",
-			"a new result, or a human looks good",
+			"a new result, a new push to the pull request, or a human looks good",
 		)
 	}
 
@@ -217,11 +222,12 @@ async function verifyInWorktree(
 		issue: IssueState
 		approval: Approval
 		section: FrontdeskSection
+		attempt: Attempt
 		ciTimeout: string
 		checkTimeout: string
 	},
 ): Promise<Verified> {
-	const { number, headRef, worktree, issue, approval, section } = input
+	const { number, headRef, worktree, issue, approval, section, attempt } = input
 	const { check } = section.coordinator
 
 	const merged = await deps.shell(
@@ -265,6 +271,8 @@ async function verifyInWorktree(
 
 	await git(deps, number, ["push", "origin", `HEAD:${headRef}`], worktree)
 	const checkedSha = await git(deps, number, ["rev-parse", "HEAD"], worktree)
+	// The push above moves the pull request head, so a block from here on must record the pushed head or the attempt's own push would earn a retry.
+	attempt.head = checkedSha
 
 	const timeout = parseDuration(input.ciTimeout)
 	const ci = await waitForCi(deps, context, checkedSha, await deps.hasWorkflows(worktree), timeout)
@@ -282,12 +290,13 @@ async function verifyAndMerge(
 		before: IssueState
 		approval: Approval
 		section: FrontdeskSection
+		attempt: Attempt
 		worktreeDir: string | undefined
 		ciTimeout: string
 		checkTimeout: string
 	},
 ): Promise<Landing> {
-	const { number, before, approval, section } = input
+	const { number, before, approval, section, attempt } = input
 	const { gh, repo } = context
 	const { prNumber } = approval
 
@@ -310,10 +319,11 @@ async function verifyAndMerge(
 			"--repo",
 			repoSlug(repo),
 			"--json",
-			"state,headRefName,isDraft",
+			"state,headRefName,headRefOid,isDraft",
 		]),
 	)
 	const headRef = readString(pr, "headRefName")
+	attempt.head = readString(pr, "headRefOid")
 	if (readString(pr, "state") !== "OPEN") {
 		throw new Blocked("merge", `pull request #${prNumber} is not open`, "an open pull request")
 	}
@@ -344,6 +354,7 @@ async function verifyAndMerge(
 			issue: before,
 			approval,
 			section,
+			attempt,
 			ciTimeout: input.ciTimeout,
 			checkTimeout: input.checkTimeout,
 		})
@@ -379,16 +390,20 @@ async function holdForHuman(
 	context: Context,
 	number: number,
 	prNumber: number,
+	attempt: Attempt,
 	blocked: { check: BlockedCheck; got: string },
 ): Promise<void> {
+	const { head } = attempt
+	const retry =
+		head === undefined ? "" : " A new push to the pull request tries again automatically."
 	await postComment(
 		context.gh,
 		context.repo,
 		number,
 		composeComment(
 			"autoland",
-			{ pr: String(prNumber), blocked: blocked.check },
-			`Not landed automatically: ${blocked.got}.\n\nThe request stays at \`stage:check\` for a human. Comment \`looks good\` to merge it anyway.`,
+			{ pr: String(prNumber), blocked: blocked.check, ...(head === undefined ? {} : { head }) },
+			`Not landed automatically: ${blocked.got}.\n\nThe request stays at \`stage:check\` for a human. Comment \`looks good\` to merge it anyway.${retry}`,
 		),
 	)
 	emit(context, `#${number} waits for a human: ${blocked.got}`, {
@@ -446,6 +461,7 @@ export async function runWith(deps: MergeDeps, args: string[], context: Context)
 	const before = await readIssue(gh, repo, number)
 	const approval = requireApproval(before, number, section)
 	const { prNumber } = approval
+	const attempt: Attempt = { head: resultHead(before, prNumber) }
 
 	let landing: Landing
 	try {
@@ -454,6 +470,7 @@ export async function runWith(deps: MergeDeps, args: string[], context: Context)
 			before,
 			approval,
 			section,
+			attempt,
 			worktreeDir: values["worktree-dir"],
 			ciTimeout: values["ci-timeout"] ?? DEFAULT_CI_TIMEOUT,
 			checkTimeout: values["check-timeout"] ?? DEFAULT_CHECK_TIMEOUT,
@@ -462,7 +479,7 @@ export async function runWith(deps: MergeDeps, args: string[], context: Context)
 		if (error instanceof Blocked) {
 			if (approval.by === "human") throw refusal("merge", number, error.got, error.expected)
 
-			return holdForHuman(context, number, prNumber, error)
+			return holdForHuman(context, number, prNumber, attempt, error)
 		}
 
 		// A refusal is a person's answer arriving mid-run; every other failure on an automatic landing would otherwise repeat on each pass.
@@ -471,7 +488,7 @@ export async function runWith(deps: MergeDeps, args: string[], context: Context)
 
 		const got = error instanceof Error ? error.message : String(error)
 
-		return holdForHuman(context, number, prNumber, { check: "error", got })
+		return holdForHuman(context, number, prNumber, attempt, { check: "error", got })
 	}
 
 	const { ci, check } = landing

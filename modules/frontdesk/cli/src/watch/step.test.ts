@@ -323,7 +323,13 @@ describe("frontdesk watch", () => {
 
 	test("merged: a linked pull request that newly merged", async () => {
 		const h = new Harness()
-		const open = { number: 45, state: "OPEN", isDraft: false, mergeable: "MERGEABLE" }
+		const open = {
+			number: 45,
+			state: "OPEN",
+			isDraft: false,
+			mergeable: "MERGEABLE",
+			headSha: "abc",
+		}
 		h.issues = [issue(12, ["request", "stage:check"], [RESULT], { pullRequests: [open] })]
 		await h.poll()
 		h.advance(1)

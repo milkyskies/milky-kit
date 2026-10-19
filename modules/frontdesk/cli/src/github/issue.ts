@@ -19,7 +19,7 @@ const ISSUE_QUERY = `query($owner: String!, $name: String!, $number: Int!, $befo
       blockedBy(first: 20) { nodes { number state } }
       subIssues(first: 50) { nodes { number state } }
       closedByPullRequestsReferences(first: 20, includeClosedPrs: true) {
-        nodes { number state isDraft mergeable }
+        nodes { number state isDraft mergeable headRefOid }
       }
     }
   }
@@ -30,6 +30,7 @@ export type LinkedPullRequest = {
 	state: string
 	isDraft: boolean
 	mergeable: string
+	headSha: string
 }
 
 export type IssueState = {
@@ -113,6 +114,7 @@ export function parseIssue(raw: string): IssueState {
 			state: readString(node, "state"),
 			isDraft: readBoolean(node, "isDraft"),
 			mergeable: readString(node, "mergeable"),
+			headSha: readString(node, "headRefOid"),
 		})),
 	}
 }

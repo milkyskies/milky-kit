@@ -390,6 +390,60 @@ describe("frontdesk reconcile", () => {
 		expect(codes({ issues: retried })).toEqual([[12, "auto-land"]])
 	})
 
+	test("auto-land: a blocked attempt holds for the head it tested, a new push tries again", () => {
+		const blocked = composeComment(
+			"autoland",
+			{ pr: "45", blocked: "check", head: "abc" },
+			"Not landed.",
+		)
+		const atHead = (headSha: string) =>
+			issue(12, [...CHECK, "land:auto"], [claim("c_1", "ctx_y"), result("c_1"), blocked], {
+				pullRequests: [
+					{ number: 45, state: "OPEN", isDraft: false, mergeable: "MERGEABLE", headSha },
+				],
+			})
+
+		expect(codes({ issues: [atHead("abc")] })).toEqual([])
+		expect(codes({ issues: [atHead("def")] })).toEqual([[12, "auto-land"]])
+	})
+
+	test("auto-land: a blocked attempt that recorded no head keeps holding after a push", () => {
+		const blocked = composeComment("autoland", { pr: "45", blocked: "check" }, "Not landed.")
+		const pushed = issue(
+			12,
+			[...CHECK, "land:auto"],
+			[claim("c_1", "ctx_y"), result("c_1"), blocked],
+			{
+				pullRequests: [
+					{ number: 45, state: "OPEN", isDraft: false, mergeable: "MERGEABLE", headSha: "def" },
+				],
+			},
+		)
+
+		expect(codes({ issues: [pushed] })).toEqual([])
+	})
+
+	test("auto-land: only the head of the pull request the result names counts as a new push", () => {
+		const blocked = composeComment(
+			"autoland",
+			{ pr: "45", blocked: "check", head: "abc" },
+			"Not landed.",
+		)
+		const otherPushed = issue(
+			12,
+			[...CHECK, "land:auto"],
+			[claim("c_1", "ctx_y"), result("c_1"), blocked],
+			{
+				pullRequests: [
+					{ number: 44, state: "OPEN", isDraft: false, mergeable: "MERGEABLE", headSha: "def" },
+					{ number: 45, state: "OPEN", isDraft: false, mergeable: "MERGEABLE", headSha: "abc" },
+				],
+			},
+		)
+
+		expect(codes({ issues: [otherPushed] })).toEqual([])
+	})
+
 	test("auto-land: only a clean review newer than a blocked=review attempt tries again", () => {
 		const blocked = composeComment("autoland", { pr: "45", blocked: "review" }, "Not landed.")
 		const clean = composeComment("review", { pr: "45", verdict: "clean" }, "Fine.")
@@ -418,7 +472,9 @@ describe("frontdesk reconcile", () => {
 
 	test("auto-land: a human comment, a conflict or a busy worker comes first", () => {
 		const labels = [...CHECK, "land:auto"]
-		const conflicting = [{ number: 45, state: "OPEN", isDraft: false, mergeable: "CONFLICTING" }]
+		const conflicting = [
+			{ number: 45, state: "OPEN", isDraft: false, mergeable: "CONFLICTING", headSha: "abc" },
+		]
 
 		expect(
 			codes({
@@ -498,7 +554,9 @@ describe("frontdesk reconcile", () => {
 	})
 
 	test("merged: a merged pull request on a request that is not done", () => {
-		const pullRequests = [{ number: 45, state: "MERGED", isDraft: false, mergeable: "UNKNOWN" }]
+		const pullRequests = [
+			{ number: 45, state: "MERGED", isDraft: false, mergeable: "UNKNOWN", headSha: "abc" },
+		]
 
 		const issues = [issue(12, CHECK, [claim("c_1", "ctx_y"), result("c_1")], { pullRequests })]
 
@@ -506,7 +564,9 @@ describe("frontdesk reconcile", () => {
 	})
 
 	test("merged: an old merged pull request on a reopened request is not a merge", () => {
-		const pullRequests = [{ number: 45, state: "MERGED", isDraft: false, mergeable: "UNKNOWN" }]
+		const pullRequests = [
+			{ number: 45, state: "MERGED", isDraft: false, mergeable: "UNKNOWN", headSha: "abc" },
+		]
 		const reopened = [
 			claim("c_1", "ctx_y"),
 			result("c_1"),
@@ -519,14 +579,18 @@ describe("frontdesk reconcile", () => {
 	})
 
 	test("merged: a closed request whose pull request was merged by hand, with no result, still lands", () => {
-		const pullRequests = [{ number: 45, state: "MERGED", isDraft: false, mergeable: "UNKNOWN" }]
+		const pullRequests = [
+			{ number: 45, state: "MERGED", isDraft: false, mergeable: "UNKNOWN", headSha: "abc" },
+		]
 		const closed = issue(12, ["request", "stage:working"], [], { pullRequests, open: false })
 
 		expect(codes({ issues: [closed] })).toEqual([[12, "merged"]])
 	})
 
 	test("merged: only the pull request the newest result names counts", () => {
-		const pullRequests = [{ number: 44, state: "MERGED", isDraft: false, mergeable: "UNKNOWN" }]
+		const pullRequests = [
+			{ number: 44, state: "MERGED", isDraft: false, mergeable: "UNKNOWN", headSha: "abc" },
+		]
 		const issues = [
 			issue(12, CHECK, [claim("c_1", "ctx_y"), result("c_1", "45")], { pullRequests }),
 		]
@@ -535,14 +599,18 @@ describe("frontdesk reconcile", () => {
 	})
 
 	test("merged: a request already at done is left alone", () => {
-		const pullRequests = [{ number: 45, state: "MERGED", isDraft: false, mergeable: "UNKNOWN" }]
+		const pullRequests = [
+			{ number: 45, state: "MERGED", isDraft: false, mergeable: "UNKNOWN", headSha: "abc" },
+		]
 		const done = issue(12, ["request", "stage:done"], [], { pullRequests, open: false })
 
 		expect(codes({ issues: [done] })).toEqual([])
 	})
 
 	test("check-red: a conflicting pull request, with the live worker or without one", () => {
-		const pullRequests = [{ number: 45, state: "OPEN", isDraft: false, mergeable: "CONFLICTING" }]
+		const pullRequests = [
+			{ number: 45, state: "OPEN", isDraft: false, mergeable: "CONFLICTING", headSha: "abc" },
+		]
 		const issues = [issue(12, CHECK, [claim("c_1", "ctx_y"), result("c_1")], { pullRequests })]
 		const settled = worker({ activity: "done", workerState: "succeeded" })
 
@@ -554,7 +622,9 @@ describe("frontdesk reconcile", () => {
 	})
 
 	test("check-red outranks looks-good: the conflict is fixed first", () => {
-		const pullRequests = [{ number: 45, state: "OPEN", isDraft: false, mergeable: "CONFLICTING" }]
+		const pullRequests = [
+			{ number: 45, state: "OPEN", isDraft: false, mergeable: "CONFLICTING", headSha: "abc" },
+		]
 		const issues = [
 			issue(12, CHECK, [claim("c_1", "ctx_y"), result("c_1"), "looks good"], { pullRequests }),
 		]

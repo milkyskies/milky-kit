@@ -6,7 +6,7 @@ import {
 	owningClaim,
 } from "../github/derive.ts"
 import { type IssueState, isUnclaimedIntake, stageOf } from "../github/issue.ts"
-import { autolandHeld } from "../merge/autoland.ts"
+import { autolandHeld, resultHead } from "../merge/autoland.ts"
 import { machineOfHost } from "../orca/hosts.ts"
 import { issueNumberOfTitle } from "../orca/tasks.ts"
 import { isBusy, isGone, isLive, isSettled, type Worker } from "../orca/workers.ts"
@@ -111,12 +111,13 @@ function classifyCheck(
 		}
 	}
 
+	const resultPr = Number(issue.comments[resultAt]?.marker?.attrs.pr)
 	const autoLands =
 		resultAt >= 0 &&
-		Number.isInteger(Number(issue.comments[resultAt]?.marker?.attrs.pr)) &&
+		Number.isInteger(resultPr) &&
 		!human &&
 		landingOf(issue.labels, input.section) === "land:auto" &&
-		!autolandHeld(issue.comments, resultAt)
+		!autolandHeld(issue.comments, resultAt, resultHead(issue, resultPr))
 	if (autoLands) {
 		return {
 			issue: number,

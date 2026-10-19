@@ -19,7 +19,7 @@ const LIST_QUERY = `query($owner: String!, $name: String!, $states: [IssueState!
         blockedBy(first: 20) { nodes { number state } }
         subIssues(first: 50) { nodes { number state } }
         closedByPullRequestsReferences(first: 20, includeClosedPrs: true) {
-          nodes { number state isDraft mergeable }
+          nodes { number state isDraft mergeable headRefOid }
         }
       }
     }
@@ -60,6 +60,7 @@ function parseNode(node: unknown): IssueState {
 			state: readString(pr, "state"),
 			isDraft: readBoolean(pr, "isDraft"),
 			mergeable: readString(pr, "mergeable"),
+			headSha: readString(pr, "headRefOid"),
 		})),
 	}
 }

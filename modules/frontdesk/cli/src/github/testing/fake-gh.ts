@@ -184,6 +184,7 @@ export class FakeGithub {
 												state: pr.state,
 												isDraft: pr.isDraft,
 												mergeable: pr.mergeable,
+												headRefOid: pr.headRefOid,
 											},
 										]
 									: []

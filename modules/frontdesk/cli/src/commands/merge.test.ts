@@ -417,7 +417,9 @@ describe("frontdesk merge", () => {
 
 			const comments = autoComments(fake)
 			expect(comments).toHaveLength(1)
-			expect(comments[0]?.body).toStartWith("<!-- frontdesk:autoland pr=45 blocked=check -->")
+			expect(comments[0]?.body).toStartWith(
+				"<!-- frontdesk:autoland pr=45 blocked=check head=abc -->",
+			)
 			expect(comments[0]?.body).toContain("bun test")
 			expect(comments[0]?.body).toContain("1 fail: parser rejects empty input")
 			expect(output[0]).toContain("waits for a human")
@@ -438,7 +440,7 @@ describe("frontdesk merge", () => {
 			expect(fake.issue(12).labels).toContain("stage:check")
 			expect(autoComments(fake)).toHaveLength(1)
 			expect(autoComments(fake)[0]?.body).toStartWith(
-				"<!-- frontdesk:autoland pr=45 blocked=review -->",
+				"<!-- frontdesk:autoland pr=45 blocked=review head=abc -->",
 			)
 		})
 
@@ -488,7 +490,7 @@ describe("frontdesk merge", () => {
 
 			expect(fake.callsMatching(["pr", "merge"])).toHaveLength(0)
 			expect(autoComments(fake)[0]?.body).toStartWith(
-				"<!-- frontdesk:autoland pr=45 blocked=merge -->",
+				"<!-- frontdesk:autoland pr=45 blocked=merge head=abc -->",
 			)
 			expect(autoComments(fake)[0]?.body).toContain("src/a.ts")
 		})
@@ -561,6 +563,54 @@ describe("frontdesk merge", () => {
 			expect(autoComments(fake)).toHaveLength(1)
 		})
 
+		test("a new push to the pull request after a blocked attempt tries again", async () => {
+			const { fake, context, shell, deps } = setup({ ...auto, check: "bun test" })
+			shell.on("sh -c bun test", failed("1 fail\n"))
+			await runWith(deps, ["12"], context)
+			expect(fake.callsMatching(["pr", "merge"])).toHaveLength(0)
+
+			shell.on("sh -c bun test", ok(""))
+			const pushed = fake.pullRequests.get(45)
+			if (pushed) pushed.headRefOid = "def"
+			await runWith(deps, ["12"], context)
+
+			expect(fake.callsMatching(["pr", "merge", "45"])).toHaveLength(1)
+			expect(autoComments(fake)).toHaveLength(1)
+		})
+
+		test("a block after the merge commit was pushed records the pushed head, so that push earns no retry", async () => {
+			const { fake, context, extras, shell, deps } = setup({ ...auto, workflows: true })
+			extras.checkRuns = [{ id: 8, name: "ci", status: "completed", conclusion: "failure" }]
+			extras.annotations.set(8, [{ message: "Process completed with exit code 1." }])
+			await runWith(deps, ["12"], context)
+			expect(autoComments(fake)[0]?.body).toStartWith(
+				"<!-- frontdesk:autoland pr=45 blocked=ci head=sha123 -->",
+			)
+
+			const pushed = fake.pullRequests.get(45)
+			if (pushed) pushed.headRefOid = "sha123"
+			shell.calls.length = 0
+
+			expect((await failureOf(runWith(deps, ["12"], context))).code).toBe(1)
+			expect(shell.calls).toHaveLength(0)
+		})
+
+		test("a block that recorded no head keeps holding after a push", async () => {
+			const { fake, context, shell, deps } = setup(auto)
+			fake.addComment(
+				12,
+				composeComment("autoland", { pr: "45", blocked: "check" }, "Not landed automatically."),
+			)
+			const pushed = fake.pullRequests.get(45)
+			if (pushed) pushed.headRefOid = "def"
+
+			const failure = await failureOf(runWith(deps, ["12"], context))
+
+			expect(failure.code).toBe(1)
+			expect(failure.message).toContain("a new push to the pull request")
+			expect(shell.calls).toHaveLength(0)
+		})
+
 		test("a label removed during the checks stops the landing and merges nothing", async () => {
 			const { fake, context, shell, deps } = setup(auto)
 			shell.on("sh -c", () => {
@@ -594,7 +644,7 @@ describe("frontdesk merge", () => {
 			expect(fake.issue(12).labels).toContain("stage:check")
 			expect(autoComments(fake)).toHaveLength(1)
 			expect(autoComments(fake)[0]?.body).toStartWith(
-				"<!-- frontdesk:autoland pr=45 blocked=error -->",
+				"<!-- frontdesk:autoland pr=45 blocked=error head=sha123 -->",
 			)
 		})
 
@@ -607,7 +657,7 @@ describe("frontdesk merge", () => {
 
 			expect(shell.called("sh -c")).toHaveLength(0)
 			expect(autoComments(fake)[0]?.body).toStartWith(
-				"<!-- frontdesk:autoland pr=45 blocked=merge -->",
+				"<!-- frontdesk:autoland pr=45 blocked=merge head=abc -->",
 			)
 		})
 

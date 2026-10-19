@@ -47,7 +47,7 @@ describe("loading issues for a pass", () => {
 		expect(issue?.labels).toEqual(["request", "stage:check"])
 		expect(issue?.comments.map((comment) => comment.body)).toEqual(["looks good"])
 		expect(issue?.pullRequests).toEqual([
-			{ number: 45, state: "OPEN", isDraft: false, mergeable: "CONFLICTING" },
+			{ number: 45, state: "OPEN", isDraft: false, mergeable: "CONFLICTING", headSha: "abc" },
 		])
 	})
 })
