@@ -164,5 +164,5 @@ export default {
 
 ## Testing HTTP
 
-- **Domain tier**: every use case has a test with stubbed Layers. No HTTP framework needed — handlers are shims, the logic is in the use case.
+- **Domain tier**: a use case worth testing (see `testing.md`) is tested with stubbed Layers. No HTTP framework needed — handlers are shims, the logic is in the use case.
 - **E2E tier (opt-in)** (`tests/e2e/`): provide the real HTTP server layer against a test port and make real requests through `HttpApiClient`. Skip unless an end-to-end flow (auth, signup, checkout) genuinely needs verification at the wire.

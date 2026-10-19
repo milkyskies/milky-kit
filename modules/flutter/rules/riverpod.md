@@ -173,7 +173,6 @@ The three-tier model lives in `modules/core/rules/testing.md`. This section is t
 - **Widget tier** — `testWidgets` with a `ProviderScope` wrapping the subject and the same overrides. Deliberately few: cover wiring, not rules, because the rules were already covered at the domain tier.
 - **Mocking** uses `mocktail` (no code generation, works with null safety). Prefer a hand-written fake over a mock when the interface is small.
 - Time-dependent logic takes a clock. Never `Future.delayed` in a test to wait for something.
-- **Scenario codes in test names** when a `docs/test/<feature>.md` spec exists: `test('MAP-001 snaps to the nearest public landmark', ...)`. Grep finds the test from the spec and the spec from the test.
 
 ## If you do not know how to express something
 

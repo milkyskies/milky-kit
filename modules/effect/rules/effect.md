@@ -235,7 +235,7 @@ const authsEqual = (a: AuthState, b: AuthState) => Equal.equals(a, b)
 
 ## Testing: `@effect/vitest`
 
-The 3-tier model + Gherkin spec convention lives in `modules/core/rules/testing.md`. Below is the Effect-flavor tool layer for the universal tiers; adapter modules (`effect-http`, `effect-mcp`) add their own E2E patterns.
+When to write a test and the three tiers live in `modules/core/rules/testing.md`. Below is the Effect-flavor tool layer for the universal tiers; adapter modules (`effect-http`, `effect-mcp`) add their own E2E patterns.
 
 - Tests use `@effect/vitest`. Replace `it` / `test` with `it.effect` or `it.live` (both run with a `Scope`, so `it.scoped` no longer exists) — test bodies are Effects, assertions compose with the system under test.
 - **Run vitest under Bun**: the `test` script is `bunx --bun vitest run`, not plain `vitest run`. effect-api runs on Bun (`@effect/platform-bun`), so its tests must too — vitest's default Node workers throw `ReferenceError: Bun is not defined` the moment a test exercises a Bun-only platform API (e.g. `HttpServerResponse.file`). Running tests on the production runtime also keeps them honest.
@@ -245,7 +245,6 @@ The 3-tier model + Gherkin spec convention lives in `modules/core/rules/testing.
 - Random-dependent code: wrap the effect in `Random.withSeed("seed")` for reproducible values.
 - Service mocking: `Layer.succeed(MyService, mockImpl)` always, never `vi.mock` for Effect services.
 - Test files colocated for domain tier (`createPost.ts` + `createPost.test.ts`). Integration + E2E live under `tests/`.
-- **Scenario codes in test names** when a `docs/test/<feature>.md` spec exists: `it.effect("POST-001 rejects empty title", () => ...)`. `grep POST-001` finds the test from the spec or the spec from the test.
 
 ## Run at the edge
 

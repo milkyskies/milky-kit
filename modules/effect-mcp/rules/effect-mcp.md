@@ -105,5 +105,5 @@ src/                                  (or apps/<app>/src/)
 
 ## Testing MCP
 
-- **Domain tier**: every use case exposed as an MCP tool has a domain-tier test (same test as if it were exposed over HTTP — protocol-agnostic).
+- **Domain tier**: a use case exposed as an MCP tool is tested like any other, when it meets the conditions in `testing.md`; the test is protocol-agnostic.
 - **E2E tier (opt-in)** (`tests/e2e/`): launch the MCP server in-process and call tools through an MCP client. Skip unless tool dispatch itself needs verifying.

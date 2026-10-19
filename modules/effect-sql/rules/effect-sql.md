@@ -108,4 +108,4 @@ src/                                  (or apps/<app>/src/)
 
 - **Domain tier**: repository tests are NOT required — use cases at the integration tier transitively exercise repositories, and that's enough. CRUD doesn't earn a unit test.
 - **Integration tier** (`tests/integration/`): provide the real `SqlLive` Layer against a fresh test database. Use a dedicated test database (`<project>_test`) — never the dev DB. Wipe between tests or wrap each test in a transaction that rolls back.
-- Required for critical user-visible flows where DB state matters. Not every use case earns one; pick the ones where a SQL-layer bug would be expensive.
+- Only for the few flows where a SQL-layer bug would be silent and expensive.

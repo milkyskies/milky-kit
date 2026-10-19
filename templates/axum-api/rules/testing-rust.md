@@ -6,7 +6,7 @@ paths:
 
 # Rust testing conventions
 
-This file is the Rust-specific tool layer for `modules/core/rules/testing.md`. Read that first for the universal 3-tier model + Gherkin spec convention. Anything below is Rust-flavor — `cargo test`, `proptest`, `sqlx`, `tokio::test`.
+This file is the Rust-specific tool layer for `modules/core/rules/testing.md`. Read that first for when a test is worth writing and the three tiers. Anything below is Rust-flavor — `cargo test`, `proptest`, `sqlx`, `tokio::test`.
 
 ## Domain-tier tests
 
@@ -132,13 +132,3 @@ Add when a domain-tier test feels like it's only covering the happy path.
 - `cargo test --release` for property tests that are slow under default optimization; default profile is fine otherwise.
 - `cargo nextest run` for parallelism + better output.
 
-## Test name → scenario code
-
-When a feature spec exists under `docs/test/<feature>.md`, the test name contains the scenario code:
-
-```rust
-#[test]
-fn POST_001_rejects_empty_title() { ... }
-```
-
-Rust doesn't allow hyphens in identifiers; use underscores (`POST_001` ↔ `POST-001` in the spec doc). `grep POST_001 -r src tests` finds the test from the spec; `grep POST-001 docs/test/` finds the spec from the test.
