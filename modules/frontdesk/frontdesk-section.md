@@ -5,6 +5,7 @@
 - ask: ask:choices
 - check: mise run check
 - land: land:check
+<!-- Optional: "- after land: <command>" runs in the root checkout after `frontdesk land` fast-forwards it to origin/main, for example a build so the human plays the merged code. Without the line nothing runs. -->
 
 ### Machines
 <!-- One line per machine that runs workers: "- Minerva: workers 3". A remote machine adds its repository selector: "- zeus: workers 2, repo `~/Code/Projects/name`". With no lines, workers run only on the coordinator machine, 3 at a time. -->

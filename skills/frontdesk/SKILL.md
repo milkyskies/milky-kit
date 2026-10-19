@@ -14,7 +14,7 @@ description: >
 
 The coordinator remembers nothing between passes. GitHub holds the truth: claims, attempts, results, cards, answers and pinged markers are Issue comments. Orca holds the running workers. Each pass reads both, computes the difference, and fixes it. A fresh coordinator after a crash runs the same pass and needs no handoff.
 
-The state program is `~/.claude/kit/modules/frontdesk/bin/frontdesk`, written below as `frontdesk`. The worker contract is `.claude/rules/frontdesk.md`. The project's settings are the `## frontdesk` section of `CLAUDE.md`: `### Coordinator` (machine, default ask setting, check command, default landing), `### Machines` (worker limits), `### Hard areas`, `### Review paths`, `### Routing` and `### Preflight`. `### Review paths` is program-parsed too, because `frontdesk merge` reads it. Read the other subsections as prose.
+The state program is `~/.claude/kit/modules/frontdesk/bin/frontdesk`, written below as `frontdesk`. The worker contract is `.claude/rules/frontdesk.md`. The project's settings are the `## frontdesk` section of `CLAUDE.md`: `### Coordinator` (machine, default ask setting, check command, default landing, optional after-land command), `### Machines` (worker limits), `### Hard areas`, `### Review paths`, `### Routing` and `### Preflight`. `### Review paths` is program-parsed too, because `frontdesk merge` reads it. Read the other subsections as prose.
 
 This session is Sonnet at medium effort. The human never talks to the coordinator. Everything the human needs to decide arrives as a card on an Issue and a ping.
 

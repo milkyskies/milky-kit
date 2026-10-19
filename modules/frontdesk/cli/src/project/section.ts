@@ -13,7 +13,7 @@ export type Machine = { name: string; workers: number; repo: string | undefined 
 export type PreflightNeed = { command: string; fix: string }
 
 export type FrontdeskSection = {
-	coordinator: { machine: string; ask: string; check: string; land: Landing }
+	coordinator: { machine: string; ask: string; check: string; land: Landing; afterLand?: string }
 	machines: Machine[]
 	reviewPaths: string[]
 	preflight: { needs: PreflightNeed[]; mcp: string[] }
@@ -34,6 +34,7 @@ const FENCE = /^\s*(```|~~~)/
 const SECTION_HEADING = /^## frontdesk\s*$/
 const OTHER_SECTION_HEADING = /^## /
 const SUBSECTION_HEADING = /^### (.+?)\s*$/
+const COORDINATOR_KEYS = ["machine", "ask", "check", "land", "after land"]
 const KEY_VALUE_BULLET = /^-\s+([^:]+?):\s*(.*?)\s*$/
 const COMMAND_BULLET = /^-\s+`([^`]+)`(?:\s+-\s+fix:\s+`([^`]+)`)?\s*$/
 const WORKER_ITEM = /^workers\s+(\d+)$/
@@ -116,7 +117,7 @@ function parseCoordinator(
 			continue
 		}
 
-		if (key !== "machine" && key !== "ask" && key !== "check" && key !== "land") {
+		if (!COORDINATOR_KEYS.includes(key)) {
 			issues.push({ line: line.number, message: `unknown key "${key}" in ### Coordinator` })
 			continue
 		}
@@ -147,11 +148,14 @@ function parseCoordinator(
 		})
 	}
 
+	const afterLand = values.get("after land")
+
 	return {
 		machine,
 		ask,
 		check: values.get("check") || DEFAULT_CHECK_COMMAND,
 		land: land ?? DEFAULT_LANDING,
+		...(afterLand ? { afterLand } : {}),
 	}
 }
 

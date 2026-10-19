@@ -5,9 +5,17 @@ import { claimBody, failureOf } from "../github/testing/seed.ts"
 import { FakeShell, failed, ok } from "../merge/testing.ts"
 import { OrcaError } from "../orca/runner.ts"
 import { FakeOrca } from "../orca/testing/fake-orca.ts"
-import { worker } from "../reconcile/testing/fixtures.ts"
+import { describeRootUpdate } from "../project/root-checkout.ts"
+import type { FrontdeskSection } from "../project/section.ts"
+import { SECTION, worker } from "../reconcile/testing/fixtures.ts"
 import { makeListingHarness } from "../reconcile/testing/github.ts"
 import { landIssue } from "./land.ts"
+
+const ROOT = "/repos/app"
+
+function worktreeList(rootBranch: string): string {
+	return `worktree ${ROOT}\nHEAD 111\nbranch refs/heads/${rootBranch}\n\nworktree /work/12\nHEAD 222\nbranch refs/heads/milkyskies/12\n\n`
+}
 
 function setup(pullRequestState: "MERGED" | "OPEN" = "MERGED") {
 	const harness = makeListingHarness()
@@ -34,8 +42,18 @@ function setup(pullRequestState: "MERGED" | "OPEN" = "MERGED") {
 
 	const fakeShell = new FakeShell()
 	fakeShell.on("git -C /work/12 rev-list --count", ok("0\n"))
+	fakeShell.on("git worktree list --porcelain", ok(worktreeList("main")))
 
-	return { ...harness, fakeOrca, fakeShell, deps: { orca: fakeOrca.orca, shell: fakeShell.shell } }
+	const section: FrontdeskSection = { ...SECTION, coordinator: { ...SECTION.coordinator } }
+	const deps = { orca: fakeOrca.orca, shell: fakeShell.shell, loadSection: async () => section }
+
+	return { ...harness, fakeOrca, fakeShell, section, deps }
+}
+
+function touchingRoot(fakeShell: FakeShell): string[] {
+	return fakeShell.calls
+		.filter((call) => call.cwd === ROOT || call.command.includes(ROOT))
+		.map((call) => call.command.join(" "))
 }
 
 const MUTATING = ["worker-release", "worker-stop", "rm"]
@@ -396,5 +414,105 @@ describe("frontdesk land", () => {
 		await landIssue(deps, context, 12)
 
 		expect(fakeOrca.called("worker-list", "--run", "run_kit")).toHaveLength(1)
+	})
+})
+
+describe("frontdesk land updates the root checkout", () => {
+	test("a root on main is fast-forwarded from origin/main", async () => {
+		const { context, fakeShell, deps } = setup()
+
+		const report = await landIssue(deps, context, 12)
+
+		expect(touchingRoot(fakeShell)).toEqual([`git -C ${ROOT} pull --ff-only origin main`])
+		expect(report.root).toEqual({ kind: "pulled", root: ROOT, afterLand: undefined })
+		expect(describeRootUpdate(report.root)).toEqual([
+			`root checkout ${ROOT} fast-forwarded to origin/main`,
+		])
+	})
+
+	test("a root on another branch is left alone, with one line saying why", async () => {
+		const { context, fakeShell, deps } = setup()
+		fakeShell.on("git worktree list --porcelain", ok(worktreeList("feature/7")))
+
+		const report = await landIssue(deps, context, 12)
+
+		expect(touchingRoot(fakeShell)).toEqual([])
+		expect(describeRootUpdate(report.root)).toEqual([
+			`root checkout ${ROOT} not updated: it is on feature/7, not main`,
+		])
+	})
+
+	test("a pull that would overwrite local changes leaves the root untouched and land still succeeds", async () => {
+		const { fake, context, fakeShell, deps } = setup()
+		fakeShell.on(`git -C ${ROOT} pull`, {
+			code: 1,
+			stdout: "",
+			stderr:
+				"error: Your local changes to the following files would be overwritten by merge:\n\tscripts/a.cs\nAborting\n",
+		})
+
+		const report = await landIssue(deps, context, 12)
+
+		expect(fake.issue(12).state).toBe("CLOSED")
+		expect(touchingRoot(fakeShell)).toEqual([`git -C ${ROOT} pull --ff-only origin main`])
+		expect(describeRootUpdate(report.root)).toEqual([
+			`root checkout ${ROOT} not updated, left as it was: error: Your local changes to the following files would be overwritten by merge:`,
+		])
+	})
+
+	test("the after land command runs in the root after a successful pull", async () => {
+		const { context, fakeShell, section, deps } = setup()
+		section.coordinator.afterLand = "make build && make import"
+
+		const report = await landIssue(deps, context, 12)
+
+		expect(touchingRoot(fakeShell)).toEqual([
+			`git -C ${ROOT} pull --ff-only origin main`,
+			"sh -c make build && make import",
+		])
+		expect(fakeShell.called("sh -c")[0]?.cwd).toBe(ROOT)
+		expect(describeRootUpdate(report.root)).toEqual([
+			`root checkout ${ROOT} fast-forwarded to origin/main`,
+			"after land: `make build && make import` passed",
+		])
+	})
+
+	test("without an after land line nothing runs after the pull", async () => {
+		const { context, fakeShell, deps } = setup()
+
+		await landIssue(deps, context, 12)
+
+		expect(fakeShell.called("sh -c")).toHaveLength(0)
+	})
+
+	test("the after land command does not run when the pull was skipped or failed", async () => {
+		const skipped = setup()
+		skipped.section.coordinator.afterLand = "make import"
+		skipped.fakeShell.on("git worktree list --porcelain", ok(worktreeList("feature/7")))
+		await landIssue(skipped.deps, skipped.context, 12)
+
+		const pullFailed = setup()
+		pullFailed.section.coordinator.afterLand = "make import"
+		pullFailed.fakeShell.on(
+			`git -C ${ROOT} pull`,
+			failed("fatal: Not possible to fast-forward, aborting.\n"),
+		)
+		await landIssue(pullFailed.deps, pullFailed.context, 12)
+
+		expect(skipped.fakeShell.called("sh -c")).toHaveLength(0)
+		expect(pullFailed.fakeShell.called("sh -c")).toHaveLength(0)
+	})
+
+	test("a failing after land command is reported and land still succeeds", async () => {
+		const { fake, context, fakeShell, section, deps } = setup()
+		section.coordinator.afterLand = "make import"
+		fakeShell.on("sh -c make import", failed("error CS1002: ; expected\n"))
+
+		const report = await landIssue(deps, context, 12)
+
+		expect(fake.issue(12).state).toBe("CLOSED")
+		expect(describeRootUpdate(report.root).at(-1)).toBe(
+			"after land: `make import` failed: error CS1002: ; expected",
+		)
 	})
 })

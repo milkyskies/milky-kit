@@ -81,6 +81,24 @@ describe("parseFrontdeskSection", () => {
 		expect(section.reviewPaths).toEqual(["apps/api/drizzle/migrations/**", "scripts/**/*.sh"])
 	})
 
+	test("reads the after land command, and its absence leaves nothing to run", () => {
+		const withCommand = parsed(
+			[
+				"## frontdesk",
+				"### Coordinator",
+				"- machine: Minerva",
+				"- ask: ask:choices",
+				"- after land: dotnet build LastFish.csproj && godot-mono --headless --import",
+			].join("\n"),
+		)
+		const without = parsed("## frontdesk\n### Coordinator\n- machine: M\n- ask: ask:choices\n")
+
+		expect(withCommand.coordinator.afterLand).toBe(
+			"dotnet build LastFish.csproj && godot-mono --headless --import",
+		)
+		expect(without.coordinator.afterLand).toBeUndefined()
+	})
+
 	test("a land value that is not a landing label, and a review path without a glob, name their line", () => {
 		const result = parseFrontdeskSection(
 			[

@@ -22,15 +22,22 @@ import { OrcaError } from "../orca/runner.ts"
 import { requireRun } from "../orca/runs.ts"
 import { listWorkers } from "../orca/workers.ts"
 import { worktreesOfIssue } from "../orca/worktrees.ts"
+import {
+	describeRootUpdate,
+	type RootUpdate,
+	updateRootCheckout,
+} from "../project/root-checkout.ts"
 import { landedPullRequest } from "../reconcile/landed.ts"
 
-export type LandDeps = Pick<OrcaDeps, "orca"> & { shell: Shell }
+export type LandDeps = Pick<OrcaDeps, "orca" | "loadSection"> & { shell: Shell }
 
 export type KeptWorktree = { path: string; reason: string }
 
-export type LandReport = { removedUntracked: string[]; kept: KeptWorktree[] }
+type CleanupReport = { removedUntracked: string[]; kept: KeptWorktree[] }
 
-type Cleanup = { failures: string[]; report: LandReport }
+export type LandReport = CleanupReport & { root: RootUpdate }
+
+type Cleanup = { failures: string[]; report: CleanupReport }
 
 async function cleanUpWorker(deps: LandDeps, runId: string, dispatch: string): Promise<Cleanup> {
 	const cleanup: Cleanup = { failures: [], report: { removedUntracked: [], kept: [] } }
@@ -83,7 +90,7 @@ async function cleanUpWorker(deps: LandDeps, runId: string, dispatch: string): P
 async function removeLocalWorktree(
 	deps: LandDeps,
 	path: string,
-	report: LandReport,
+	report: CleanupReport,
 ): Promise<void> {
 	const verdict = await inspectWorktree(deps.shell, path)
 
@@ -209,7 +216,7 @@ export async function landIssue(
 		)
 	}
 
-	return cleanup.report
+	return { ...cleanup.report, root: await updateRootCheckout(deps.shell, deps.loadSection) }
 }
 
 export const run: Command = async (args, context) => {
@@ -224,10 +231,13 @@ export const run: Command = async (args, context) => {
 
 	for (const kept of report.kept) lines.push(`worktree-kept ${kept.path}: ${kept.reason}`)
 
+	lines.push(...describeRootUpdate(report.root))
+
 	emit(context, lines.join("\n"), {
 		issue: number,
 		stage: "stage:done",
 		removedUntracked: report.removedUntracked,
 		kept: report.kept,
+		root: report.root,
 	})
 }

@@ -41,7 +41,7 @@ The mode determines which steps below run.
 ~/.claude/kit/modules/frontdesk/bin/frontdesk land <num>
 ```
 
-`frontdesk land` checks that the linked PR is merged, moves the stage to `stage:done`, closes the issue with `Merged.` if it is still open, and releases the Orca worker and removes the worktree that the newest claim names. It is idempotent, so a second run changes nothing and exits 0. If the merged PR's body included `closes #<num>` GitHub already closed the issue, and `frontdesk land` still moves the stage.
+`frontdesk land` checks that the linked PR is merged, moves the stage to `stage:done`, closes the issue with `Merged.` if it is still open, and releases the Orca worker and removes the worktree that the newest claim names. Then it updates the root checkout: when the root is on `main` it runs `git pull --ff-only origin main` there, followed by the project's `- after land:` command from `### Coordinator` if one is set. A root on another branch, or a pull that would overwrite local changes, is left untouched with one line saying why, and neither fails land. It is idempotent, so a second run changes nothing and exits 0. If the merged PR's body included `closes #<num>` GitHub already closed the issue, and `frontdesk land` still moves the stage.
 
 An exit 3 means an Orca cleanup step failed after the GitHub state was already correct. Report the stderr line and run `frontdesk land <num>` again once Orca is reachable.
 

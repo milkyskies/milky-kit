@@ -18,6 +18,7 @@ import { firstFailingLine, type Shell, spawnShell } from "../merge/shell.ts"
 import { type OrcaDeps, realOrcaDeps } from "../orca/deps.ts"
 import { markMergePinged, mergedMessage } from "../ping/merged.ts"
 import { type PingDeps, realPingDeps, sendPing } from "../ping/ntfy.ts"
+import { describeRootUpdate } from "../project/root-checkout.ts"
 import { type FrontdeskSection, landingOf } from "../project/section.ts"
 import { parseDuration } from "../watch/loop.ts"
 import { landIssue } from "./land.ts"
@@ -516,16 +517,20 @@ export async function runWith(deps: MergeDeps, args: string[], context: Context)
 		})
 	}
 
-	await landIssue(deps, context, number)
+	const landed = await landIssue(deps, context, number)
 
 	emit(
 		context,
-		`#${number} merged pull request #${prNumber}: ${described.text}; local check passed`,
+		[
+			`#${number} merged pull request #${prNumber}: ${described.text}; local check passed`,
+			...describeRootUpdate(landed.root),
+		].join("\n"),
 		{
 			issue: number,
 			pr: prNumber,
 			ci: described.marker,
 			check: "passed",
+			root: landed.root,
 		},
 	)
 }

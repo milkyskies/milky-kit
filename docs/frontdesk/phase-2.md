@@ -561,6 +561,7 @@ Each project's `CLAUDE.md` carries this section. `modules/frontdesk/frontdesk-se
 | `ask` | The default ask setting: `ask:everything`, `ask:choices` or `ask:own-feel`. A request's own `ask:*` label wins. Required. |
 | `check` | The local check command `frontdesk merge` runs. Default `mise run check`. |
 | `land` | The landing for a request with no landing label: `land:check` or `land:auto`. Default `land:check`. |
+| `after land` | A command `frontdesk land` runs in the root checkout after it fast-forwards the root to `origin/main`, such as a build. Optional; without it nothing runs. A failing command is reported, never fatal. |
 | `### Machines` lines | One per machine that runs workers: the worker limit, and for a remote machine the repository selector Orca uses there. With no `### Machines`, workers run only on the coordinator's machine, 3 at a time. |
 | `### Hard areas` | Path globs where the routing table's "hard area" row applies. |
 | `### Review paths` | Path globs that bring in the standing reviewer. One backticked glob per line. `frontdesk merge` reads them for an automatic landing. |
