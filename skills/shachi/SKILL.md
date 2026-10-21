@@ -19,22 +19,26 @@ Load the `orchestration` skill first (`orca skills get orchestration`) and follo
 
 ## Routing
 
-Use the table in `skills/frontdesk/reference/routing.md` (in the milky-kit plugin). In short:
+Read `skills/frontdesk/reference/routing.md` (in the milky-kit plugin) before every `worker-start`. It holds the routing table, the hard-area list and the project's own `### Routing` rows, which win. The shape of it:
 
 | Work | Model | Effort |
 |---|---|---|
 | Plans, architecture, design talk | Opus | high |
 | Taste work: how a screen looks, dialogue, 3D | Opus | medium |
-| Building a settled design, a bug fix, a system across files | Sonnet | medium |
-| Small exact changes, docs, renames, merges, conflicts, build fixes | Sonnet | low |
+| A hard area (core domain rules, async, concurrency, dates, auth, migrations, state machines) | Sonnet | medium |
+| Building in a known pattern, docs, renames, merges, conflicts, build fixes | Sonnet | low |
+| Easy and mechanical, with a check command and a similar feature to copy | Haiku | none |
+| Finding code | the scout agent (Haiku) | |
 
-Start every worker with `--agent claude --model <model> --effort <effort>` and compare `launch.requested` with `launch.effective`.
+Start every worker with `--agent claude --model <model> --effort <effort>` (Haiku takes no `--effort`) and compare `launch.requested` with `launch.effective`. `skills/frontdesk/reference/tokens.md` says what a brief must carry for a Haiku worker.
 
 ## Workers
 
 - A worker that builds gets its own worktree (`--worktree new-child --base-branch main`, or `orca worktree create` for another repository). Read-only work may use `--worktree current`.
 - One worker per area, reused: hand the next task in the same files to the same terminal with `worker-start --task <id> --terminal <handle> --worktree path:<its worktree>`. Before an unrelated task, send `/clear` first.
 - An idle worker never reads `orchestration send` messages. Give a follow-up as a new task through `worker-start --terminal`; use `send` only for a worker that is still running.
+- Find a worker's terminal from the `worker-start` receipt or `worker-show --dispatch <id>`. Never by searching `worker-list` text: its rows carry no worktree path, so a text match picks the wrong worker.
+- A worker whose `projection.stage.activity` is `waiting` for long is most likely stuck on a permission or trust prompt. Tell Milky which pane to open and what to accept; never relaunch it.
 - Release a finished worker (`worker-release`) and remove its worktree (`orca worktree rm --force`) as soon as its PR is merged. Run `worker-list` at the end and say what is still up.
 
 ## Briefs
