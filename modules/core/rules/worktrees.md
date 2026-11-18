@@ -6,7 +6,7 @@ modes: [worktrees]
 
 **This rule applies only when `.milky-kit-mode` is `worktrees`** (`mise run rules:link` links it only then). If `.milky-kit-mode` says `main` or `branch`, ignore it.
 
-In `worktrees` mode, **every task runs in its own isolated worktree by default.** Working on a feature branch in the root checkout is the exception, and requires an explicit `/here` or "do it here" / "in root." This rule covers the worktree side; root work follows the `branch` mode workflow in `workflow.md`.
+In `worktrees` mode, **every task runs in its own isolated worktree by default.** Working on a feature branch in the root checkout is the exception, and requires an explicit `/here` or "do it here" / "in root." This rule covers the worktree side; root work follows `workflow-branch.md`.
 
 **Do not try to work out which role you are.** Whoever spawns an agent creates the worktree first and launches the agent inside it, so the question never needs answering. If you were not put in a worktree and were not told `/here`, ask — do not assume the root is yours.
 

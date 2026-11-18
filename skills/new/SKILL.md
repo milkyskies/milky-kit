@@ -73,7 +73,7 @@ User says any of: "scaffold a new project", "set up an Effect API", "new milky-k
    ```
 
    Always-on rules (every template gets these):
-   - `~/.claude/kit/modules/core/rules/{general,comments,config-and-env,workflow,worktrees,testing,talking-about-design,design-docs,cards,working-habits}.md`
+   - `~/.claude/kit/modules/core/rules/{general,comments,config-and-env,workflow,workflow-main,workflow-branch,workflow-worktrees,worktrees,testing,talking-about-design,design-docs,cards,working-habits}.md`
 
    Leave out a rule whose frontmatter names modes (`modes: [worktrees]`) that do not include the mode written in step 10a; it still goes in `.claude/rules.manifest`, and `mise run rules:link` links it when the mode changes.
 

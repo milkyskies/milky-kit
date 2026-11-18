@@ -166,7 +166,7 @@ Flip per project at any time:
 /milky-kit:mode              # show current
 ```
 
-`workflow.md` reads `.milky-kit-mode` at session start and follows the matching task workflow section.
+`workflow.md` reads `.milky-kit-mode` at session start; each mode's task workflow is its own rule (`workflow-main.md`, `workflow-branch.md`, `workflow-worktrees.md`), linked by `mise run rules:link` only in that mode.
 
 In `worktrees` mode a worktree is the **default** for every task. To work in the root checkout instead — a typo fix, a one-line config change, anything not worth paying worktree setup for — use `/milky-kit:here`.
 

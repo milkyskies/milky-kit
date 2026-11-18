@@ -6,7 +6,7 @@ argument-hint: "[main | branch | worktrees | (no argument shows current mode)]"
 
 # Show or switch milky-kit workflow mode
 
-Use this skill to flip a project between the three workflow modes. Both the modes themselves and the task workflows they imply are defined in `modules/core/rules/workflow.md`.
+Use this skill to flip a project between the three workflow modes. Both the modes themselves and the task workflows they imply are defined in `modules/core/rules/workflow.md` and `workflow-main.md`, `workflow-branch.md`, `workflow-worktrees.md`.
 
 | Mode | Branch | Worktree | Ship via |
 |---|---|---|---|

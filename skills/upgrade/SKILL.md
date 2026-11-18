@@ -102,6 +102,20 @@ Run this when the project's `.claude/rules/` holds a symlink to the old autopilo
 4. **Preflight.** Run `frontdesk preflight --role coordinator` and surface each fix it prints. The `autopilot` label stays as it is, because it is the consent gate.
 5. **Commit** as `chore: move autopilot to the frontdesk module`.
 
+## Migration: workflow split by mode
+
+Run this when `.claude/rules.manifest` lists `workflow.md` but not `workflow-branch.md`. No confirmation needed: it changes which files load, not what they say.
+
+1. **Manifest.** Add the three rows (tab-separated) and keep the file sorted:
+   ```
+   workflow-branch.md	modules/core/rules/workflow-branch.md
+   workflow-main.md	modules/core/rules/workflow-main.md
+   workflow-worktrees.md	modules/core/rules/workflow-worktrees.md
+   ```
+2. **Gitignore** `.claude/rules/workflow-branch.md`, `workflow-main.md` and `workflow-worktrees.md` beside the other links.
+3. **Run `mise run rules:link`.** It links only the current mode's files (`modes:` in each file's frontmatter); recopy `.mise/tasks/rules/link` from `modules/core/files/mise-tasks/rules/link` first if it does not print "left out".
+4. **Commit** as `chore: link the workflow rules by mode`.
+
 ## Things to be careful about
 
 - **User-customized scaffold files** — `biome.json` may have project-specific ignores, `package.json` may have unrelated deps. Always diff before overwriting.

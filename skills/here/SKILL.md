@@ -28,7 +28,7 @@ In `worktrees` mode every task gets its own worktree by default. That default is
 
 - **Parallel work.** If several issues are being worked at once, they need isolation. Say so and use worktrees.
 - **Anything long-running.** The longer you hold the root branch, the longer nobody else can use it.
-- **`main` or `branch` mode.** There is no worktree default to escape, so `/here` is a no-op. Say so and follow `workflow.md` for that mode.
+- **`main` or `branch` mode.** There is no worktree default to escape, so `/here` is a no-op. Say so and follow `workflow-<mode>.md` for that mode.
 
 ## Steps
 
@@ -59,7 +59,7 @@ If the root is on someone else's feature branch or has uncommitted changes you d
 
 ### 4. Work as in `branch` mode
 
-Follow the `branch` mode section of `workflow.md` verbatim:
+Follow `workflow-branch.md` verbatim:
 
 ```bash
 git checkout main && git pull

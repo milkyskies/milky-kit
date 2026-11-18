@@ -9,7 +9,7 @@ argument-hint: "[issue number (optional, inferred from branch)] [--review | --co
 
 # Ship
 
-Full pipeline. Shape depends on the project's workflow mode (see `modules/core/rules/workflow.md`):
+Full pipeline. Shape depends on the project's workflow mode (see `modules/core/rules/workflow.md` and the `workflow-<mode>.md` beside it):
 
 - **`main` mode**: quality gates → push to main → close the issue. No PR.
 - **`branch` or `worktrees` mode**: quality gates → PR → CI loop → mark ready. Full flow below.

@@ -9,7 +9,7 @@ argument-hint: "[issue number (optional, inferred from branch if omitted)]"
 
 # Land
 
-Clean up after a merged PR. What "clean up" means depends on the workflow mode (see `modules/core/rules/workflow.md`):
+Clean up after a merged PR. What "clean up" means depends on the workflow mode (see `modules/core/rules/workflow.md` and the `workflow-<mode>.md` beside it):
 
 - **`main` mode**: no-op for git state (already on main). Just confirm the issue is closed.
 - **`branch` mode**: switch back to main, pull, delete the local feature branch.
