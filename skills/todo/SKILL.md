@@ -19,17 +19,17 @@ Turn a sentence into a filed issue an agent can pick up cold.
 
 The point is the **shape**, not the saved typing. An issue in the house format can be claimed by a worker who was not part of this conversation; one that just restates the sentence gets claimed, read, and parked on `stage:needs-you` — which works, but costs a whole agent spawn to discover the spec was thin.
 
-`issues.md` owns the formats, the labels, the points scale, the priority scale, and the type labels. This skill owns the procedure. Where the two ever disagree, `issues.md` wins.
+`issues.md` owns the labels, the points scale, the priority scale and the type labels; the body templates are in the `milky-kit:issues` skill (`skills/issues/SKILL.md`), read it first. This skill owns the procedure. Where they ever disagree, `issues.md` wins.
 
 ## Steps
 
 ### 1. Decide which of the two things this is
 
-**An existing `undecided` issue** — `$ARGUMENTS` names one, or the user points at one. Graduate it: read the issue and the answers so far, draft the task sections from `issues.md` (steps 2 to 4), show the body, then on approval edit the body and run `gh issue edit <n> --remove-label undecided,stage:backlog --add-label stage:ready,autopilot,points:<k>,type:<t>`. If an open question is still unresolved, say so and leave it undecided.
+**An existing `undecided` issue** — `$ARGUMENTS` names one, or the user points at one. Graduate it: read the issue and the answers so far, draft the task sections from the `milky-kit:issues` skill (steps 2 to 4), show the body, then on approval edit the body and run `gh issue edit <n> --remove-label undecided,stage:backlog --add-label stage:ready,autopilot,points:<k>,type:<t>`. If an open question is still unresolved, say so and leave it undecided.
 
 **A task** — the user knows what they want built, even roughly. Goes to step 2.
 
-**An undecided thing** — an idea, an unresolved fork, a half-thought. Goes to the "Filing something you have not decided" skeleton in `issues.md`: `## Problem` plus `## Open questions`, filed with the `stage:backlog` and `undecided` labels, no points, no `autopilot` label, no acceptance criteria.
+**An undecided thing** — an idea, an unresolved fork, a half-thought. Goes to the "Filing something undecided" skeleton in the `milky-kit:issues` skill: `## Problem` plus `## Open questions`, filed with the `stage:backlog` and `undecided` labels, no points, no `autopilot` label, no acceptance criteria.
 
 The tell is whether you can write a binary acceptance criterion without inventing the decision behind it. If every criterion you draft depends on a fork the user has not resolved, it is undecided — file it as one, and say so in a line. Do not resolve the fork on their behalf and file a task.
 
@@ -39,7 +39,7 @@ Filing an undecided thing costs nothing later: running `/todo` on the issue afte
 
 Read the code for whatever area the sentence names. Look at how similar things are already built, what tests exist near them, what would have to change.
 
-Draft the sections from `issues.md` off that reading. Most of what a questionnaire would ask is answerable by looking. Three of them can only be written well right now, while the code is in front of you:
+Draft the sections from the `milky-kit:issues` skill off that reading. Most of what a questionnaire would ask is answerable by looking. Three of them can only be written well right now, while the code is in front of you:
 
 - **`## Area`** — the path globs this will touch. The frontdesk coordinator routes before the work exists, so it cannot inspect a diff. Match the granularity of the project's `### Hard areas` and `### Review paths` in the `## frontdesk` section of `CLAUDE.md`.
 - **`## Out of scope`** — the neighbouring code an executor would plausibly wander into. You just saw what sits next to the change; name it here.
