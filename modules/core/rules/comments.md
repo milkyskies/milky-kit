@@ -1,3 +1,8 @@
+---
+paths:
+  - "**/*.{rs,ts,tsx,js,jsx,mjs,cjs,dart,py,go,gd,gdshader,gdshaderinc,glsl,sh,lua,luau,swift,kt,java,c,h,cpp,hpp,cs,sql}"
+---
+
 # Comments
 
 **MANDATORY. Read before writing any comment. The default is no comment.**
