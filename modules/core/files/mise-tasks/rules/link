@@ -19,6 +19,15 @@ fi
 mkdir -p .claude/rules
 linked=0
 missing=0
+skipped=0
+
+# A kit rule may name the workflow modes it is for (`modes: [worktrees]` in its frontmatter); it is linked only in
+# those modes, so an agent never loads the steps of a mode the project is not in. /milky-kit:mode reruns this task.
+mode="$(tr -d '[:space:]' < .milky-kit-mode 2>/dev/null || true)"
+mode="${mode:-branch}"
+rule_modes() {
+	awk 'NR == 1 && $0 != "---" { exit } NR > 1 && $0 == "---" { exit } /^modes:/ { sub(/^modes:[[:space:]]*/, ""); gsub(/[][,]/, " "); print; exit }' "$1"
+}
 
 # Tab-separated: local link name, then the path within the kit. The two differ where this project renames a rule to disambiguate it (dart-models.md against the TypeScript models.md), so a basename alone cannot round-trip.
 while IFS=$'\t' read -r name rel; do
@@ -27,6 +36,12 @@ while IFS=$'\t' read -r name rel; do
 	if [ ! -f "$src" ]; then
 		echo "Missing from kit: $rel" >&2
 		missing=$((missing + 1))
+		continue
+	fi
+	modes="$(rule_modes "$src")"
+	if [ -n "$modes" ] && ! printf ' %s ' $modes | grep -qF " $mode "; then
+		[ -L ".claude/rules/$name" ] && rm ".claude/rules/$name"
+		skipped=$((skipped + 1))
 		continue
 	fi
 	ln -sfn "$src" ".claude/rules/$name"
@@ -38,4 +53,4 @@ if [ "$missing" -gt 0 ]; then
 	exit 1
 fi
 
-echo "Linked $linked kit rules from $KIT"
+echo "Linked $linked kit rules from $KIT ($skipped left out: not for $mode mode)"

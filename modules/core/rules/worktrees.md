@@ -1,6 +1,10 @@
+---
+modes: [worktrees]
+---
+
 # Git Worktree Workflow
 
-**This rule applies only when `.milky-kit-mode` is `worktrees`.** Read `.milky-kit-mode` at session start — if it says `main` or `branch`, ignore this rule entirely and follow the matching section of `workflow.md`.
+**This rule applies only when `.milky-kit-mode` is `worktrees`** (`mise run rules:link` links it only then). If `.milky-kit-mode` says `main` or `branch`, ignore it.
 
 In `worktrees` mode, **every task runs in its own isolated worktree by default.** Working on a feature branch in the root checkout is the exception, and requires an explicit `/here` or "do it here" / "in root." This rule covers the worktree side; root work follows the `branch` mode workflow in `workflow.md`.
 

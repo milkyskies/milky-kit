@@ -54,10 +54,12 @@ Anything else → reject with the valid values and stop.
    - worktrees: lead on a feature branch in root + delegated tasks in isolated worktrees (a worktree task never switches the root branch), ship via PR
    ```
 
-4. **Write the file:**
+4. **Write the file, then relink the rules:**
    ```bash
    echo "<requested>" > .milky-kit-mode
+   mise run rules:link
    ```
+   Kit rules whose frontmatter names their modes (`modes: [worktrees]`) are linked only in those modes, so the link task swaps in the new mode's rules.
 
 5. **Do NOT commit the change.** The user commits when they commit other work. Tell the user:
 
@@ -90,7 +92,7 @@ Anything else → reject with the valid values and stop.
 - **Reject unknown modes.** Only `main`, `branch`, and `worktrees` are valid.
 - **Never commit the mode file.** Surface the file change; the user commits.
 - **Never delete worktrees** as part of a mode switch. Switching out of `worktrees` doesn't mean clean up existing worktrees — those are user-owned. Tell the user about `git worktree list` and `mise run worktree:cleanup <num>` if they want to clean up manually.
-- **Never modify `workflow.md`, `worktrees.md`, or `CLAUDE.md`.** Mode is data, not code — only the `.milky-kit-mode` file changes.
+- **Never modify `workflow.md`, `worktrees.md`, or `CLAUDE.md`.** Mode is data, not code — only the `.milky-kit-mode` file changes, and `rules:link` picks the rules from it.
 
 ## Conventions to honor
 

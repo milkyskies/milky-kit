@@ -113,6 +113,8 @@ Report findings briefly. Then ask which modules to apply.
 
       **Only ever iterate symlinks.** A regular file in `.claude/rules/` is a rule the project owns; `readlink` returns empty for it, and blindly using that empty value will replace the file with a symlink to the kit root.
 
+      Then run `mise run rules:link`. It leaves out the kit rules whose frontmatter names modes (`modes: [worktrees]`) the project is not in, so link those in step 3 like any other before writing the manifest: the manifest lists every rule, the links only the current mode's.
+
       Tell the user to run `mise run rules:link` after cloning on a new machine, and that the task ships with the `core` module.
 
 2. **Merge scaffold files** for each chosen module. Substitute all placeholders (`{{project_name}}`, `{{worktree_dir}}`, `{{app_name}}`, etc.) when copying:
