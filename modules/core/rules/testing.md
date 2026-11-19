@@ -71,6 +71,7 @@ For exact directory layout per template (where `domain/models/`, `domain/service
 - No network calls in unit / use-case tests. If you must, mock at the service boundary (in Effect, swap the Layer; in vitest, `vi.mock`).
 - No `sleep`. Use a clock service / `TestClock` / `tokio::time::pause()` for time-dependent logic.
 - Dedicated test database for integration tests.
+- **A test that waits for a condition gives up.** A stepped world, a loop "until X", a poll: fail after a bounded number of steps or ticks with a message naming what it waited for, and bound a step that can block (a lock, a pool, a channel) by a watchdog. Never loop until killed: libtest has no timeout, and a hung test holds the machine until someone notices.
 
 ## Property testing
 
